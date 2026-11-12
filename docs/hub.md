@@ -69,14 +69,16 @@ A mistake in the file stops `lens-hub` with the panel or rule named: `panel 2 (O
 | `color` | `"thresholds"` (the default: the four keys below), `"sign"` (green above zero, red below), `"none"` |
 | `warnAbove`, `badAbove`, `warnBelow`, `badBelow` | Color the value and bar yellow or red past these |
 | `text`, `values` | **Several values in one line**: `text = "{s} / {c} EU"` with `values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" }`. Each `{name}` is formatted with `format`; `{value}` and `{of}` are the view's own |
-| `dots`, `by` | **State dots**: a [selector](queries.md) such as `'prism_machine_state{node="prism-ore"}'`, one dot per `by` label (default `machine`). The dot follows the series' `state` label: running green, idle dim, down red, anything else yellow; series without a `state` label are green above 0, red at 0 (`lumen_lsc_up`, `by = "lsc"`) |
+| `dots`, `by`, `idle` | **State dots**: a [selector](queries.md) such as `'prism_machine_state{node="prism-ore"}'`, one dot per `by` label (default `machine`). Each series' `state` label: running green, down red, idle dim (`idle = "warn"`: yellow), anything else yellow; series without a `state` label are green above 0, red at 0 (`lumen_lsc_up`, `by = "lsc"`). **A dot for several series** (`by = "process"`: the whole line) is red if any is down, else green if any runs, else yellow if any is something else, else idle |
 | `when` | **Show only while** this query is true (non-zero): `when = "lumen_net_5m_eut < 0"`. The EDIT page still lists it, as `hidden` |
 
 A query with no data shows `–`. A panel is a **view**: the same keys make a HUD bar or text (a view with dots
-shows its dots in either).
+shows its dots in either; in the HUD, with its value on the same row: `Ore backlog ● 4.2k items`).
 
 ```lua
-{ label = "Ore line", dots = 'prism_machine_state{node="prism-ore"}' },
+{ label = "Ore line", dots = 'prism_machine_state{node="prism-ore"}' },                 -- a dot per machine
+{ label = "Ore backlog", value = 'sum(prism_backlog_items{node="prism-ore"})', unit = "items",
+  dots = 'prism_machine_state{node="prism-ore"}', by = "process", idle = "warn" },   -- one dot, and the count
 { label = "LSC", text = "{s} / {c} EU", values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" } },
 { label = "Draining", value = "lumen_net_5m_eut", unit = "EU/t", format = "signed", color = "sign",
   when = "lumen_net_5m_eut < 0" },

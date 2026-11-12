@@ -155,7 +155,7 @@ function App.evaluateWith(p, query, select)
   end
   local text, frac, level = format.view(p, v, total, values)
   local out = { label = p.label, text = text, frac = frac, level = level, value = v }
-  if p.dots then out.dots = format.dots(select(p.dots), p.by) end
+  if p.dots then out.dots = format.dots(select(p.dots), p.by, p.idle) end
   if p.when then
     local w = query(p.when)
     out.hidden = not (w ~= nil and w ~= 0)

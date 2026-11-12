@@ -8,17 +8,19 @@
     text = "{stored} / {cap} EU"?, values = { stored = query, cap = query }?   several values in one line:
                                                             each {name} formatted with `format`; {value} and
                                                             {of} are the value and of queries'
-    dots = selector?, by = label?,                          state dots: one per `by` (default "machine")
+    dots = selector?, by = label?, idle = "dim" | "warn"?,  state dots: one per `by` (default "machine")
     when = query? }                                         shown only while true (non-zero)
   FORMATS, COLORS               the allowed names, in the order the editor cycles them
   format.view(view, v, total?, values?) -> text, frac, level
     v: the value (nil: no data, text "–"); total: the `of` query's value; values: { [name] = number } for the
     text template. frac: 0..1 for a bar, or nil. level: "bad" | "warn" | "good" | nil ("sign": above 0 good,
     below 0 bad).
-  format.dots(series, by?) -> { { name, level }... }   series grouped by the `by` label (default "machine"),
-    sorted by name. A group's state is the `state` label of its series that's above 0: running, ok, up, on and
-    active are good, idle and waiting dim (nil), down, off, bad and broken bad, anything else warn. Series
-    without a `state` label: above 0 good, else bad.
+  format.dots(series, by?, idle?) -> { { name, level }... }   series grouped by the `by` label (default
+    "machine"), a dot per group, sorted by name. A series' state is its `state` label when its value is above 0:
+    running, ok, up, on, active, working good; down, off, bad, broken bad; idle and waiting `idle` (nil, dim, by
+    default; idle = "warn" makes them yellow); anything else warn. Series without a `state` label: above 0 good,
+    else bad. A group's dot is the first of: any bad, any good, any warn, any idle. So by = "process" gives one
+    dot for a whole line: red if any machine is down, else green if any runs, else idle
   format.template(view, values) -> text
   format.number(v) -> "1.2M", "640", "0.25"
   format.duration(seconds) -> "45s", "12m", "2h 05m", "3d 4h"
@@ -83,8 +85,17 @@ local GOOD = { running = true, ok = true, up = true, on = true, active = true, w
 local DIM = { idle = true, waiting = true }
 local BAD = { down = true, off = true, bad = true, broken = true }
 
-function format.dots(series, by)
+-- A state's level: bad, good, idle (nil unless the view says), else warn.
+local function stateLevel(state, idle)
+  if BAD[state] then return "bad" end
+  if GOOD[state] then return "good" end
+  if DIM[state] then return idle end
+  return "warn"
+end
+
+function format.dots(series, by, idle)
   by = by or "machine"
+  if idle == "dim" then idle = nil end
   local groups, names = {}, {}
   for _, s in ipairs(series or {}) do
     local labels = s.labels or {}
@@ -96,25 +107,22 @@ function format.dots(series, by)
       name = #parts > 0 and table.concat(parts, " ") or (labels.node or "?")
     end
     local g = groups[name]
-    if not g then g = { name = name }; groups[name] = g; names[#names + 1] = name end
+    if not g then g = { name = name, levels = {} }; groups[name] = g; names[#names + 1] = name end
+    local on = s.value ~= nil and s.value > 0
     if labels.state then
-      if s.value and s.value > 0 then g.state = labels.state end
+      if on then g.levels[#g.levels + 1] = stateLevel(labels.state, idle) or "idle" end
     else
-      g.up = (g.up or false) or (s.value ~= nil and s.value > 0)
+      g.levels[#g.levels + 1] = on and "good" or "bad"
     end
   end
   table.sort(names)
   local out = {}
   for _, name in ipairs(names) do
     local g = groups[name]
+    local has = {}
+    for _, l in ipairs(g.levels) do has[l] = true end
     local lv
-    if g.state then
-      if GOOD[g.state] then lv = "good"
-      elseif BAD[g.state] then lv = "bad"
-      elseif not DIM[g.state] then lv = "warn" end
-    elseif g.up ~= nil then
-      lv = g.up and "good" or "bad"
-    end
+    if has.bad then lv = "bad" elseif has.good then lv = "good" elseif has.warn then lv = "warn" elseif has.idle then lv = idle end
     out[#out + 1] = { name = name, level = lv }
   end
   return out

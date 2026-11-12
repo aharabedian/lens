@@ -32,6 +32,7 @@ viewdraft.FIELDS = {
   { key = "of", name = "Bar of", kind = "text" },
   { key = "dots", name = "Dots", kind = "text" },
   { key = "by", name = "Dots by", kind = "text" },
+  { key = "idle", name = "Idle dots", kind = "choice", choices = { "dim", "warn" } },
   { key = "color", name = "Color", kind = "choice", choices = format.COLORS },
   { key = "warnAbove", name = "Warn above", kind = "number" },
   { key = "badAbove", name = "Bad above", kind = "number" },
