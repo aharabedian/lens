@@ -6,7 +6,7 @@
   check(cfg) -> cfg | nil, err   the same checks on a table (load uses it)
 
   A panel (a view, lens.hub.format, which has every key): label, value (or text or dots), of, max, unit, format,
-             color, thresholds, text and values, dots and by, when. (percent = true is format = "percent")
+             color, thresholds, text and values, dots, by and idle, when. (percent = true is format = "percent")
   resolution: "fit" (fill the screen's shape), "max" (the GPU's largest) or { width, height }
   hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off. After check, hud.blocks
        is always there: { { anchor, x, y, width, elements = { element... } }... } where an element is a view
@@ -85,6 +85,7 @@ local function checkPanel(i, p)
   if p.by ~= nil and (type(p.by) ~= "string" or not p.by:find("^[%a_][%w_]*$")) then
     return where .. ": by must be a label name"
   end
+  if p.idle ~= nil and p.idle ~= "dim" and p.idle ~= "warn" then return where .. ': idle must be "dim" or "warn"' end
   if p.max ~= nil and (type(p.max) ~= "number" or p.max <= 0) then return where .. ": max must be a number above 0" end
   if p.max ~= nil and p.of ~= nil then return where .. ": use max or of, not both" end
   if p.unit ~= nil and type(p.unit) ~= "string" then return where .. ": unit must be text" end

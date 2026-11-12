@@ -381,4 +381,31 @@ do
   check(select(2, viewdraft.view(d)):find("name=query", 1, true), "a malformed values line says how to write it")
 end
 
+---------------------------------------------------------------- one dot for a group
+do
+  local function line(states)
+    local out = {}
+    for i, st in ipairs(states) do
+      local all = { running = true, idle = true, down = true, [st] = true }
+      for s in pairs(all) do
+        out[#out + 1] = { value = s == st and 1 or 0, labels = { node = "a", process = "ore", machine = "m" .. i, state = s } }
+      end
+    end
+    return out
+  end
+  local function one(states, idle) local d = format.dots(line(states), "process", idle); return #d, d[1].level end
+  local n, lv = one({ "running", "idle", "down" })
+  check(n == 1 and lv == "bad", "by process: one dot; any machine down makes it red")
+  check(select(2, one({ "idle", "running", "idle" })) == "good", "else any running: green")
+  check(select(2, one({ "idle", "idle" })) == nil, "all idle: dim")
+  check(select(2, one({ "idle", "idle" }, "warn")) == "warn" and select(2, one({ "running", "idle" }, "warn")) == "good",
+    'idle = "warn": all idle is yellow; a running machine still makes it green')
+  check(select(2, one({ "idle", "warming" })) == "warn", "an unknown state counts as warn, above idle")
+  local ups = format.dots({ { value = 1, labels = { lsc = "A", site = "x" } }, { value = 0, labels = { lsc = "B", site = "x" } } }, "site")
+  check(#ups == 1 and ups[1].level == "bad", "without states: one at 0 makes the group red")
+  check(config.check({ panels = { { label = "x", dots = "m", idle = "warn" } } })
+    and select(2, config.check({ panels = { { label = "x", dots = "m", idle = "yellow" } } })):find('idle must be', 1, true),
+    "idle is checked")
+end
+
 H.done()
