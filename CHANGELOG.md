@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-12
+
+Status you define, pages, presets, a log, and editing that's comfortable on the screen. Works with PRISM 1.2.0
+and LUMEN; agents need no update (lens/1 is unchanged). `lens-board.cfg` converts itself on first start.
+
 ### Added
 - **Status dots** (`status`): rules in order, `{ level, query }`; the first true one colors the dot (none:
   gray). `$value` is the view's value; `color = "status"` colors the value too. Levels: good, warn, bad, off.
