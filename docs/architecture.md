@@ -71,9 +71,8 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | Events: `glasses_on(terminal, player, width, height)` (854x457 here, briefly 854x480), `glasses_off(terminal, player)`; clicking with glasses on sends nothing | **Seen in game** (`lens-discover --events`, 2026-11-12) |
 | Colors 0..1 (`setColor(255, 0, 0)` clamps to the same red as `(1, 0, 0)`) | **Seen in game** (`--glasses-test`, 2026-11-12) |
 | Positions are GUI pixels from the top left (at GUI scale 3, x 10 is 30 screen px); `glasses_on`'s width and height are the GUI size at that moment | **Seen in game** (`--glasses-test`, 2026-11-12) |
-| Rect2D `setSize(a, b)` makes it `b` wide and `a` tall: **height first** | **Seen in game** once (60, 14 drew 14 wide, 60 tall); `--glasses-test` checks it again |
-| Text is about 10 px a character and 14 px a line | **Seen in game** (`--glasses-test`, 2026-11-12) |
-| `setScale(2)` after `setText` changed nothing visible; whether it works before `setText` | **Unverified**: `--glasses-test` tries it |
+| Rect2D `setSize(a, b)` makes it `b` wide and `a` tall: **height first** | **Seen in game** twice (60, 14 drew 14 x 60; 10, 80 drew 80 x 10) |
+| Text without a `setScale` call is at scale 2; at scale s a character is about 5.2 * s px wide (measured at 0.5 and 2). `setScale(2)` looked like it did nothing only because 2 is the default | **Seen in game** (`--glasses-test`, 2026-11-12, twice) |
 | `math.random(m, n)` doesn't return an integer (the mock gives floats) | **Seen in game**: PRISM crashed on it. Use `codec.newBoot()` |
 | `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified**; a one-router base's snapshots arrived fine (2026-11-12), but splitting into parts hasn't been exercised in game |
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |

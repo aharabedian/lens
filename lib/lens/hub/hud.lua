@@ -8,8 +8,9 @@
   hud.rgb(hex, units) -> r, g, b   0xRRGGBB in the terminal's color units: "float" (0..1) or "byte" (0..255)
 
   Rows: health ("LENS OK  1 bad  2 warn"), one per panel (label, bar, value), then the newest unacknowledged
-  alerts. Unused rows are hidden, not removed. Measured in game: positions are GUI pixels from the top left,
-  text is about 10 px a character and 14 px a line, and Rect2D's setSize takes the height first.
+  alerts. Unused rows are hidden, not removed. Measured in game: positions are GUI pixels from the top left;
+  Rect2D's setSize takes the height first; text is about 5.2 px a character per unit of setScale (and starts at
+  scale 2 if setScale is never called, so the HUD always sets it). opts.scale is that setScale value.
 ]]
 
 local Gui = require("lens.gui")
@@ -18,7 +19,7 @@ local hud = {}
 
 local C = Gui.C
 local HEALTH = { ok = C.good, warn = C.warn, bad = C.bad }
-local CHAR, LINE, LABEL, VALUE = 10, 14, 7, 7      -- px per character and line; label and value widths
+local CHAR, LINE, LABEL, VALUE = 5.2, 10, 8, 8    -- px per character and line at scale 1; label, value chars
 
 function hud.rgb(hex, units)
   local r, g, b = (hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff
@@ -109,8 +110,8 @@ end
 function Hud:draw(m)
   local o = self.opts
   local scale = o.scale or 1
-  local x0, y0, width = o.x or 4, o.y or 4, o.width or 260
-  local line, char = LINE * scale, CHAR * scale
+  local x0, y0, width = o.x or 4, o.y or 4, o.width or 160
+  local line, char = math.ceil(LINE * scale), CHAR * scale
   local used = { bg = true }
   local function mark(key) used[key] = true end
   -- The backdrop is made before any row, so it's drawn under them; it's sized once the rows are known.
@@ -121,19 +122,19 @@ function Hud:draw(m)
   if c.bad > 0 then head = head .. ("  %d bad"):format(c.bad) end
   if c.warn > 0 then head = head .. ("  %d warn"):format(c.warn) end
   local y = y0 + 2
-  self:text("head", x0 + 3, y, cut(head, width // char), HEALTH[m.health] or C.dim); mark("head")
+  self:text("head", x0 + 3, y, cut(head, math.floor((width - 6) / char)), HEALTH[m.health] or C.dim); mark("head")
   y = y + line
 
-  local labelW, valueW = LABEL * char, VALUE * char
-  local barX, barW = x0 + 3 + labelW, width - 6 - labelW - valueW - 4
+  local labelW, valueW = math.ceil(LABEL * char) + 2, math.ceil(VALUE * char)
+  local barX, barW = x0 + 3 + labelW, width - 6 - labelW - valueW - 3
   for i, p in ipairs(pickPanels(m, o.panels, o.maxPanels or 6)) do
     local k = "p" .. i
     self:text(k .. "l", x0 + 3, y, cut(p.label, LABEL), C.dim); mark(k .. "l")
     local barColor = p.level == "bad" and C.bad or p.level == "warn" and C.warn or C.info
     if p.frac and barW > 4 then
       local frac = math.max(0, math.min(1, p.frac))
-      self:rect(k .. "b", barX, y + 1, barW, line - 4, C.line, 0.8); mark(k .. "b")
-      if frac > 0 then self:rect(k .. "f", barX, y + 1, barW * frac, line - 4, barColor, 1); mark(k .. "f") end
+      self:rect(k .. "b", barX, y, barW, line - 3, C.line, 0.8); mark(k .. "b")
+      if frac > 0 then self:rect(k .. "f", barX, y, barW * frac, line - 3, barColor, 1); mark(k .. "f") end
     end
     local valueColor = p.level == "bad" and C.bad or p.level == "warn" and C.warn or C.text
     self:text(k .. "v", x0 + width - 3 - valueW, y, cut(p.text or "-", VALUE), valueColor); mark(k .. "v")
@@ -146,7 +147,7 @@ function Hud:draw(m)
     if not a.acked then
       shown = shown + 1
       local text = (a.level == "bad" and "! " or "· ") .. a.text
-      self:text("a" .. shown, x0 + 3, y, cut(text, (width - 6) // char), a.level == "bad" and C.bad or C.warn)
+      self:text("a" .. shown, x0 + 3, y, cut(text, math.floor((width - 6) / char)), a.level == "bad" and C.bad or C.warn)
       mark("a" .. shown)
       y = y + line
     end

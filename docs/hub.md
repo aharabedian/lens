@@ -115,8 +115,8 @@ unloads), the dashboard keeps running and shows `HUD: <error>` in its footer.
 | `hud` key | Default | Meaning |
 |---|---|---|
 | `x`, `y` | `4`, `4` | Top-left corner, in GUI pixels (one is 3 screen pixels at GUI scale 3) |
-| `width` | `260` | Width of the block, in GUI pixels. Text takes about 10 per character |
-| `scale` | `1` | Text and row size. Not yet confirmed to work in game: leave at 1 |
+| `width` | `160` | Width of the block, in GUI pixels. Text takes about 5 per character at scale 1 |
+| `scale` | `1` | Text and row size: 1 is about chat-text size, 2 doubles it (double `width` too), 0.5 halves it |
 | `panels` | all, up to `maxPanels` | Panel labels to show, in order: `panels = { "Ore backlog" }` |
 | `maxPanels` | `6` | Panels shown when `panels` isn't set |
 | `alerts` | `3` | Unacknowledged alerts shown |

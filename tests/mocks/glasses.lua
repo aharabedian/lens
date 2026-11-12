@@ -4,8 +4,8 @@
   text set/getText; rects set/getSize; quads and triangles setVertex / getVertexCount.
   Units seen in game (lens-discover --glasses-test, 2026-11-12): colors 0..1 (above 1 clamps); positions in
   GUI pixels from the top left; Rect2D setSize(a, b) makes it b wide and a tall (height first), so the mock
-  stores w = b, h = a. Text is about 10 px a character and 14 px a line at scale 1; whether setScale changes
-  that isn't known, so the mock just records it.
+  stores w = b, h = a (confirmed twice). Text starts at scale 2 when setScale is never called; at scale s a
+  character is about 5.2 * s px wide (measured at 0.5 and 2), so G.textWidth(state) estimates its width.
 
   local G = require("glasses").new()
   G.proxy                          the component (add to M.components with type "glasses")
@@ -13,6 +13,7 @@
   G.calls                          every call into the terminal and its widgets
   G.live() -> widget states not removed, in creation order
   G.find(text) -> the live text widget whose text contains `text`
+  G.textWidth(state) -> px the text takes at its scale
 ]]
 
 local glasses = {}
@@ -23,7 +24,7 @@ function glasses.new()
 
   local function widget(kind, extra)
     G.nextId = G.nextId + 1
-    local s = { kind = kind, id = G.nextId - 1, visible = true, alpha = 1, scale = 1, x = 0, y = 0, w = 0, h = 0,
+    local s = { kind = kind, id = G.nextId - 1, visible = true, alpha = 1, scale = 2, x = 0, y = 0, w = 0, h = 0,
       color = { 1, 1, 1 } }
     G.widgets[s.id] = s
     G.order[#G.order + 1] = s
@@ -80,6 +81,7 @@ function glasses.new()
     for _, s in ipairs(G.order) do if not s.removed then out[#out + 1] = s end end
     return out
   end
+  function G.textWidth(s) return utf8.len(s.text or "") * 5.2 * s.scale end
   function G.find(text)
     for _, s in ipairs(G.order) do
       if not s.removed and s.kind == "text" and s.visible and s.text and s.text:find(text, 1, true) then return s end

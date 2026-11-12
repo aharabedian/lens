@@ -35,20 +35,28 @@ do
   check(G.live()[1].kind == "rect" and G.live()[1].alpha == 0.6, "the backdrop is made first, so it's under everything")
   local head = G.find("LENS OK")
   check(head and head.x == 7 and head.y == 6 and head.color[2] > 0.7, "the health line, green, top left")
-  local label, value = G.find("Ore ba"), G.find("4.2k")
+  local label, value = G.find("Ore bac"), G.find("4.2k")
   check(label and value and value.y == label.y, "a panel row: label and value on one line")
   local bars = {}
-  for _, s in ipairs(G.live()) do if s.kind == "rect" and s.y == label.y + 1 and s.visible then bars[#bars + 1] = s end end
+  for _, s in ipairs(G.live()) do if s.kind == "rect" and s.y == label.y and s.visible then bars[#bars + 1] = s end end
   check(#bars == 2 and bars[2].w == math.floor(bars[1].w * 0.42 + 0.5) and bars[1].w > bars[1].h,
   "a bar: background and a fill as wide as the fraction, wider than tall (setSize takes the height first)")
 local bg = G.live()[1]
-check(bg.w == 260 and bg.h < bg.w, "the backdrop is 260 wide by default")
+check(bg.w == 160 and bg.h < bg.w, "the backdrop is 160 wide by default")
+check(head.scale == 1, "text is set to scale 1 (the game's text starts at 2)")
+local fits = true
+for _, s in ipairs(G.live()) do
+  if s.kind == "text" and s.visible and s.x + G.textWidth(s) > bg.x + bg.w then fits = false end
+end
+check(fits, "every text fits inside the backdrop")
+check(label.x + G.textWidth(label) <= bars[1].x and bars[1].x + bars[1].w <= value.x,
+  "label, bar and value don't overlap")
   local down = G.find("Down")
   local downValue
   for _, s in ipairs(G.live()) do if s.kind == "text" and s.text == "1" then downValue = s end end
   check(down and downValue and downValue.color[1] > 0.9 and downValue.color[2] > 0.7, "a panel at warn: its value turns yellow")
   local rectsOnDownRow = 0
-  for _, s in ipairs(G.live()) do if s.kind == "rect" and s.y == down.y + 1 then rectsOnDownRow = rectsOnDownRow + 1 end end
+  for _, s in ipairs(G.live()) do if s.kind == "rect" and s.y == down.y then rectsOnDownRow = rectsOnDownRow + 1 end end
   check(rectsOnDownRow == 0, "a panel without a fraction has no bar")
 
   local calls = G.calls
@@ -91,7 +99,7 @@ do
   G = glassesMock.new()
   hud.new(G.proxy, opts({ x = 100, y = 50, scale = 2 })):draw(model())
   head = G.find("LENS OK")
-  check(head.x == 103 and head.y == 52 and head.scale == 2 and G.find("Ore ba").y == 80, "position and scale")
+  check(head.x == 103 and head.y == 52 and head.scale == 2 and G.find("Ore bac").y == 72, "position and scale")
 
   G = glassesMock.new()
   local c = assert(config.check({ panels = { { label = "A", value = "1" }, { label = "B", value = "2" } }, hud = { panels = { "B" } } }))
