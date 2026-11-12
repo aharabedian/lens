@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-12
+
+The dashboard and HUD, set up on the screen. Works with PRISM 1.2.0 and LUMEN; agents need no update (the
+lens/1 protocol is unchanged).
+
 ### Added
 - **DATA page:** every metric every agent sends, its series with labels and values; tap label values and a
   function to build a query, see its value, then **SAVE AS PANEL** or **ADD TO MY HUD**.
@@ -23,8 +28,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **A HUD for each player**: the hub drives every Glasses Terminal attached to it, each showing the HUD of the
   player wearing glasses linked to it, placed for their view size. One terminal per player.
 - **HUD editor** on the dashboard (tap **HUD**): your blocks (add, remove), their elements (add any panel or
-  default HUD view, bar or text, order, alerts, gaps), anchor grid, nudges (1, 8 or 32 px), width and size. Only the player who tapped can change their HUD; changes apply at once and
-  are saved in `/home/lens-hud.cfg`.
+  default HUD view, bar or text, order, alerts, gaps), anchor grid, nudges (1, 8 or 32 px), width and size.
+  Only the player who tapped can change their HUD; changes apply at once and are saved in `lens-board.cfg`.
+- **`editors`** in lens-hub.cfg: who may change the dashboard on the screen (nil: anyone).
+
+### Changed
+- The header has DATA, EDIT and HUD buttons; on narrow screens its summary shortens and the hub's name and
+  port make way.
+- Panels come from `lens-board.cfg` once it exists: lens-hub.cfg's panels are its starting point, and a panel
+  added there later (by lens-setup) is added to the dashboard once.
 
 ## [0.1.0] - 2026-11-12
 
