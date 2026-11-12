@@ -15,7 +15,7 @@ opposite: it gathers status from every system in the base into one place.
 
 ## Roadmap
 
-1. Telemetry spec (`docs/telemetry.md`): envelope, message types, metric types and naming, health, alerts.
+1. Telemetry spec ([docs/telemetry.md](docs/telemetry.md)): envelope, message types, metric types and naming, health, alerts.
 2. Shared `metrics` and `codec` modules, used by every agent.
 3. A simulated wireless network in the test mock, so hub and agents run together in tests.
 4. Hub core: storing snapshots, staleness, the selector language, alerts.
