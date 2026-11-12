@@ -114,7 +114,7 @@ check(st.hud, "ADD TO MY HUD saves a view and puts it in the player's HUD")
 check(st.counter, "a counter starts as a rate, per second")
 check(st.panel, "the new panel is on the dashboard")
 local board = files.loadTable(dir .. "/lens-board.cfg")
-local hudEls = board and board.huds and board.huds.Aaron and board.huds.Aaron.blocks[1].elements
+local hudEls = board and board.huds and board.huds.Aaron and board.huds.Aaron.presets[1].blocks[1].elements
 check(board and #board.views == 2 and board.panels[1] == "net 5m eut · Main" and #board.panels == 1
   and hudEls and hudEls[#hudEls].kind == "text" and hudEls[#hudEls].view == "net 5m eut · Main (HUD)",
   "lens-board.cfg: both views; one on the dashboard, the other in Aaron's HUD")

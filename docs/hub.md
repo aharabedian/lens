@@ -217,14 +217,16 @@ their taps change anything:
 
 | | |
 |---|---|
+| HUDS | Your **presets**: named HUDs, one shown at a time. Tap one to switch to it; **+** copies the one you're on and asks for a name; **RENAME** (typed, with a keyboard), **DELETE** (not the last) |
 | BLOCKS | A tab per block; **+** adds one, REMOVE drops the one you're editing |
 | IN BLOCK n | Its elements, in order: tap one to remove it, **BAR / TEXT** switches how it shows, ▲ ▼ order. Below: every view in the library you could add, **+ ALERTS** (then − / + for how many) and **+ GAP** |
 | POSITION | The anchor grid (↖ ↑ ↗ ← • → ↙ ↓ ↘), then ◀ ▲ ▼ ▶ to nudge by the step (tap it: 1, 8 or 32 px). Watch the glasses as you tap |
 | Width, Size | The block's width; text size for all your blocks |
-| BACK TO DEFAULT | Drops your settings: you get `hud` from lens-hub.cfg again |
+| BACK TO DEFAULT | Drops this HUD's settings: it shows `hud` from lens-hub.cfg again |
 | DONE | Back to the dashboard (it also closes after a minute without a tap) |
 
-Changes show in your glasses straight away and are saved in `lens-board.cfg` with the rest of what's edited
+Everyone starts with one HUD, `main`; switch presets for different jobs (base, mining, power). Changes show
+in your glasses straight away and are saved in `lens-board.cfg` with the rest of what's edited
 on the screen (an earlier `lens-hud.cfg` is read into it once). A player with no settings there, or a terminal
 whose wearer isn't known yet, shows `hud` from lens-hub.cfg. The views offered are the whole library: make new
 ones with EDIT.

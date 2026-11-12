@@ -13,11 +13,20 @@
                                         hidden? } } (lens.hub.app's evaluate); hidden elements aren't drawn
   hs:catalog(views) -> { view... }      what a player can pick: `views` (the board's library), then views in
                                         the default HUD with other labels (a label names a view)
-  hs:settings(player) -> s              the player's settings, or a copy of the defaults:
-    { own = bool, scale, blocks = { { anchor, x, y, width, elements = { element... } }... } }
+  hs:settings(player) -> s              the player's active preset, or a copy of the defaults:
+    { own = bool, preset = name, scale, blocks = { { anchor, x, y, width, elements = { element... } }... } }
     element: { kind = "bar" | "text", view = label } | { kind = "alerts", count } | { kind = "gap" }
-  hs:change(player, fn)                 fn(s) edits the player's settings; saved at once -> true | false, err
-  hs:reset(player)                      back to the defaults (removes their entry) -> true | false, err
+  hs:change(player, fn)                 fn(s) edits the active preset; saved at once -> true | nil, err
+  hs:reset(player)                      the active preset back to the defaults -> true | nil, err
+
+  Presets: each player has named HUDs (at least "main") and shows the active one. A preset without settings of
+  its own follows lens-hub.cfg's hud.
+  hs:presets(player) -> { name... }, active
+  hs:usePreset(player, name) -> true | nil, err
+  hs:addPreset(player) -> name | nil, err        a copy of the active one ("HUD 2", ...), made active
+  hs:renamePreset(player, old, new) -> true | nil, err
+  hs:deletePreset(player, name) -> true | nil, err   not the last one; the first left becomes active if it was
+  huds.MAX_PRESETS, huds.NAME_LENGTH
   hs:wearing(player) -> n               terminals that player is wearing glasses on
   hs:clear()                            remove every widget
   hs.calls, hs.error                    component calls so far (all terminals); the latest draw failure, or nil
@@ -34,6 +43,8 @@ local huds = {}
 
 huds.LIMITS = { scale = { 0.5, 3, 0.25 }, width = { 100, 400, 20 }, count = { 0, 8, 1 },
   blocks = { 1, 6 }, elements = { 0, 20 } }
+huds.MAX_PRESETS = 8
+huds.NAME_LENGTH = 16
 
 local ANCHOR = {}
 for _, a in ipairs(config.ANCHORS) do ANCHOR[a] = true end
@@ -92,6 +103,50 @@ local function clean(s)
   return out
 end
 
+-- A player's record: { active = name, presets = { { name, scale?, blocks? }... } }. An older record (one HUD:
+-- scale and blocks, or the first editor's form) becomes one preset, "main". A preset without blocks follows
+-- the defaults.
+local function cleanRecord(r)
+  if type(r) ~= "table" then return nil end
+  local out = { presets = {} }
+  if type(r.presets) == "table" then
+    local seen = {}
+    for _, p in ipairs(r.presets) do
+      if type(p) == "table" and type(p.name) == "string" and p.name ~= "" and not seen[p.name]
+        and #out.presets < huds.MAX_PRESETS then
+        seen[p.name] = true
+        local c = (p.blocks or p.bars or p.anchor) and clean(p) or nil
+        out.presets[#out.presets + 1] = { name = p.name, settings = c }
+      end
+    end
+    out.active = (type(r.active) == "string" and seen[r.active]) and r.active or nil
+  else
+    local c = clean(r)
+    if c then out.presets[1] = { name = "main", settings = c } end
+  end
+  if #out.presets == 0 then return nil end
+  out.active = out.active or out.presets[1].name
+  return out
+end
+
+-- The record as it's stored: presets as plain tables (settings inline).
+local function storeRecord(r)
+  local out = { active = r.active, presets = {} }
+  for _, p in ipairs(r.presets) do
+    local e = { name = p.name }
+    if p.settings then e.scale, e.blocks = p.settings.scale, p.settings.blocks end
+    out.presets[#out.presets + 1] = e
+  end
+  return out
+end
+
+local function copy(v)
+  if type(v) ~= "table" then return v end
+  local out = {}
+  for k, x in pairs(v) do out[k] = copy(x) end
+  return out
+end
+
 local Huds = {}
 Huds.__index = Huds
 
@@ -108,7 +163,7 @@ function huds.new(terminals, defaults, store)
   local saved = store and store:players()
   if type(saved) == "table" then
     for name, s in pairs(saved) do
-      if type(name) == "string" then self.players[name] = clean(s) end
+      if type(name) == "string" then self.players[name] = cleanRecord(s) end
     end
   end
   return self
@@ -144,12 +199,84 @@ function Huds:defaultSettings()
   return s
 end
 
+-- The player's record, made when needed (one preset, "main", following the defaults).
+function Huds:record(player, make)
+  local r = self.players[player]
+  if not r and make then
+    r = { active = "main", presets = { { name = "main" } } }
+    self.players[player] = r
+  end
+  return r
+end
+
+local function find(r, name)
+  for i, p in ipairs(r.presets) do if p.name == name then return p, i end end
+end
+
 function Huds:settings(player)
-  local own = player and self.players[player]
-  if not own then return self:defaultSettings() end
-  local s = clean(own)
-  s.own, s.scale = true, s.scale or self.defaults.scale or 1
+  local r = player and self:record(player)
+  local p = r and find(r, r.active)
+  local s
+  if p and p.settings then
+    s = clean(p.settings)
+    s.own, s.scale = true, s.scale or self.defaults.scale or 1
+  else
+    s = self:defaultSettings()
+  end
+  s.preset = p and p.name or "main"
   return s
+end
+
+function Huds:presets(player)
+  local r = self:record(player)
+  if not r then return { "main" }, "main" end
+  local names = {}
+  for _, p in ipairs(r.presets) do names[#names + 1] = p.name end
+  return names, r.active
+end
+
+function Huds:usePreset(player, name)
+  local r = self:record(player, true)
+  if not find(r, name) then return nil, "no HUD called " .. tostring(name) end
+  r.active = name
+  return self:save()
+end
+
+function Huds:addPreset(player)
+  local r = self:record(player, true)
+  if #r.presets >= huds.MAX_PRESETS then return nil, ("at most %d HUDs"):format(huds.MAX_PRESETS) end
+  local n = #r.presets + 1
+  while find(r, "HUD " .. n) do n = n + 1 end
+  local name = "HUD " .. n
+  local current = find(r, r.active)
+  r.presets[#r.presets + 1] = { name = name, settings = current and copy(current.settings) }
+  r.active = name
+  local ok, err = self:save()
+  if not ok then return nil, err end
+  return name
+end
+
+function Huds:renamePreset(player, old, new)
+  local r = self:record(player, true)
+  local p = find(r, old)
+  if not p then return nil, "no HUD called " .. tostring(old) end
+  new = type(new) == "string" and new:match("^%s*(.-)%s*$") or ""
+  if new == "" then return nil, "a HUD needs a name" end
+  if #new > huds.NAME_LENGTH then return nil, ("names are at most %d characters"):format(huds.NAME_LENGTH) end
+  if new ~= old and find(r, new) then return nil, "there's already a HUD called " .. new end
+  p.name = new
+  if r.active == old then r.active = new end
+  return self:save()
+end
+
+function Huds:deletePreset(player, name)
+  local r = self:record(player, true)
+  local _, i = find(r, name)
+  if not i then return nil, "no HUD called " .. tostring(name) end
+  if #r.presets == 1 then return nil, "the last HUD stays" end
+  table.remove(r.presets, i)
+  if r.active == name then r.active = r.presets[1].name end
+  return self:save()
 end
 
 function Huds:catalog(views)
@@ -166,19 +293,23 @@ function Huds:catalog(views)
 end
 
 function Huds:save()
-  if self.store then return self.store:setPlayers(self.players) end
-  return true
+  if not self.store then return true end
+  local out = {}
+  for name, r in pairs(self.players) do out[name] = storeRecord(r) end
+  return self.store:setPlayers(out)
 end
 
 function Huds:change(player, fn)
   local s = self:settings(player)
   fn(s)
-  self.players[player] = clean(s)
+  local r = self:record(player, true)
+  find(r, r.active).settings = clean(s)
   return self:save()
 end
 
 function Huds:reset(player)
-  self.players[player] = nil
+  local r = self:record(player, true)
+  find(r, r.active).settings = nil
   return self:save()
 end
 

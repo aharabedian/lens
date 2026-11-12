@@ -14,6 +14,7 @@
     let time pass, or "stop". Anything lens-hub writes to stderr counts as a failure.
   R.tap(text, player?, minY?, minX?) -> a touch event on the first place showing text (one column in)
   R.key(code, player) / R.keys(text, player) -> key_down event(s); R.paste(text, player) -> a clipboard event
+                      (R.keys returns several values: keep it last in an argument list, or Lua keeps only one)
   R.queue(event...)   events delivered, in order, before the script is asked again
 ]]
 
