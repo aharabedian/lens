@@ -65,5 +65,5 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |
 | A packet's size is the sum of its values: string length (min 1), number 8, boolean/nil 4; over the limit raises `packet too big`; at most 8 values | **Unverified** |
 | `modem_message` event: `localAddress, remoteAddress, port, distance, ...values` | **Reported working** (2026-11-12): hub heard a PRISM router; backlog, machine states and a machine-down alert showed on the dashboard |
-| `touch` event: `screenAddress, x, y, button, player` | **Unverified** (PRISM relies on it) |
-| The block characters `▁`–`▇`, `●`, `✓`, `–` draw on an OpenComputers screen | **Unverified** (PRISM uses the sparkline blocks) |
+| `touch` event: `screenAddress, x, y, button, player` | **Reported working** (2026-11-12): tapping an alert and ACK ALL acknowledge |
+| The block characters `▁`–`▇`, `●`, `✓`, `–` draw on an OpenComputers screen | **Reported working** (2026-11-12): bars, sparklines and symbols look right |
