@@ -1,12 +1,13 @@
--- test_board.lua: the view library and the dashboard's panels kept in lens-board.cfg (lens.hub.board),
--- a view's fields being typed (lens.hub.viewedit), and the dashboard's EDIT page and view editor in lens-hub:
--- add, order, remove, make and change views with the keyboard, undo, who may edit, one editor at a time.
--- Previews: make screens.
+-- test_board.lua: the view library, the dashboard's panels and players' HUDs kept in lens-board.cfg
+-- (lens.hub.board), and the EDIT page and view editor in lens-hub (lens.hub.editors.edit, editors.view): add,
+-- order, remove, make and change views with the keyboard, undo, who may edit, one editor at a time. (Typing
+-- into a draft on its own: test_hub.) Previews: make screens.
 local H = dofile((debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./") .. "helper.lua")
 local M = require("oc")
 local check = H.check
+local R = require("hubrun")(H)
 local board = require("lens.hub.board")
-local viewedit = require("lens.hub.viewedit")
+local viewdraft = require("lens.hub.viewdraft")
 local config = require("lens.hub.config")
 local files = require("lens.files")
 
@@ -71,92 +72,28 @@ for _, v in ipairs(b2:panels()) do labels[#labels + 1] = v.label end
 check(table.concat(labels, ",") == "Power,Smelt", "a new lens-hub.cfg panel is added once; removed ones stay removed")
 check(#board.new(path, cfg2, nil):panels() == 2, "and only once")
 
----------------------------------------------------------------- lens.hub.viewedit
-local K = viewedit.KEYS
-local d = viewedit.draft()
-for _, c in utf8.codes("Net") do viewedit.key(d, c, 0) end
-viewedit.key(d, 0, K.enter)
-viewedit.paste(d, "lumen_net_5m_eut\n")
-check(d.fields.label == "Net" and d.fields.value == "lumen_net_5m_eut " and d.focus == "value",
-  "typing, Enter for the next field, pasting (line breaks become spaces)")
-viewedit.key(d, 0, K.back)
-viewedit.key(d, 0, K.back)
-check(d.fields.value == "lumen_net_5m_eu", "Backspace deletes")
-viewedit.key(d, string.byte("t"), 0)
-viewedit.cycle(d, "format"); viewedit.cycle(d, "format"); viewedit.cycle(d, "format")
-viewedit.cycle(d, "color")
-check(d.fields.format == "signed" and d.fields.color == "sign", "choices cycle")
-viewedit.focus(d, "warnBelow")
-viewedit.key(d, string.byte("x"), 0)
-local v, verr = viewedit.view(d)
-check(not v and verr == "Warn below must be a number", "numbers are checked")
-viewedit.key(d, 0, K.back)
-viewedit.paste(d, "-100")
-v = viewedit.view(d)
-check(v and v.label == "Net" and v.value == "lumen_net_5m_eut" and v.format == "signed" and v.color == "sign"
-  and v.warnBelow == -100 and v.unit == nil and v.max == nil, "a view: empty fields left out, defaults not written")
-d = viewedit.draft({ label = "Power", value = "x / y", format = "percent", badBelow = 0.1 })
-check(d.fields.badBelow == "0.1" and d.fields.format == "percent" and d.fields.color == "thresholds", "a view's fields as text")
-d.fields.max, d.fields.of = "10", "y"
-check(select(2, viewedit.view(d)) == "use Bar max or Bar of, not both", "max or of")
-
 ---------------------------------------------------------------- in lens-hub
-local net = require("net")
-local codec = require("lens.codec")
-local metrics = require("lens.metrics")
+local POWER = R.agent{ node = "power-room", role = "lumen", setup = function(m)
+  m:gauge("lumen_fill_ratio", "f"):set(0.95)
+  m:gauge("lumen_net_5m_eut", "n", "EU/t"):set(-2370)
+end }
 
 local function runHub(cfgText, script, opts)
   opts = opts or {}
-  M.components = {}
-  if opts.keyboard ~= false then M.components["kb000000"] = { type = "keyboard", methods = {} } end
-  local dir = H.TMP .. "/" .. (opts.dir or "hub")
-  os.execute('rm -rf "' .. dir .. '" && mkdir -p "' .. dir .. '"')
-  write(dir .. "/lens-hub.cfg", cfgText)
-  local n = net.new()
-  M.modem = n:endpoint("hub")
-  local ag = n:endpoint("power-room")
-  ag.open(4243)
-  local m = metrics.new{ role = "lumen", clock = function() return M.time end }
-  local enc = codec.encoder{ node = "power-room", role = "lumen", boot = 3, interval = 5 }
-  m:gauge("lumen_fill_ratio", "f"):set(0.95)
-  m:gauge("lumen_net_5m_eut", "n", "EU/t"):set(-2370)
-  local nextPush = 0
-  M.onPull = function()
-    if M.time >= nextPush then
-      for _, p in ipairs(enc:snapshot(m:snapshot())) do ag.broadcast(4243, p) end
-      nextPush = M.time + 5
-    end
-    local ev = n.pop(M.modem)
-    if ev then return ev end
-    return script(M.time)
-  end
-  local realStderr, written = io.stderr, {}
-  io.stderr = { write = function(_, x) written[#written + 1] = x end }
-  local fine, e = pcall(H.run, "lens-hub.lua", dir .. "/lens-hub.cfg")
-  io.stderr = realStderr
-  M.onPull = nil
-  M.components = {}
-  return fine and #written == 0, e or table.concat(written), dir
+  return R.run{ cfg = cfgText, dir = opts.dir, agents = { POWER }, keyboard = opts.keyboard ~= false,
+    script = function(t)
+      local e = script(t)
+      if e == nil and t > 200 then return "stop" end
+      return e
+    end }
 end
-
-local function tap(what, player, minY, minX)
-  local x, y = M.find(what, minY, minX)
-  assert(x, "nothing on screen says " .. what)
-  return { "touch", "screen", x + 1, y, 0, player }
-end
-local function keys(s, player)
-  local out = {}
-  for _, c in utf8.codes(s) do out[#out + 1] = { "key_down", "kb000000", c, 0, player } end
-  return out
-end
+local tap = R.tap
 
 local HUB_CFG = [[return { panels = { { label = "Power", value = "lumen_fill_ratio", format = "percent" } } }]]
 
 M.setTime(0)
 M.resize(160, 50)
 local st = {}
-local queue = {}
-local function push(list) for _, e in ipairs(list) do queue[#queue + 1] = e end end
 local steps = {
   function() st.button = M.find(" EDIT ", 1) ~= nil; return tap(" EDIT ", "Aaron", 1) end,
   function()
@@ -166,11 +103,10 @@ local steps = {
   function() st.bobBlocked = M.find("Edit the dashboard", 1) ~= nil; return tap("+ NEW", "Aaron", 3) end,
   function()
     st.newView = M.find("New view", 1) and M.find("Label", 3)
-    push(keys("Net 5m", "Bob"))              -- Bob's typing is ignored
-    push(keys("Net 5m", "Aaron"))
-    push({ { "key_down", "kb000000", 0, viewedit.KEYS.enter, "Aaron" } })
-    push({ { "clipboard", "kb000000", "lumen_net_5m_eut", "Aaron" } })
-    return table.remove(queue, 1)
+    R.queue(R.keys("Net 5m", "Bob"))         -- Bob's typing is ignored
+    R.queue(R.keys("Net 5m", "Aaron"))
+    R.queue(R.key(viewdraft.KEYS.enter, "Aaron"), R.paste("lumen_net_5m_eut", "Aaron"))
+    return nil
   end,
   function()
     local _, fy = M.find("Format", 3)
@@ -181,10 +117,10 @@ local steps = {
   end,
   function()
     local _, fy = M.find("Format", 3)
-    for _ = 1, 2 do push({ { "touch", "screen", 16, fy, 0, "Aaron" } }) end   -- -> duration -> signed
+    R.queue({ "touch", "screen", 16, fy, 0, "Aaron" }, { "touch", "screen", 16, fy, 0, "Aaron" })  -- duration, signed
     local _, cy = M.find("Color", 3)
-    push({ { "touch", "screen", 16, cy, 0, "Aaron" } })                       -- thresholds -> sign
-    return table.remove(queue, 1)
+    R.queue({ "touch", "screen", 16, cy, 0, "Aaron" })                         -- thresholds -> sign
+    return nil
   end,
   function()
     H.screen("view-editor")
@@ -228,10 +164,9 @@ local i = 0
 local e, dir
 ok, e, dir = runHub(HUB_CFG, function(t)
   if t < 3 then return nil end
-  if #queue > 0 then return table.remove(queue, 1) end
   i = i + 1
   if steps[i] then return steps[i]() end
-  return { "interrupted" }
+  return "stop"
 end)
 check(ok, "lens-hub runs" .. (ok and "" or (": " .. tostring(e))))
 check(st.button and st.page, "EDIT opens the dashboard's EDIT page: its panels with their values")
@@ -259,7 +194,7 @@ ok = runHub([[return { editors = { "Aaron" }, panels = {} }]], function(t)
   if i == 1 then return tap(" EDIT ", "Bob", 1) end
   if i == 2 then st.refused = M.find("Only Aaron can edit the dashboard.", 1) and M.find("PANELS", 1); return tap(" EDIT ", "Aaron", 1) end
   if i == 3 then st.allowed = M.find("Edit the dashboard", 1) ~= nil end
-  return { "interrupted" }
+  return "stop"
 end, { dir = "editors" })
 check(ok and st.refused and st.allowed, "editors: only they may edit; anyone else is told who can")
 
@@ -277,7 +212,7 @@ ok = runHub(HUB_CFG, function(t)
   if i == 2 then st.stacked = M.find("ON THE DASHBOARD", 1) and M.find("LIBRARY", 4); H.screen("dash-editor-portrait")
     return tap("EDIT", "Aaron", 4) end
   if i == 3 then st.noKb = M.find("No keyboard on this screen", 1) and M.find("View: Power", 1); H.screen("view-editor-portrait") end
-  return { "interrupted" }
+  return "stop"
 end, { keyboard = false, dir = "portrait" })
 check(ok and st.stacked and st.noKb and M.oob == 0, "no keyboard: the editor says so; both pages fit a 3 x 4 screen")
 M.aspect = nil

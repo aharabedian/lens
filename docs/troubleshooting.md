@@ -24,10 +24,23 @@ reported. `lens-discover` shows what the hub computer can see.
 |---|---|
 | No HUD | The Glasses Terminal must be attached to the hub computer (`lens-discover` lists `glasses`), your glasses linked to it and worn, and `hud` not `false` |
 | `HUD: <error>` in the dashboard's footer | The terminal failed (for example its chunk unloaded). The dashboard keeps running; restart `lens-hub` once it's back |
-| The HUD is off screen or in the wrong place | It places itself from your view's size when you put the glasses on: take them off and on again. Or pick another `hud.anchor` |
-| Only "LENS OK" and alerts, no bars | Add `hud.bars` (`lens-setup` offers one per PRISM router) |
+| The HUD is off screen or in the wrong place | It places itself from your view's size when you put the glasses on: take them off and on again. Or move it: tap **HUD** on the dashboard |
+| Only "LENS OK" and alerts, no bars | Add some: tap **HUD** on the dashboard (any panel or view), or `hud` in lens-hub.cfg (`lens-setup` offers one per PRISM router) |
 | A bar has no fill | Bars need `max`, `of` or `percent` |
-| Text is cut off with … | Widen `hud.width` (about 5 GUI pixels per character at scale 1) |
+| Text is cut off with … | Widen the block (**Width** in the HUD editor, or `width`; about 5 GUI pixels per character at scale 1) |
 | Colors are black or white blocks | Another glasses mod taking 0..255 colors: `hud.colors = "byte"` |
+| Everyone sees the same HUD | A terminal shows one HUD to everyone linked to it: link each player's glasses to a terminal of their own ([hub.md](hub.md#a-hud-for-each-player)) |
+| My HUD sits under the minimap or another overlay | Tap **HUD** on the dashboard, pick an anchor, nudge it clear (watch the glasses while you tap) |
 
 The dashboard's footer shows how many calls the HUD made in the last minute: about 0 when nothing changes.
+
+## Editing on the screen
+
+| Symptom | Fix |
+|---|---|
+| Typing in the view editor does nothing | Attach a keyboard to the hub's screen (the editor says when there's none). Only the player who opened the editor can type |
+| Footer: "Steve is editing (free in 40s)" | One editor at a time: wait, or ask them to tap DONE |
+| "Only Steve can edit the dashboard." | `editors` in lens-hub.cfg lists who may; anyone can still change their own HUD |
+| SAVE says what's wrong ("value: expected ) at 14") | The query, as typed: the **Now** line shows the error as you type. [queries.md](queries.md) has the syntax |
+| A panel I added to lens-hub.cfg doesn't show | It's added to the dashboard once, unless it was taken off on the screen: tap EDIT, find it in the library, **+** |
+| I want to start the screen setup over | Delete `/home/lens-board.cfg` and restart `lens-hub`: lens-hub.cfg's panels and HUD come back |

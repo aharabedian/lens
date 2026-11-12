@@ -23,6 +23,8 @@
 - **Wireless packets are about 8 KB.** Split or trim; never send unbounded data.
 - **Telemetry changes add fields; they don't rename them**, so agents and hub can be versions apart.
 - **No state at module load** (OpenOS caches modules); keep state in the objects a module returns.
+- **One job per module**, its header comment its interface. Pages draw; editors hold state and actions; the app
+  wires them (`docs/architecture.md`). If a file starts doing two things, split it.
 - 2-space indent, `local` everything, short functions, a comment saying *why* when it isn't obvious.
 
 ## Docs move with code
@@ -35,5 +37,6 @@
 | Install, setup steps, hardware | `docs/setup.md` |
 | A new error or something easy to get wrong | `docs/troubleshooting.md` |
 | Tests | `tests/README.md` |
+| A module added, moved or depending on a new one | `docs/architecture.md` (the map and the dependency rules), `manifest.lua`, the rules in `tests/test_layout.lua` if a layer changes |
 | Behavior, modules, programs, verified game APIs | `docs/architecture.md` |
 | Anything a player would notice | `CHANGELOG.md` (Unreleased) |

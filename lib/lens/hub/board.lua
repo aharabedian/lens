@@ -20,6 +20,7 @@
   b:deleteView(label) -> true | nil, err      a screen view goes; an edited one goes back to lens-hub.cfg's.
                                  A config view can't be deleted (take it off the dashboard instead). Saved.
   b:setPanels({ label... }) -> true | nil, err
+  b:addPanel(label) -> true | nil, err        at the end of the dashboard
   b:undo() -> bool               the views and panels as they were before the last change (up to UNDO_DEPTH)
   b.canUndo
   b:players() -> { [name] = hud settings }   (lens.hub.huds' form; huds reads and writes them through:)
@@ -261,6 +262,12 @@ function B:setPanels(list)
   self.list = {}
   for _, l in ipairs(list) do self.list[#self.list + 1] = l end
   return self:save()
+end
+
+function B:addPanel(label)
+  local list = { table.unpack(self.list) }
+  list[#list + 1] = label
+  return self:setPanels(list)
 end
 
 function B:players() return self.huds end

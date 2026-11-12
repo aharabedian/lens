@@ -1,5 +1,7 @@
--- test_hub.lua: the hub's pure modules: store (nodes, series, counter rates, staleness), query (the
--- selector language), rules (hub alerts with `for`), alerts (merge, ack, ordering) and core health.
+-- test_hub.lua: the hub's pure modules: store (nodes, series, counter rates, staleness, the metric list), query
+-- (the selector language), rules (hub alerts with `for`), alerts (merge, ack, ordering), format (values as
+-- text and colors), config (views, HUD blocks, resolution), explore (queries by tapping), viewdraft (a view
+-- being typed) and the screen's resolution fit.
 local H = dofile((debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./") .. "helper.lua")
 require("oc")
 local check = H.check
@@ -7,6 +9,11 @@ local store = require("lens.hub.store")
 local query = require("lens.hub.query")
 local rules = require("lens.hub.rules")
 local alerts = require("lens.hub.alerts")
+local format = require("lens.hub.format")
+local config = require("lens.hub.config")
+local explore = require("lens.hub.explore")
+local viewdraft = require("lens.hub.viewdraft")
+local Gui = require("lens.gui")
 
 local function snap(node, boot, samples, extra)
   local m = { kind = "snapshot", node = node, role = node:match("^(%a+)"), boot = boot, seq = 1, dseq = 1,
@@ -199,6 +206,128 @@ do
   check(not a:list()[2].acked and a:list()[2].since == 150, "an alert that comes back is new again")
   a:ackAll()
   check(a:counts().unacked == 0, "ackAll")
+end
+
+---------------------------------------------------------------- format
+do
+  local function fv(view, v, total) return { format.view(view, v, total) } end
+  check(fv({}, 1240000)[1] == "1.2M" and fv({ unit = "EU/t" }, 640)[1] == "640 EU/t" and fv({}, nil)[1] == "–",
+    "auto: short numbers, the unit after")
+  local r = fv({ format = "percent" }, 0.953)
+  check(r[1] == "95%" and r[2] == 0.953, "percent: 0..1 as %, and the bar's fraction")
+  check(fv({ format = "duration" }, 7500)[1] == "2h 05m" and fv({ format = "duration" }, 45)[1] == "45s"
+    and fv({ format = "duration" }, 3 * 86400 + 3600)[1] == "3d 1h", "duration: seconds read naturally")
+  r = fv({ format = "signed", unit = "EU/t", color = "sign" }, 2370)
+  check(r[1] == "+2.4k EU/t" and r[3] == "good", "signed: a + above zero; color sign: green")
+  r = fv({ format = "signed", unit = "EU/t", color = "sign" }, -2000)
+  check(r[1] == "-2k EU/t" and r[3] == "bad", "below zero: red")
+  check(fv({ color = "sign" }, 0)[3] == nil and fv({ color = "none", badAbove = 1 }, 5)[3] == nil, "zero, and none: no color")
+  check(fv({ badBelow = 0.1, warnBelow = 0.25 }, 0.2)[3] == "warn" and fv({ max = 10 }, 20)[2] == 1,
+    "thresholds as before; a bar's fraction stops at 1")
+  check(fv({ of = "x", unit = "EU" }, 5e9, 1e10)[1] == "5G/10G EU" and fv({ of = "x" }, 5, 10)[2] == 0.5, "of: value/total")
+end
+
+---------------------------------------------------------------- config
+do
+  local c = assert(config.check({ hud = { blocks = {
+    { anchor = "top", elements = {
+      { kind = "bar", label = "Power", value = "1", format = "percent" },
+      { kind = "text", label = "Net 5m", value = "2", format = "signed", color = "sign" },
+      { kind = "gap" }, { kind = "alerts" } } },
+    { anchor = "bottom-left", x = 30, y = -60 },
+  } } }))
+  local b1, b2 = c.hud.blocks[1], c.hud.blocks[2]
+  check(b1.x == 0 and b1.y == 4 and b1.width == 160 and b1.elements[4].count == 3 and b2.x == 30 and b2.y == -60,
+    "blocks: each anchor's default offset (4 in from its edges), width, alerts count")
+  c = assert(config.check({ hud = { anchor = "bottom-right", x = 10, y = 20, alerts = 2,
+    bars = { { label = "Ore", value = "1", max = 5 } } } }))
+  b1 = c.hud.blocks[1]
+  check(#c.hud.blocks == 1 and b1.anchor == "bottom-right" and b1.x == -10 and b1.y == -20
+    and b1.elements[1].kind == "bar" and b1.elements[1].label == "Ore" and b1.elements[2].count == 2,
+    "the first form (corner, margins, bars, alerts) becomes one block")
+  local function err(t) local _, e = config.check(t); return e or "" end
+  check(err({ hud = { blocks = { { anchor = "middle" } } } }):find("anchor must be one of", 1, true), "anchors are checked")
+  check(err({ hud = { blocks = { { elements = { { kind = "dial" } } } } } }):find('kind must be "bar"', 1, true), "kinds are checked")
+  check(err({ panels = { { label = "x", value = "1", format = "hex" } } }):find("format must be", 1, true)
+    and err({ panels = { { label = "x", value = "1", color = "red" } } }):find("color must be", 1, true), "format and color are checked")
+  check(assert(config.check({ panels = { { label = "x", value = "1", percent = true } } })).panels[1].format == "percent",
+    "percent = true still works")
+  check(err({ resolution = "big" }):find("resolution must be", 1, true) and config.check({}).resolution == "fit",
+    "resolution: fit by default, checked")
+end
+
+---------------------------------------------------------------- explore
+do
+  check(explore.query("lumen_net_5m_eut", {}, "sum") == "sum(lumen_net_5m_eut)", "no filters: the metric")
+  local text = explore.query("m", { lsc = 'Say "hi"\\', node = "power-room" }, "max")
+  check(text == 'max(m{node="power-room", lsc="Say \\"hi\\"\\\\"})', "filters sorted (node first), quotes and backslashes escaped")
+  local compiled = query.compile(text)
+  check(compiled and compiled(function()
+    return { { value = 7, labels = { node = "power-room", lsc = 'Say "hi"\\' } }, { value = 9, labels = { node = "x", lsc = "y" } } }
+  end) == 7, "and the query reads back as the same value")
+  local list = {
+    { labels = { node = "power-room", lsc = "Main" } }, { labels = { node = "power-room", lsc = "Spare" } },
+    { labels = { node = "power-base", lsc = "Main" } },
+  }
+  local labels = explore.labels(list, { node = "power-base" })
+  check(labels[1].label == "node" and #labels[1].values == 2 and labels[1].chosen == "power-base"
+    and labels[2].label == "lsc" and #labels[2].values == 1 and labels[2].values[1] == "Main",
+    "labels: node first; choosing one narrows the others' values")
+  check(explore.labelText({ lsc = "Main", node = "power-room" }) == "node=power-room lsc=Main", "label text, node first")
+  check(explore.suggestLabel("lumen_net_5m_eut", { lsc = "Main", node = "x" }) == "net 5m eut · Main", "a starting label")
+end
+
+---------------------------------------------------------------- store:metrics
+do
+  local s = store.new{ staleAfter = 3 }
+  s:receive({ kind = "describe", node = "a", boot = 1, metrics = { x_total = { type = "counter", help = "X done", unit = "items" } } }, 0)
+  s:receive({ kind = "snapshot", node = "a", boot = 1, interval = 5, samples = { { "x_total", 3 }, { "y", 1, { k = "1" } }, { "y", 2, { k = "2" } } } }, 0)
+  s:receive({ kind = "snapshot", node = "b", boot = 1, interval = 5, samples = { { "y", 5 } } }, 0)
+  local ms = s:metrics(1)
+  check(#ms == 2 and ms[1].name == "x_total" and ms[1].type == "counter" and ms[1].help == "X done" and ms[1].unit == "items"
+    and ms[2].name == "y" and ms[2].series == 3 and #ms[2].nodes == 2 and ms[2].type == "gauge",
+    "store:metrics: every metric, its type, help, unit, series and nodes")
+  check(#s:metrics(100) == 0, "stale nodes' metrics are left out")
+end
+
+---------------------------------------------------------------- lens.hub.viewdraft
+do
+  local K = viewdraft.KEYS
+  local d = viewdraft.draft()
+  for _, c in utf8.codes("Net") do viewdraft.key(d, c, 0) end
+  viewdraft.key(d, 0, K.enter)
+  viewdraft.paste(d, "lumen_net_5m_eut\n")
+  check(d.fields.label == "Net" and d.fields.value == "lumen_net_5m_eut " and d.focus == "value",
+    "typing, Enter for the next field, pasting (line breaks become spaces)")
+  viewdraft.key(d, 0, K.back)
+  viewdraft.key(d, 0, K.back)
+  check(d.fields.value == "lumen_net_5m_eu", "Backspace deletes")
+  viewdraft.key(d, string.byte("t"), 0)
+  viewdraft.cycle(d, "format"); viewdraft.cycle(d, "format"); viewdraft.cycle(d, "format")
+  viewdraft.cycle(d, "color")
+  check(d.fields.format == "signed" and d.fields.color == "sign", "choices cycle")
+  viewdraft.focus(d, "warnBelow")
+  viewdraft.key(d, string.byte("x"), 0)
+  local v, verr = viewdraft.view(d)
+  check(not v and verr == "Warn below must be a number", "numbers are checked")
+  viewdraft.key(d, 0, K.back)
+  viewdraft.paste(d, "-100")
+  v = viewdraft.view(d)
+  check(v and v.label == "Net" and v.value == "lumen_net_5m_eut" and v.format == "signed" and v.color == "sign"
+    and v.warnBelow == -100 and v.unit == nil and v.max == nil, "a view: empty fields left out, defaults not written")
+  d = viewdraft.draft({ label = "Power", value = "x / y", format = "percent", badBelow = 0.1 })
+  check(d.fields.badBelow == "0.1" and d.fields.format == "percent" and d.fields.color == "thresholds", "a view's fields as text")
+  d.fields.max, d.fields.of = "10", "y"
+  check(select(2, viewdraft.view(d)) == "use Bar max or Bar of, not both", "max or of")
+end
+
+---------------------------------------------------------------- resolution
+do
+  local w, h = Gui.resolution(160, 50, 3, 4)
+  check(w == 73 and h == 50, ("a 3 wide, 4 tall screen: 73 x 50 (got %d x %d)"):format(w, h))
+  w, h = Gui.resolution(160, 50, 8, 3)
+  check(w == 160 and h == 28, ("8 x 3: as wide as it goes, 160 x 28 (got %d x %d)"):format(w, h))
+  check(select(1, Gui.resolution(80, 25, nil, nil)) == 80, "unknown shape: the largest")
 end
 
 H.done()

@@ -5,7 +5,7 @@ Guidance for Claude Code working in this repo. Keep it short and current; detail
 ## What this is
 
 **LENS** (Live Engineering & Network Status): base-wide monitoring for GregTech: New Horizons on OpenComputers.
-Agents (PRISM in `../prism`, a power monitor, ...) push health, metrics and alerts over wireless; the hub
+Agents (PRISM in `../prism`, LUMEN in `../lumen`, ...) push health, metrics and alerts over wireless; the hub
 collects them and drives a dashboard screen and an AR glasses HUD (OC Glasses). `lens-setup` writes the hub's config.
 The telemetry format in `docs/telemetry.md` is the contract between agents and hub; change it deliberately.
 
@@ -34,7 +34,13 @@ make screens                      # render the screens tests draw to PNGs (Pytho
 - **Telemetry changes add fields rather than renaming them.**
 - **Keep logic pure where it can be** (metrics, codec, query, store, alerts) and unit-test it.
 - **Config:** only `lens-setup` writes `lens-hub.cfg` (after showing it, keeping a `.bak` and hand edits). A new
-  setting gets a default in `lib/lens/hub/config.lua` and a row in `docs/hub.md`.
+  setting gets a default in `lib/lens/hub/config.lua` and a row in `docs/hub.md`. What's changed on the screen
+  goes to `lens-board.cfg`, which only the hub writes (`lens.hub.board`).
+- **Structure:** dependencies point one way (`docs/architecture.md#modules`; `tests/test_layout.lua` enforces it).
+  Pages (`hub/pages/`) only draw; editors (`hub/editors/`) hold state and actions and never draw; the app wires
+  them. A new editor follows "Adding an editor" in `docs/architecture.md`. Every module's header comment starts
+  with its name and is its interface.
+- **Feature tests go through `lens-hub`** with `tests/hubrun.lua`; pure modules get unit checks in `test_hub.lua`.
 - **Releases:** `lib/lens/version.lua` and `VERSION` in `src/lens-update.lua` move together (a test checks).
 - A new file in `src/` or `lib/` goes in `manifest.lua` (a test checks).
 - **Docs move with code**, in the same change (table in `CONTRIBUTING.md`). Tables over prose; link, don't repeat.
@@ -43,10 +49,11 @@ make screens                      # render the screens tests draw to PNGs (Pytho
 
 ```
 src/        programs: lens-hub.lua, lens-setup.lua, lens-discover.lua, lens-update.lua (self-contained)
-lib/lens/   modules: metrics, codec (agents + hub), gui, files, discover, hub/, setup/
+lib/lens/   modules: metrics, codec (agents + hub), gui, files, discover, setup/, hub/ (core, views, state,
+            editors/ (state + actions), pages/ (drawing), frame, dashboard, app)
 manifest.lua  every file lens-update installs
 config/     lens-hub.example.cfg
 docs/       setup, hub, queries, troubleshooting, telemetry (the protocol), architecture, images/
-tests/      run.lua, helper.lua, mocks/{oc,net,glasses}.lua, test_*.lua (README.md)
+tests/      run.lua, helper.lua, hubrun.lua, mocks/{oc,net,glasses}.lua, test_*.lua (README.md)
 tools/      setup-dev.sh, render_screens.py, render_hud.py
 ```
