@@ -60,7 +60,7 @@ local function lit(v, indent)
 end
 
 local VIEW_KEYS = { "label", "value", "of", "max", "unit", "format", "color", "warnAbove", "badAbove", "warnBelow",
-  "badBelow", "text", "values", "dots", "by", "when" }
+  "badBelow", "text", "values", "dots", "by", "idle", "when" }
 
 local function copyView(v)
   local out = {}

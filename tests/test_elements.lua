@@ -20,6 +20,7 @@ local function agents()
   local ore = R.agent{ node = "prism-ore", role = "prism", setup = function(m)
     m:gauge("prism_machine_state", "state")
   end, cycle = function(m, now)
+    m:gauge("prism_backlog_items", "backlog", "items"):set(4200, { process = "ore" })
     local state = m:gauge("prism_machine_state", "state")
     for i = 1, 4 do
       local st = (i == 3 and now >= 20) and "down" or (i == 4 and "idle" or "running")
@@ -45,6 +46,8 @@ local CFG = [[return {
   },
   hud = { blocks = { { anchor = "top-right", elements = {
     { kind = "text", label = "Ore", dots = 'prism_machine_state{node="prism-ore"}' },
+    { kind = "text", label = "Backlog", value = 'sum(prism_backlog_items{node="prism-ore"})', unit = "items",
+      dots = 'prism_machine_state{node="prism-ore"}', by = "process", idle = "warn" },
     { kind = "text", label = "LSC", text = "{s} / {c}", values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" } },
     { kind = "text", label = "Net", value = "lumen_net_5m_eut", format = "signed", color = "sign", when = "lumen_net_5m_eut < 0" },
   } } } },
@@ -67,7 +70,18 @@ local ok, err = R.run{ cfg = CFG, agents = agents(), keyboard = true, terminals 
     seen.template = M.find("10.8G / 11.3G EU", 3) ~= nil
     seen.hiddenDash = not M.find("Draining", 3)
     seen.hudDots, seen.hudHidden = 0, not G.find("Net")
-    for _, s in ipairs(G.live()) do if s.kind == "text" and s.text == "●" and s.visible then seen.hudDots = seen.hudDots + 1 end end
+    local backlogLabel, backlogValue = G.find("Backlog"), G.find("4.2k items")
+    for _, s in ipairs(G.live()) do
+      if s.kind == "text" and s.text == "●" and s.visible then
+        if s.y == backlogLabel.y then
+          seen.oneDot = (seen.oneDot or 0) + 1
+          seen.green = near(s.color, P.good)
+        else
+          seen.hudDots = seen.hudDots + 1
+        end
+      end
+    end
+    seen.sameRow = backlogValue and backlogValue.y == backlogLabel.y
     seen.hudTemplate = G.find("10.8G / 11.3G") ~= nil
     return nil
   end
@@ -80,7 +94,12 @@ local ok, err = R.run{ cfg = CFG, agents = agents(), keyboard = true, terminals 
     local net = G.find("-1.1k")
     seen.hudShown = net and near(net.color, P.bad)
     local red
-    for _, s in ipairs(G.live()) do if s.text == "●" and s.visible and near(s.color, P.bad) then red = true end end
+    local row = G.find("Backlog").y
+    for _, s in ipairs(G.live()) do
+      if s.text == "●" and s.visible and near(s.color, P.bad) then
+        if s.y == row then seen.lineRed = true else red = true end
+      end
+    end
     seen.hudDown = red
     H.screen("elements")
     H.glasses("hud-elements", G)
@@ -114,6 +133,8 @@ check(seen.template, "several values in one line: {s} / {c} EU")
 check(seen.hiddenDash and seen.shown, "a panel with when shows only while it's true")
 check(seen.hudDots == 4 and seen.hudDown, "the HUD: a dot per machine, red when down")
 check(seen.hudTemplate, "the HUD: several values in one line")
+check(seen.oneDot == 1 and seen.green and seen.sameRow, "by process: the whole line is one dot, green while any machine runs, with the backlog beside it")
+check(seen.lineRed, "and red once any machine is down")
 check(seen.hudHidden and seen.hudShown, "the HUD: an element with when appears only while it's true, colored")
 check(seen.preview, "the view editor: a template typed in, previewed with its values")
 

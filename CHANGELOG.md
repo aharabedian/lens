@@ -6,7 +6,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- **State dots** (`dots`, `by`): a dot per machine, colored by its state, on the dashboard and in the HUD.
+- **State dots** (`dots`, `by`, `idle`): a dot per machine, colored by its state, on the dashboard and in the HUD;
+  or one dot for a whole line (`by = "process"`): red if any machine is down, else green if any runs, else
+  idle (`idle = "warn"` for yellow). In the HUD the view's value sits beside its dot.
 - **Several values in one line** (`text`, `values`): `"{stored} / {cap} EU"`, each value formatted.
 - **`when`**: a panel or HUD element shows only while its query is true.
 - The view editor has fields for all three, with the preview showing dots and templates; it fits tier 2.
