@@ -28,7 +28,7 @@ This installs `lens-hub`, `lens-setup`, `lens-discover` and `lens-update` on the
 ## Connecting agents
 
 Agents report to the hub on its port (4243 by default) with its secret, apart from anything else on the
-network. For each **PRISM** router (PRISM's `main` branch until its next release: `prism-update main`):
+network. For each **PRISM** router (1.2.0 or newer; `prism-update` to update):
 
 1. Run `prism-setup` on the router. Its "LENS monitoring" step (or the LENS row on the editor's GENERAL tab)
    asks for the LENS port, a name for this router (`prism-ore`, `prism-smelt`...) and the secret.

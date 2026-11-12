@@ -5,7 +5,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-The first version: everything below is new.
+## [0.1.0] - 2026-11-12
+
+The first release. Works with PRISM 1.2.0, which reports to LENS.
 
 ### Added
 - **`lens-hub`**, the hub and its dashboard: overall health, each agent and when it last reported, one list

@@ -28,7 +28,7 @@ them, notices when one goes quiet, and shows the base at a glance.
 - OpenComputers as shipped in GTNH, on the Lua 5.3 architecture.
 - A **hub computer** with a tier 3 GPU and screen (tier 2 works), a keyboard and a network card that reaches
   the agents (wireless, wired, or linked cards across dimensions).
-- An **agent**: PRISM with LENS reporting (its `main` branch until its next release).
+- An **agent**: [PRISM](https://github.com/aharabedian/prism) 1.2.0 or newer.
 - Optional: an **OC Glasses** Glasses Terminal for the HUD; an Internet Card for `lens-update`.
 
 ## Install
