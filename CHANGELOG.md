@@ -6,6 +6,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **DATA page:** every metric every agent sends, its series with labels and values; tap label values and a
+  function to build a query, see its value, then **SAVE AS PANEL** or **ADD TO MY HUD**.
 - **EDIT on the dashboard:** order, add and remove panels; a **library of views** (lens-hub.cfg's, changed or
   new ones) made and changed on the screen, typed with a keyboard, the value previewed as you type; UNDO.
   Saved in `/home/lens-board.cfg` (only the hub writes it), with players' HUDs (an earlier `lens-hud.cfg` is

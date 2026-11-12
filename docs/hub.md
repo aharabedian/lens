@@ -11,7 +11,7 @@ Install, connecting agents and the first run: [setup.md](setup.md). Problems: [t
 
 | Part | Shows |
 |---|---|
-| Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, **EDIT** ([editing on the screen](#editing-on-the-screen)), **HUD** (with a Glasses Terminal), QUIT |
+| Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, **DATA** ([below](#the-data-page)), **EDIT** ([editing on the screen](#editing-on-the-screen)), **HUD** (with a Glasses Terminal), QUIT |
 | NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported |
 | ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓, dimmed) until it clears, and comes back unacknowledged if it gets worse |
 | PANELS | Your panels: label, value, a bar for `max` / `of` / `percent`, and a sparkline of its history (tier 3) |
@@ -69,6 +69,27 @@ A mistake in the file stops `lens-hub` with the panel or rule named: `panel 2 (O
 | `warnAbove`, `badAbove`, `warnBelow`, `badBelow` | Color the value and bar yellow or red past these |
 
 A query with no data shows `–`. A panel is a **view**: the same keys make a HUD bar or text.
+
+## The DATA page
+
+Tap **DATA** to see everything the agents send and build a query without writing one:
+
+![The DATA page](images/data.png)
+
+1. **Pick a metric** from the list: every metric from every agent that's reporting, with how many series it has
+   (`ctr` marks a counter). Long lists page with ◀ ▶.
+2. Its unit, help and **every series** with its labels and value (counters also show their rate) appear.
+3. **Tap label values** to narrow it down (`any` clears one); the other labels only offer values that still
+   match. **Tap a function** (`sum`, `max`, `min`, `avg`, `count`, `rate`) to combine the series. Counters start
+   on `rate`.
+4. The **query** and its **value** follow every tap.
+5. **SAVE AS PANEL** opens it in the view editor (query, a label and the unit filled in) and puts it on the
+   dashboard when saved. **ADD TO MY HUD** does the same for your own HUD (a text line in your first block).
+   After saving you're back on the DATA page as you left it.
+
+SAVE AS PANEL follows `editors`; anyone can add to their own HUD. On a narrow screen the list and a metric take
+turns (◀ METRICS goes back). The [query language](queries.md) is still there for anything the taps can't build:
+edit the query in the view editor.
 
 ## Editing on the screen
 

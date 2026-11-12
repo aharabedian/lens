@@ -19,7 +19,10 @@
     "hud"   the HUD button: their own HUD (model.editor)
     "dash"  the EDIT button: the dashboard's panels and the view library (model.dashEdit); cfg.editors, when
             set, lists who may open it
-    "view"  one view's fields, from the EDIT page (model.viewEdit), with its value previewed as you type
+    "view"  one view's fields, from the EDIT or DATA page (model.viewEdit), with its value previewed as you type;
+            back where it came from on SAVE or CANCEL
+    "data"  the DATA button: every metric, its series, filters and a function make a query (model.data);
+            SAVE AS PANEL (editors only, when set) or ADD TO MY HUD open it as a new view
   Someone else's tap on HUD or EDIT while an editor is open shows who has it (model.notice).
   app:tick(now)                          about once a second: alerts, panel samples, beep, redraw
   app:stop()
@@ -38,6 +41,7 @@ local huds = require("lens.hub.huds")
 local board = require("lens.hub.board")
 local query = require("lens.hub.query")
 local viewedit = require("lens.hub.viewedit")
+local explore = require("lens.hub.explore")
 local VERSION = require("lens.version")
 
 local app = {}
@@ -73,6 +77,7 @@ function app.new(cfg, env)
   }
   self:editorActions()
   self:dashActions()
+  self:dataActions()
   return self
 end
 
@@ -205,13 +210,23 @@ function App:dashActions()
     l[#l + 1] = label
     return self.board:setPanels(l)
   end)
-  local function openView(player, v)
-    self.editing = { kind = "view", player = player, ["until"] = self.now + EDIT_TIMEOUT,
-      draft = viewedit.draft(v), old = v and v.label, source = v and v.source }
+  -- The view editor remembers the editor it came from (back) and, for a new view, where it goes once saved
+  -- (addTo: "dash" or "hud").
+  -- addTo set: a new view (v only fills its fields); otherwise v is the library's view being changed.
+  local function openView(player, v, back, addTo)
+    local existing = v and not addTo
+    self.editing = { kind = "view", player = player, ["until"] = self.now + EDIT_TIMEOUT, draft = viewedit.draft(v),
+      old = existing and v.label or nil, source = existing and v.source or nil, back = back, addTo = addTo }
   end
-  a.dashView = dash(function(player, label) openView(player, self.board:view(label)) end)
-  a.dashNew = dash(function(player) openView(player, nil) end)
-  local function back(player) self.editing = { kind = "dash", player = player, ["until"] = self.now + EDIT_TIMEOUT } end
+  self.openView = openView
+  local function dashState() return { kind = "dash" } end
+  a.dashView = dash(function(player, label) openView(player, self.board:view(label), dashState()) end)
+  a.dashNew = dash(function(player) openView(player, nil, dashState(), "dash") end)
+  local function back(player)
+    local b = self.editing.back or dashState()
+    b.player, b["until"] = player, self.now + EDIT_TIMEOUT
+    self.editing = b
+  end
   a.viewFocus = view(function(_, key) viewedit.focus(self.editing.draft, key) end)
   a.viewCycle = view(function(_, key) viewedit.cycle(self.editing.draft, key) end)
   a.viewCancel = view(function(player) back(player) end)
@@ -221,10 +236,15 @@ function App:dashActions()
     if not v then return nil, err end
     local ok, why = self.board:setView(v, e.old)
     if not ok then return nil, why end
-    if not e.old and e.addTo ~= false then
+    if not e.old and e.addTo == "dash" then
       local l = labels()
       l[#l + 1] = v.label
       self.board:setPanels(l)
+    elseif not e.old and e.addTo == "hud" and self.huds then
+      self.huds:change(player, function(st)
+        local els = st.blocks[1].elements
+        els[#els + 1] = { kind = "text", view = v.label }
+      end)
     end
     back(player)
   end)
@@ -232,6 +252,47 @@ function App:dashActions()
     local ok, why = self.board:deleteView(self.editing.old)
     if not ok then return nil, why end
     back(player)
+  end)
+end
+
+-- The DATA page: every metric, its series, filters by label, a function: a query built by tapping, then
+-- made into a view for the dashboard or the tapper's HUD.
+function App:dataActions()
+  local a = self.actions
+  local function data(fn) return self:mine("data", fn) end
+  a.data = function(player) self:open("data", player, { filters = {}, fn = "sum", page = 1 }) end
+  a.dataDone = data(function() self.editing = nil end)
+  a.dataPick = data(function(_, name, kind)
+    local e = self.editing
+    e.metric, e.filters, e.fn = name, {}, kind == "counter" and "rate" or "sum"
+  end)
+  a.dataBack = data(function() self.editing.metric = nil end)
+  a.dataPage = data(function(_, dir) self.editing.page = math.max(1, self.editing.page + dir) end)
+  a.dataFilter = data(function(_, label, value)
+    local f = self.editing.filters
+    if value == nil or f[label] == value then f[label] = nil else f[label] = value end
+  end)
+  a.dataFn = data(function(_, fn) self.editing.fn = fn end)
+  local function keep()
+    local e = self.editing
+    return { kind = "data", metric = e.metric, filters = e.filters, fn = e.fn, page = e.page }
+  end
+  local function draft()
+    local e = self.editing
+    local m
+    for _, x in ipairs(self.hub:metrics(self.now)) do if x.name == e.metric then m = x end end
+    return { label = explore.suggestLabel(e.metric, e.filters), value = explore.query(e.metric, e.filters, e.fn),
+      unit = m and m.unit and (e.fn == "rate" and (m.unit .. "/s") or (e.fn ~= "count" and m.unit or nil)) or nil }
+  end
+  a.dataPanel = data(function(player)
+    if not self:mayEdit(player) then
+      return nil, ("Only %s can add to the dashboard."):format(table.concat(self.cfg.editors, ", "))
+    end
+    self.openView(player, draft(), keep(), "dash")
+  end)
+  a.dataHud = data(function(player)
+    if not self.huds then return nil, "No Glasses Terminal: there's no HUD to add to." end
+    self.openView(player, draft(), keep(), "hud")
   end)
 end
 
@@ -317,13 +378,40 @@ function App:viewEditModel(now)
     closesIn = math.max(0, math.ceil(e["until"] - now)) }
 end
 
+function App:dataModel(now)
+  local e = self.editing
+  if not e or e.kind ~= "data" then return nil end
+  local metrics = self.hub:metrics(now)
+  local m = { player = e.player, metrics = metrics, page = e.page, error = self.editError, editors = self.cfg.editors,
+    closesIn = math.max(0, math.ceil(e["until"] - now)), canPanel = self:mayEdit(e.player), canHud = self.huds ~= nil }
+  for _, x in ipairs(metrics) do if x.name == e.metric then m.metric = x end end
+  if m.metric then
+    local all = self.hub:lookup(now)(e.metric)
+    local rows = {}
+    for _, s in ipairs(all) do
+      if explore.matches(s, e.filters) then
+        local v = s.value
+        rows[#rows + 1] = { labels = explore.labelText(s.labels), text = format.number(v),
+          rate = s.rate and (format.number(s.rate) .. "/s") or nil }
+      end
+    end
+    table.sort(rows, function(x, y) return x.labels < y.labels end)
+    m.series, m.labels, m.fn, m.funcs = rows, explore.labels(all, e.filters), e.fn, explore.FUNCS
+    m.query = explore.query(e.metric, e.filters, e.fn)
+    local v = self.hub:query(m.query, now)
+    m.value = v and (format.number(v) .. ((m.metric.unit and e.fn ~= "count") and (" " .. m.metric.unit) or "")
+      .. (e.fn == "rate" and "/s" or "")) or "– (no data)"
+  end
+  return m
+end
+
 function App:model(now)
   return {
     now = now, port = self.cfg.port, node = self.cfg.node, version = VERSION, health = self.hub:health(now),
     missingConfig = self.cfg.missing, nodes = self.hub:nodes(now),
     alerts = self.hub.alerts:list(), counts = self.hub.alerts:counts(), panels = self:panels(now),
     huds = self.huds ~= nil, editor = self:editorModel(), dashEdit = self:dashEditModel(now),
-    viewEdit = self:viewEditModel(now), notice = self.notice,
+    viewEdit = self:viewEditModel(now), data = self:dataModel(now), notice = self.notice,
   }
 end
 

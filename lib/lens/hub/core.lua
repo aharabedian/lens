@@ -14,6 +14,8 @@
   hub:query(text, now) -> value | nil, err    compiled once per text
   hub:health(now) -> "ok" | "warn" | "bad"    worst over critical nodes; a stale critical node is bad
   hub:nodes(now)                              store:nodes(now)
+  hub:metrics(now)                            store:metrics(now): what's there to query
+  hub:lookup(now) -> fn(name) -> series[]     the store's series as queries see them
   hub.alerts                                  lens.hub.alerts (list, ack, counts)
 
   Alerts the hub raises itself use node = its own name for rules, and the silent node's name for
@@ -107,5 +109,6 @@ function Hub:health(now)
 end
 
 function Hub:nodes(now) return self.store:nodes(now) end
+function Hub:metrics(now) return self.store:metrics(now) end
 
 return core

@@ -1,6 +1,7 @@
 # Queries
 
-The hub picks what it shows and alerts on with small queries over every node's metrics. They're loosely
+The hub picks what it shows and alerts on with small queries over every node's metrics. The dashboard's
+**DATA** page builds the common ones by tapping ([hub.md](hub.md#the-data-page)). They're loosely
 modelled on PromQL, but much smaller. The grammar is in `lib/lens/hub/query.lua`.
 
 ```
