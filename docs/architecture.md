@@ -15,6 +15,7 @@ is its interface; this page is the map.
 | `lens.hub.alerts` | hub | One list of every active alert: dedupe by `node/id`, since, acks, ordering |
 | `lens.hub.config` | hub | `/home/lens-hub.cfg`: defaults and checks, with readable errors ([hub.md](hub.md)) |
 | `lens.hub.dashboard` | hub | The screen: builds a frame of rows from a model, sends the GPU only the segments that changed, touch targets |
+| `lens.hub.hud` | hub | The AR glasses HUD: the dashboard's model as text and bar widgets on a Glasses Terminal; widgets made once, setters called only on change |
 | `lens.hub.app` | hub | The program's state: hub core + panels (values, history) + dashboard; reacts to packets, touches and ticks |
 | `lens.discover` | lens-discover | Components, their methods and docs as report lines (pure over OpenOS `component`) |
 | `lens.gui` | hub | GPU primitives and the palette (adapted from PRISM's) |
@@ -52,9 +53,11 @@ forget cached `lens.*` modules, and say "run lens-update" if they're missing.
 | `test_net.lua` | Agents and the hub over `mocks/net.lua`: discovery, parts, lost packets, staleness, restarts, tokens, rules |
 | `test_dashboard.lua` | `lens-hub` end to end on the mock screen with an agent on `mocks/net.lua`: panels, alerts and acks by touch, stale nodes, beeps, GPU calls per quiet second, tier 2, config errors |
 | `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering |
+| `test_hud.lua` | The HUD on `mocks/glasses.lua`: rows, bars, alerts, only changed setters, color units, `hud.panels`, in `lens-hub`, a broken terminal |
 | `test_update.lua` | `lens-update`: releases, main, branches, forks, keeping `lens-hub.cfg`, refusing broken downloads |
 | `test_layout.lua` | `manifest.lua` lists every file; one version |
 | `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, modem), `unicode`, `filesystem`, `internet`, and a screen tests can read |
+| `mocks/glasses.lua` | A Glasses Terminal and its widget objects, as `lens-discover` saw them; records what setters get |
 | `mocks/net.lua` | Several computers' modems in one test, with packet loss and OpenComputers' packet limits |
 
 ## What's verified in game
@@ -63,7 +66,10 @@ The tests run against the mocks. This table says which of their behaviors we've 
 
 | Assumption | Status |
 |---|---|
-| OC Glasses' Glasses Terminal is component `glasses` with: `addTextLabel`, `addRect`, `addQuad`, `addDot`, `addTriangle`, `addItem` (2D), `addCube3D`, `addDot3D`, `addFloatingText`, `addLine3D`, `addQuad3D`, `addTriangle3D` (3D), each taking no arguments and returning a widget object (`Text2D`, `Rect2D`...); `getBindPlayers`, `getObjectCount`, `newUniqueKey`, `removeAll`, `removeObject(id)`, `sendChatAs`, `sendMessageTo` | **Seen in game** (`lens-discover`, 2026-11-12). The widget objects' own methods: not yet (`lens-discover --widgets`) |
+| OC Glasses' Glasses Terminal is component `glasses` with: `addTextLabel`, `addRect`, `addQuad`, `addDot`, `addTriangle`, `addItem` (2D), `addCube3D`, `addDot3D`, `addFloatingText`, `addLine3D`, `addQuad3D`, `addTriangle3D` (3D), each taking no arguments and returning a widget object (`Text2D`, `Rect2D`...); `getBindPlayers`, `getObjectCount`, `newUniqueKey`, `removeAll`, `removeObject(id)`, `sendChatAs`, `sendMessageTo` | **Seen in game** (`lens-discover`, 2026-11-12). |
+| Widget objects are tables of methods. All: `getID`, `set/getColor`, `set/getAlpha`, `setVisible`/`isVisible`. Text2D: `set/getPosition`, `Scale`, `Rotation`, `Text`. Rect2D: `set/getPosition`, `Size`. Quad2D, Triangle2D: `setVertex`, `getVertexCount`. Dot2D: `Position`, `Scale`. ItemIcon: `Position`, `Scale`, `Rotation`, `Item`. `removeObject(getID())` removes one | **Seen in game** (`lens-discover --widgets`, 2026-11-12) |
+| Events: `glasses_on(terminal, player, width, height)` (854x457 here, briefly 854x480), `glasses_off(terminal, player)`; clicking with glasses on sends nothing | **Seen in game** (`lens-discover --events`, 2026-11-12) |
+| Units: colors and alpha 0..1 (`hud.colors = "float"`); positions in the space `glasses_on` reports; `setScale(2)` doubles text | **Unverified**: `lens-discover --glasses-test` settles it |
 | `math.random(m, n)` doesn't return an integer (the mock gives floats) | **Seen in game**: PRISM crashed on it. Use `codec.newBoot()` |
 | `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified**; a one-router base's snapshots arrived fine (2026-11-12), but splitting into parts hasn't been exercised in game |
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |

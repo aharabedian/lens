@@ -26,7 +26,7 @@ opposite: it gathers status from every system in the base into one place.
 4. ✓ Hub core: storing snapshots, staleness, the selector language, alerts.
 5. PRISM exports its backlog and machine states. **First milestone: the hub shows them on a screen.**
    Built and tested (PRISM's `lens-telemetry` branch, `lens-hub`); next: try it in game.
-6. AR glasses HUD.
+6. AR glasses HUD: built for OC Glasses; calibrating in game.
 7. Power agent.
 8. History graphs.
 

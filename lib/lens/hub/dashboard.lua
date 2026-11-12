@@ -10,6 +10,7 @@
     nodes  = store:nodes(now),
     alerts = alerts:list(), counts = alerts:counts(),
     panels = { { label, text, frac = 0..1 | nil, level = "warn" | "bad" | nil, history = { number... } } },
+    hudError = text | nil,   shown in the footer
   }
   actions = { ack(key), ackAll(), quit() }
 
@@ -247,7 +248,11 @@ function Dash:build(m, actions)
     alerts(f, m, actions, 2, y + 1, width, lastRow)
   end
   f:rowBg(self.h, C.bg)
-  f:text(2, self.h, Gui.fit("Tap an alert to acknowledge it.", self.w - 2), C.dim)
+  if m.hudError then
+    f:text(2, self.h, Gui.fit("HUD: " .. m.hudError, self.w - 2), C.warn)
+  else
+    f:text(2, self.h, Gui.fit("Tap an alert to acknowledge it.", self.w - 2), C.dim)
+  end
   return f
 end
 

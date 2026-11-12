@@ -7,6 +7,7 @@
 
   A panel: { label, value = query, of = query?, max = number?, unit = string?, percent = bool?,
              warnAbove?, badAbove?, warnBelow?, badBelow? }
+  hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off
 ]]
 
 local query = require("lens.hub.query")
@@ -16,7 +17,11 @@ local config = {}
 
 config.DEFAULTS = {
   node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10,
-  nonCritical = {}, panels = {}, rules = {},
+  nonCritical = {}, panels = {}, rules = {}, hud = {},
+}
+
+config.HUD_DEFAULTS = {
+  x = 4, y = 4, width = 150, scale = 1, alerts = 3, maxPanels = 6, alpha = 0.6, colors = "float", panels = nil,
 }
 
 local THRESHOLDS = { "warnAbove", "badAbove", "warnBelow", "badBelow" }
@@ -66,6 +71,26 @@ function config.check(c)
   end
   local _, err = rules.new(c.rules)
   if err then return nil, err end
+  if c.hud ~= false then
+    if type(c.hud) ~= "table" then return nil, "hud must be a table, or false for none" end
+    for k, v in pairs(config.HUD_DEFAULTS) do if c.hud[k] == nil then c.hud[k] = v end end
+    local h = c.hud
+    if h.colors ~= "float" and h.colors ~= "byte" then return nil, 'hud.colors must be "float" or "byte"' end
+    for _, k in ipairs({ "x", "y", "alerts", "maxPanels" }) do
+      if type(h[k]) ~= "number" or h[k] < 0 then return nil, "hud." .. k .. " must be a number" end
+    end
+    for _, k in ipairs({ "width", "scale", "alpha" }) do
+      if type(h[k]) ~= "number" or h[k] <= 0 then return nil, "hud." .. k .. " must be a number above 0" end
+    end
+    if h.panels ~= nil then
+      if type(h.panels) ~= "table" then return nil, "hud.panels must be a list of panel labels" end
+      local labels = {}
+      for _, p in ipairs(c.panels) do labels[p.label] = true end
+      for _, l in ipairs(h.panels) do
+        if not labels[l] then return nil, ("hud.panels: no panel labelled %q"):format(tostring(l)) end
+      end
+    end
+  end
   return c
 end
 

@@ -103,4 +103,16 @@ check(ok and file:find('"glasses_on"  "gl000000-0000"  "Aaron"', 1, true)
   and file:find('"interact_overlay"  "gl000000-0000"  "Aaron"  12.5  3', 1, true), "--events records every event")
 check(M.time >= 5 and out:find("printing every event for 5 s", 1, true), "for the given number of seconds")
 
+---------------------------------------------------------------- --glasses-test
+local G = require("glasses").new()
+M.components["gl000000-0000"].proxy = G.proxy
+M.setTime(0)
+ok, out = run("--glasses-test", "10")
+local boxA, boxB = G.widgets[0], G.widgets[2]
+check(ok and boxA.kind == "rect" and boxA.color[1] == 1 and boxB.color[1] == 255 and boxA.w == 60,
+  "--glasses-test draws box A in 0..1 red and box B in 0..255 red")
+check(out:find("Which box is red, A (colors 0..1) or B (colors 0..255)?", 1, true) and M.time >= 10,
+  "says what to look for, and keeps the pattern up for the given time")
+check(#G.live() == 0 and out:find("pattern removed", 1, true), "then removes it")
+
 H.done()

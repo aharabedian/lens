@@ -7,6 +7,8 @@
     lens-discover --widgets [type] create one of each widget on a glasses-like component (default type:
                                    glasses), list what each widget object offers, and remove it again
     lens-discover --events [secs]  print every event for secs seconds (default 30): put glasses on, click...
+    lens-discover --glasses-test [secs]   draw a calibration pattern in the glasses for secs seconds
+                                   (default 60), to find the units colors and positions take
   Everything is also written to /home/lens-discover.txt (on your own machine:
   saves/<world>/opencomputers/<disk address>/home/lens-discover.txt).
 ]]
@@ -25,7 +27,7 @@ local args = { ... }
 local opts, mode, arg2 = {}, "report", nil
 for i, a in ipairs(args) do
   if a == "--all" then opts.all = true
-  elseif a == "--widgets" or a == "--events" then mode, arg2 = a:sub(3), args[i + 1]
+  elseif a == "--widgets" or a == "--events" or a == "--glasses-test" then mode, arg2 = a:sub(3), args[i + 1]
   elseif mode == "report" then opts.filter = a end
 end
 
@@ -44,6 +46,20 @@ elseif mode == "widgets" then
   if not addr then error("no " .. ctype .. " component found (is the Glasses Terminal attached?)", 0) end
   for _, l in ipairs(discover.widgets(component.proxy(addr))) do shown[#shown + 1] = l; lines[#lines + 1] = l end
   for _, l in ipairs(shown) do print(l) end
+elseif mode == "glasses-test" then
+  local addr = component.list("glasses", true)()
+  if not addr then error("no glasses component found (is the Glasses Terminal attached?)", 0) end
+  local proxy = component.proxy(addr)
+  local ids, howto = discover.glassesTest(proxy)
+  for _, l in ipairs(howto) do print(l); lines[#lines + 1] = l end
+  local secs = tonumber(arg2) or 60
+  print(("the pattern stays for %d s - Ctrl+C to remove it sooner"):format(secs))
+  local stop = computer.uptime() + secs
+  while computer.uptime() < stop do
+    if event.pull(stop - computer.uptime()) == "interrupted" then break end
+  end
+  for _, id in ipairs(ids) do pcall(proxy.removeObject, id) end
+  print("pattern removed")
 elseif mode == "events" then
   local secs = tonumber(arg2) or 30
   print(("printing every event for %d s - Ctrl+C to stop sooner"):format(secs))

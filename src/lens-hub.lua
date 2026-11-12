@@ -1,7 +1,8 @@
 --[[ lens-hub.lua - the LENS hub: hears every agent in the base (PRISM routers, ...) and shows the whole
   base on one screen: nodes, alerts and the panels set in /home/lens-hub.cfg.
 
-  Needs a GPU and screen (tier 3 for the full layout; tier 2 works) and a network card.
+  Needs a GPU and screen (tier 3 for the full layout; tier 2 works) and a network card. With an OC Glasses
+  Glasses Terminal attached, it also draws a small HUD in the glasses linked to it.
   Usage: lens-hub [path]    (default /home/lens-hub.cfg; optional - see docs/hub.md)
   Tap an alert to acknowledge it; QUIT or Ctrl+C to stop. The work is in /home/lib/lens/hub/.
 ]]
@@ -26,7 +27,9 @@ if not cfg then error(path .. ": " .. tostring(err), 0) end
 if not component.isAvailable("modem") then error("lens-hub needs a network card (wireless, or wired to the agents)", 0) end
 local gpu = component.gpu
 local w, h = gpu.maxResolution()
-local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, beep = computer.beep })
+local glasses = component.isAvailable("glasses") and component.glasses or nil
+local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, glasses = glasses,
+  beep = computer.beep })
 if not app then error(path .. ": " .. tostring(why), 0) end
 
 local function main()

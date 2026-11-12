@@ -61,6 +61,7 @@ Every key is optional. Start from `lens-hub.example.cfg`.
 | `sample` | `10` | Seconds between sparkline samples |
 | `nonCritical` | `{}` | Node names whose silence is only a warning and that don't count towards overall health |
 | `panels` | `{}` | See below |
+| `hud` | `{}` | The AR glasses HUD, see [below](#ar-glasses-hud); `false` turns it off |
 | `rules` | `{}` | The hub's own alerts, see below |
 
 A mistake in the file stops `lens-hub` with the panel or rule named: `panel 2 (Ore): value: expected ) at 14`.
@@ -93,3 +94,31 @@ Values show as `4.2k`, `1.5M`, `3G`. A query with no data shows `–`.
 
 `when` is a query that is true when non-zero; the alert fires once it has been true for `for` seconds
 (default 0). Missing data is false, so a node going quiet raises its stale alert instead.
+
+## AR glasses HUD
+
+With an **OC Glasses** Glasses Terminal attached to the hub computer, `lens-hub` also draws a small block in
+the view of everyone wearing glasses linked to that terminal:
+
+```
+LENS BAD  1 bad  2 warn
+Ore bac… ▕██████░░░░▏ 4.2k
+Machines ▕█████████░▏ 12/16
+! mac2: no power
+```
+
+The health line, one row per panel (the dashboard's panels: label, bar, value), then the newest
+unacknowledged alerts. Acknowledge on the dashboard and they leave the HUD. Widgets are made once and only
+changed values are sent, so a quiet base costs the terminal nothing. If the terminal fails (say its chunk
+unloads), the dashboard keeps running and shows `HUD: <error>` in its footer.
+
+| `hud` key | Default | Meaning |
+|---|---|---|
+| `x`, `y` | `4`, `4` | Top-left corner, in the glasses' screen space |
+| `width` | `150` | Width of the block |
+| `scale` | `1` | Text and row size |
+| `panels` | all, up to `maxPanels` | Panel labels to show, in order: `panels = { "Ore backlog" }` |
+| `maxPanels` | `6` | Panels shown when `panels` isn't set |
+| `alerts` | `3` | Unacknowledged alerts shown |
+| `alpha` | `0.6` | Backdrop opacity |
+| `colors` | `"float"` | The units the terminal takes colors and alpha in: `"float"` (0..1) or `"byte"` (0..255). If the HUD shows black or white blocks instead of colors, switch it. `lens-discover --glasses-test` shows which is right |

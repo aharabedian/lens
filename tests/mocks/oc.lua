@@ -186,11 +186,17 @@ local component = {
   isAvailable = function(t)
     if t == "gpu" or t == "screen" then return true end
     if t == "modem" then return M.modem ~= nil end
+    for _, c in pairs(M.components) do if c.type == t then return true end end
     if t == "internet" then return M.internet ~= false end
     return false
   end,
 }
-setmetatable(component, { __index = function(_, k) if k == "modem" then return M.modem end end })
+-- component.<type>: the modem is M.modem; anything else is the first M.components entry of that type.
+setmetatable(component, { __index = function(_, k)
+  if k == "modem" then return M.modem end
+  local addr = component.list(k, true)()
+  return addr and M.components[addr].proxy or nil
+end })
 
 ---------------------------------------------------------------- unicode, filesystem, internet
 local unicode = {

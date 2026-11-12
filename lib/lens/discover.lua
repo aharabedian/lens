@@ -14,6 +14,12 @@
     there were no widgets before; otherwise the report says how many it left.
 
   discover.event(ev) -> line   one pulled event as text, for --events
+
+  discover.glassesTest(proxy) -> ids[], lines[]
+    Draws a calibration pattern on a Glasses Terminal, to settle the units its setters take:
+      box A setColor(1, 0, 0), box B setColor(255, 0, 0)   whichever is red: hud.colors "float" or "byte"
+      a text at scale 2; a "+" at (427, 228), the middle of the 854x457 glasses_on reported
+    Returns the widget ids (to removeObject later) and what to look for.
 ]]
 
 local discover = {}
@@ -144,6 +150,35 @@ function discover.widgets(proxy)
     end
   end
   return lines
+end
+
+function discover.glassesTest(proxy)
+  local ids = {}
+  local function keep(w) ids[#ids + 1] = w.getID(); return w end
+  local function rect(x, y, w, h, r, g, b)
+    local o = keep(proxy.addRect())
+    o.setPosition(x, y); o.setSize(w, h); o.setColor(r, g, b)
+    return o
+  end
+  local function text(x, y, s, scale)
+    local o = keep(proxy.addTextLabel())
+    o.setPosition(x, y); o.setText(s)
+    if scale then o.setScale(scale) end
+    return o
+  end
+  rect(10, 10, 60, 14, 1, 0, 0)
+  text(14, 13, "A")
+  rect(80, 10, 60, 14, 255, 0, 0)
+  text(84, 13, "B")
+  text(10, 30, "LENS test: which box is red, A or B?")
+  text(10, 44, "Scale 2", 2)
+  text(424, 224, "+ middle?")
+  return ids, {
+    "Look through the glasses:",
+    "  1. Which box is red, A (colors 0..1) or B (colors 0..255)? The other is black or white.",
+    "  2. Is 'Scale 2' twice the size of the other text?",
+    "  3. Is '+ middle?' near the middle of your view? (positions in the 854x457 glasses_on reported)",
+  }
 end
 
 function discover.event(ev)

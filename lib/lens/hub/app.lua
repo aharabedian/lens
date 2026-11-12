@@ -1,6 +1,8 @@
 --[[ lens.hub.app: the hub program's state and reactions, without the event loop (src/lens-hub.lua has that).
 
-  local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, beep?, boot? })
+  local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, glasses?, beep?, boot? })
+    glasses: a Glasses Terminal; the HUD draws there each tick unless cfg.hud is false. A HUD failure is
+    shown on the dashboard (model.hudError) and never stops the hub.
     cfg: lens.hub.config output. err when the hub core refuses the config (bad rules).
   app:start(now)                         open the port, broadcast hello, draw
   app:onModem(from, port, data, now)     feed a packet to the hub core, send its replies
@@ -16,6 +18,7 @@
 local codec = require("lens.codec")
 local core = require("lens.hub.core")
 local dashboard = require("lens.hub.dashboard")
+local hud = require("lens.hub.hud")
 
 local app = {}
 
@@ -48,6 +51,7 @@ function app.new(cfg, env)
   if not hub then return nil, err end
   local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0 }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
+  if env.glasses and cfg.hud ~= false then self.hud = hud.new(env.glasses, cfg.hud) end
   for i = 1, #cfg.panels do self.history[i] = {} end
   self.actions = {
     ack = function(key) self.hub.alerts:ack(key) end,
@@ -87,8 +91,13 @@ function App:model(now)
   }
 end
 
-function App:redraw(now)
+function App:redraw(now, withHud)
   local m = self:model(now)
+  if self.hud and withHud then
+    local ok, err = pcall(self.hud.draw, self.hud, m)
+    self.hudError = not ok and tostring(err) or nil
+  end
+  m.hudError = self.hudError
   self.dash:draw(m, self.actions)
   return m
 end
@@ -111,7 +120,7 @@ end
 
 function App:onTouch(x, y, now)
   self.dash:tap(x, y)
-  if self.running then self:redraw(now) end
+  if self.running then self:redraw(now, true) end
 end
 
 function App:tick(now)
@@ -132,10 +141,11 @@ function App:tick(now)
       if #h > HISTORY then table.remove(h, 1) end
     end
   end
-  return self:redraw(now)
+  return self:redraw(now, true)
 end
 
 function App:stop()
+  if self.hud then pcall(self.hud.clear, self.hud) end
   if self.env.modem then self.env.modem.close(self.cfg.port) end
   self.dash:restore()
 end
