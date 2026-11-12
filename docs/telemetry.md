@@ -73,12 +73,13 @@ next snapshot replaces everything.
 | `dseq` | integer | The descriptor version these samples follow |
 | `samples` | `{ name, value, labels? }[]` | Positional, to save bytes: `{ "prism_backlog_items", 4200, { process = "ore" } }` |
 | `alerts` | `{ id, level, text, age? }[]` | Active problems (see *Alerts*) |
+| `moreAlerts` | integer? | Alerts left out because part 1 couldn't hold them all. The `bad` ones are kept first |
 | `sid` | integer | Snapshot id: the `seq` of its first part |
 | `part`, `parts` | integer | Part number (from 1) and the total. `1, 1` when it fits in one packet |
 
 **Splitting.** When the serialized snapshot exceeds 7 KB, the agent splits `samples` across parts. Every
-part carries the envelope plus `sid`, `part` and `parts`; only part 1 carries `interval`, `health`, `dseq` and
-`alerts`. The hub applies a snapshot only once all its parts have arrived, and discards an incomplete one when
+part carries the envelope plus `sid`, `part` and `parts`, and has its own `seq`; only part 1 carries
+`interval`, `health`, `dseq` and `alerts`. The hub applies a snapshot only once all its parts have arrived, and discards an incomplete one when
 a newer `sid` arrives from that node or after `interval` seconds.
 
 ## Metrics
