@@ -98,7 +98,7 @@ Values show as `4.2k`, `1.5M`, `3G`. A query with no data shows `–`.
 ## AR glasses HUD
 
 With an **OC Glasses** Glasses Terminal attached to the hub computer, `lens-hub` also draws a small block in
-the view of everyone wearing glasses linked to that terminal: the bars you choose, then the newest
+the top-right of the view of everyone wearing glasses linked to that terminal: the bars you choose, then the newest
 unacknowledged alerts, with a thin strip down the left in the base's overall health color.
 
 ![Quiet](images/hud-quiet.png) ![With alerts](images/hud-alerts.png)
@@ -119,7 +119,8 @@ hud = {
 |---|---|---|
 | `bars` | `{}` | Bars, in the same form as [panels](#panels): `label`, `value`, `max` / `of` / `percent`, thresholds. The fill turns amber or red past `warn…` / `bad…` |
 | `alerts` | `3` | Unacknowledged alerts shown, then `+N more` |
-| `x`, `y` | `4`, `20` | Top-left corner, in GUI pixels (3 screen pixels each at GUI scale 3) |
+| `anchor` | `"top-right"` | The corner the block sits in: `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`. The hub learns each wearer's view size when they put the glasses on (until then it assumes 854 x 480, a 1440p window at GUI scale 3) |
+| `x`, `y` | `4`, `4` | Margins from that corner, in GUI pixels (3 screen pixels each at GUI scale 3) |
 | `width` | `160` | Width of the block, in GUI pixels; text takes about 5 per character at scale 1 |
 | `scale` | `1` | Text and row size: 1 is about chat-text size, 2 doubles it (double `width` too) |
 | `alpha` | `0.35` | Backdrop opacity, 0 for none |

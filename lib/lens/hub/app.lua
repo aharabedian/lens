@@ -7,6 +7,7 @@
   app:start(now)                         open the port, broadcast hello, draw
   app:onModem(from, port, data, now)     feed a packet to the hub core, send its replies
   app:onTouch(x, y, now)                 tap the dashboard, redraw
+  app:onGlasses(width, height, now)      a glasses_on: the wearer's GUI size, to place the HUD by its anchor
   app:tick(now)                          about once a second: alerts, panel samples, beep, redraw
   app:stop()
   app.running, app.hub (lens.hub.core), app.dash (lens.hub.dashboard)
@@ -108,6 +109,7 @@ function App:redraw(now, withHud)
   local m = self:model(now)
   if self.hud and withHud then
     m.hudBars = self:evaluate(self.cfg.hud.bars or {}, nil, now)
+    m.screen = self.screen
     local ok, err = pcall(self.hud.draw, self.hud, m)
     self.hudError = not ok and tostring(err) or nil
     self.hudPerMinute = self:hudRate(now)
@@ -130,6 +132,13 @@ function App:onModem(from, port, data, now)
   if port ~= self.cfg.port or type(data) ~= "string" then return end
   for _, r in ipairs(self.hub:receive(data, from, now)) do
     if self.env.modem then self.env.modem.send(r.to, self.cfg.port, r.data) end
+  end
+end
+
+function App:onGlasses(w, h, now)
+  if type(w) == "number" and type(h) == "number" and w > 0 and h > 0 then
+    self.screen = { w = w, h = h }
+    if self.running then self:redraw(now, true) end
   end
 end
 

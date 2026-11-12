@@ -37,11 +37,14 @@ local function main()
   local nextTick = computer.uptime() + 1
   while app.running do
     local ev = table.pack(event.pullMultiple(math.max(0.05, nextTick - computer.uptime()),
-      "modem_message", "touch", "interrupted"))
+      "modem_message", "touch", "glasses_on", "interrupted"))
     local now = computer.uptime()
     if ev[1] == "modem_message" then
       -- modem_message: localAddress, remoteAddress, port, distance, payload
       app:onModem(ev[3], ev[4], ev[6], now)
+    elseif ev[1] == "glasses_on" then
+      -- glasses_on: terminal, player, width, height (the wearer's GUI size)
+      app:onGlasses(ev[4], ev[5], now)
     elseif ev[1] == "touch" then
       -- touch: screenAddress, x, y, button, player
       app:onTouch(math.floor(ev[3]), math.floor(ev[4]), now)

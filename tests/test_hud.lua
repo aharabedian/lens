@@ -28,7 +28,11 @@ local ALERTS = {
   { key = "a/3", level = "warn", text = "Washer B idle 2m with work waiting", acked = false },
 }
 
-local function opts(o) return assert(config.check({ hud = o or {} })).hud end
+local function opts(o)
+  o = o or {}
+  if o.anchor == nil then o.anchor, o.x, o.y = "top-left", o.x or 4, o.y or 20 end   -- the layout tests' frame
+  return assert(config.check({ hud = o })).hud
+end
 local function texts(G)
   local out = {}
   for _, s in ipairs(G.live()) do if s.kind == "text" and s.visible then out[#out + 1] = s end end
@@ -94,6 +98,24 @@ do
   check(#G.live() == 0, "clear removes every widget it made")
 end
 
+---------------------------------------------------------------- anchors
+do
+  local G = glassesMock.new()
+  local h = hud.new(G.proxy, assert(config.check({})).hud)
+  h:draw(model())
+  local bg = G.live()[1]
+  check(bg.x == 854 - 4 - 160 and bg.y == 4, "by default the block sits top-right, 4 from the edges of an 854-wide view")
+  h:draw(model({ screen = { w = 1000, h = 500 } }))
+  check(bg.x == 1000 - 4 - 160 and G.find("Ore").x == bg.x + 6, "a wider view (from glasses_on) moves it, rows and all")
+
+  G = glassesMock.new()
+  hud.new(G.proxy, opts({ anchor = "bottom-left", x = 10, y = 10 })):draw(model({ screen = { w = 800, h = 400 } }))
+  bg = G.live()[1]
+  check(bg.x == 10 and bg.y + bg.h == 390, "bottom-left: x and y are margins from the left and bottom")
+  local _, err = config.check({ hud = { anchor = "middle" } })
+  check(err and err:find("hud.anchor must be", 1, true), "anchor is checked")
+end
+
 ---------------------------------------------------------------- options and config
 do
   local G = glassesMock.new()
@@ -110,7 +132,7 @@ do
   check(not G.live()[1].visible, "alpha = 0: no backdrop")
 
   local c = assert(config.check({ hud = { bars = { { label = "Ore", value = "sum(prism_backlog_items)", max = 2e6 } } } }))
-  check(#c.hud.bars == 1 and c.hud.y == 20, "hud.bars take the panel form")
+  check(#c.hud.bars == 1 and c.hud.anchor == "top-right", "hud.bars take the panel form")
   local _, err = config.check({ hud = { bars = { { label = "Ore", value = "sum(x" } } } })
   check(err and err:find("hud.bar 1 (Ore): value: expected )", 1, true), "a bad bar query is named")
   _, err = config.check({ hud = { alpha = 2 } })
@@ -165,7 +187,18 @@ do
       s.calls = G.calls
       return nil
     end
-    if s.seen and t >= 70 and not s.quiet then
+    if s.seen and not s.moved then
+      s.moved = true
+      s.x = G.live()[1].x
+      return { "glasses_on", "gl000000-0000", "Aaron", 1200, 600 }
+    end
+    if s.moved and not s.movedSeen then
+      s.movedSeen = true
+      s.x2 = G.live()[1].x
+      s.calls = G.calls
+      return nil
+    end
+    if s.movedSeen and t >= 70 and not s.quiet then
       s.quiet = true
       s.perMinute = (G.calls - s.calls) / (t - 4) * 60
       s.footer = M.row(M.H)
@@ -175,6 +208,7 @@ do
   end)
   check(ok, "lens-hub runs with a Glasses Terminal" .. (ok and "" or (": " .. tostring(err))))
   check(s.bar, "lens-hub draws hud.bars")
+  check(s.x == 854 - 164 and s.x2 == 1200 - 164, "a glasses_on with a new GUI size moves the HUD to its corner")
   check(s.perMinute == 0, ("nothing changing: no calls to the terminal (%.1f a minute)"):format(s.perMinute or -1))
   check(s.footer and s.footer:find("HUD 0 calls/min", 1, true), "the dashboard shows the HUD's calls per minute")
   check(#G.live() == 0, "QUIT removes the HUD's widgets")

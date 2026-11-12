@@ -3,8 +3,11 @@
 
   local h = require("lens.hub.hud").new(proxy, opts)    opts = cfg.hud (lens.hub.config has the defaults)
   h:draw(model)     model: the dashboard's model plus model.hudBars (bars evaluated like panels: label, text,
-                    frac, level). Widgets are made on first use; afterwards a setter is called only when its
+                    frac, level) and model.screen = { w, h } (the wearer's GUI size, from glasses_on; default
+                    854 x 480). Widgets are made on first use; afterwards a setter is called only when its
                     value changed, because every call is a component call.
+  opts.anchor       "top-right" (default), "top-left", "bottom-right" or "bottom-left": the corner the block
+                    sits in; opts.x and opts.y are the margins from that corner, in GUI pixels
   h:clear()         remove every widget it made
   h.calls           component calls made so far (shown on the dashboard, to see what the HUD costs)
   hud.rgb(hex, units) -> r, g, b   0xRRGGBB as "float" (0..1, OC Glasses) or "byte" (0..255)
@@ -98,11 +101,27 @@ local function cut(text, chars)
   return table.concat(out) .. "…"
 end
 
+hud.SCREEN = { w = 854, h = 480 }    -- until a glasses_on says otherwise (2560 x 1440 at GUI scale 3)
+
+-- Rows the block will have, to place it from a bottom corner before drawing.
+local function countRows(m, limit)
+  local unacked = 0
+  for _, a in ipairs(m.alerts or {}) do if not a.acked then unacked = unacked + 1 end end
+  local rows = #(m.hudBars or {}) + math.min(limit, unacked) + (unacked > limit and 1 or 0)
+  return math.max(rows, 1)
+end
+
 function Hud:draw(m)
   local o = self.opts
   local scale = o.scale or 1
-  local x0, y0, width = o.x or 4, o.y or 20, o.width or 160
+  local width = o.width or 160
   local line, char = math.ceil(LINE * scale), CHAR * scale
+  local screen = m.screen or hud.SCREEN
+  local anchor = o.anchor or "top-right"
+  local x0 = anchor:find("right", 1, true) and (screen.w - (o.x or 4) - width) or (o.x or 4)
+  local y0 = o.y or 4
+  if anchor:find("bottom", 1, true) then y0 = screen.h - y0 - (countRows(m, o.alerts or 3) * line + 2) end
+  x0, y0 = math.max(0, math.floor(x0)), math.max(0, math.floor(y0))
   local used = { bg = true, strip = true }
   local function mark(key) used[key] = true end
   -- Made before any row, so they're drawn under the rows; sized once the rows are known.

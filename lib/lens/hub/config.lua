@@ -22,7 +22,7 @@ config.DEFAULTS = {
 }
 
 config.HUD_DEFAULTS = {
-  x = 4, y = 20, width = 160, scale = 1, alerts = 3, alpha = 0.35, colors = "float", bars = {},
+  anchor = "top-right", x = 4, y = 4, width = 160, scale = 1, alerts = 3, alpha = 0.35, colors = "float", bars = {},
 }
 
 local THRESHOLDS = { "warnAbove", "badAbove", "warnBelow", "badBelow" }
@@ -77,6 +77,8 @@ function config.check(c)
     for k, v in pairs(config.HUD_DEFAULTS) do if c.hud[k] == nil then c.hud[k] = v end end
     local h = c.hud
     if h.colors ~= "float" and h.colors ~= "byte" then return nil, 'hud.colors must be "float" or "byte"' end
+    local anchors = { ["top-left"] = true, ["top-right"] = true, ["bottom-left"] = true, ["bottom-right"] = true }
+    if not anchors[h.anchor] then return nil, 'hud.anchor must be "top-right", "top-left", "bottom-right" or "bottom-left"' end
     for _, k in ipairs({ "x", "y", "alerts" }) do
       if type(h[k]) ~= "number" or h[k] < 0 then return nil, "hud." .. k .. " must be a number" end
     end
