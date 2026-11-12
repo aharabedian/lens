@@ -53,7 +53,8 @@ lib/lens/   modules: metrics, codec (agents + hub), gui, files, discover, setup/
             editors/ (state + actions), pages/ (drawing), frame, dashboard, app)
 manifest.lua  every file lens-update installs
 config/     lens-hub.example.cfg
-docs/       setup, hub, queries, troubleshooting, telemetry (the protocol), architecture, images/
+docs/       setup, hub, views, hud, examples, queries, troubleshooting, telemetry (the protocol), architecture,
+            images/ (examples in views, hud, hub and examples.md are loaded by the tests)
 tests/      run.lua, helper.lua, hubrun.lua, mocks/{oc,net,glasses}.lua, test_*.lua (README.md)
 tools/      setup-dev.sh, render_screens.py, render_hud.py
 ```

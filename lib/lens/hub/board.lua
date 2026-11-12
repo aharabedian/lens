@@ -3,10 +3,9 @@
   lens-hub.cfg stays the starting point: its panels and HUD views are in the library too, and a view edited on
   the screen overrides the one of the same label from lens-hub.cfg.
 
-  local b = require("lens.hub.board").new(path, cfg, legacyHudPath?)
+  local b = require("lens.hub.board").new(path, cfg)
     path: the board file (nil: kept in memory only); cfg: lens.hub.config output.
-    First run (no file): the dashboard gets lens-hub.cfg's panels; players' HUDs come from legacyHudPath
-    (lens-hud.cfg, the first per-player file) when it's there.
+    First run (no file): the dashboard gets lens-hub.cfg's panels.
     Later, a panel added to lens-hub.cfg (say by lens-setup) is put on the dashboard once; one removed on the
     screen stays removed.
   b:views() -> { view... }       the library: lens-hub.cfg's (panels, then HUD elements) with screen edits
@@ -113,7 +112,7 @@ local function configViews(cfg)
   return out
 end
 
-function board.new(path, cfg, legacyHudPath)
+function board.new(path, cfg)
   local self = setmetatable({ path = path, base = configViews(cfg), undoStack = {}, canUndo = false }, B)
   local saved = path and files.loadTable(path)
   local data = type(saved) == "table" and saved or {}
@@ -153,13 +152,7 @@ function board.new(path, cfg, legacyHudPath)
       end
     end
   end
-  if type(data.huds) == "table" then
-    self.huds = data.huds
-  else
-    local legacy = legacyHudPath and files.loadTable(legacyHudPath)
-    self.huds = type(legacy) == "table" and legacy or {}
-    changed = changed or (type(legacy) == "table" and next(legacy) ~= nil)
-  end
+  self.huds = type(data.huds) == "table" and data.huds or {}
   if changed and path and saved then self:save() end
   return self
 end

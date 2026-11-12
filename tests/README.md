@@ -28,11 +28,12 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_board.lua` | `lens-board.cfg` (`board`): the library, overrides, renames, deletes, undo, pages, migration from `lens-hud.cfg` and 0.2.0's panels; the EDIT page and view editor through `lens-hub`: typing, pasting, preview, order, remove, `editors`, no keyboard |
 | `test_elements.lua` | What a view can show, through `lens-hub`: state dots, several values in one line, `when`, on the dashboard, in the HUD and in the view editor (tier 2 too) |
 | `test_pages.lua` | The dashboard's pages and the alert log through `lens-hub`: + PAGE named on the keyboard, panels per page, tabs, deleting a page, LOG now and earlier, a 3 × 4 screen |
+| `test_examples.lua` | Every view in `docs/examples.md` as a panel in `lens-hub`, against a PRISM ore line and a LUMEN power room: each shows what the doc says |
 | `test_data.lua` | The DATA page through `lens-hub`: metrics, series, filters, functions, SAVE AS PANEL, ADD TO MY HUD, counters as rates, `editors`, paging, narrow screens |
 | `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering, `--widgets`, `--events`, `--glasses-test` |
-| `test_setup.lua` | `lens-setup` with scripted answers: finding a PRISM router, its panels and HUD bar, the file (loads, comments, `lens-hub` runs it), `.shrc`, re-runs keeping edits, PRISM's port refused, no agents, no network card, no glasses, cancelling, a broken file |
+| `test_setup.lua` | `lens-setup` with scripted answers: finding a PRISM router, its panels and HUD line (as blocks; an old one-corner hud rewritten), the file (loads, comments, `lens-hub` runs it), `.shrc`, re-runs keeping edits, PRISM's port refused, no agents, no network card, no glasses, cancelling, a broken file |
 | `test_update.lua` | `lens-update`: releases, main, branches, forks, keeping `lens-hub.cfg`, refusing broken downloads |
-| `test_layout.lua` | `manifest.lua` lists every file; one version; no `utf8` in `src/` and `lib/`; every module names itself in its header; **dependencies point one way** (the rules in [architecture.md](../docs/architecture.md#modules)) |
+| `test_layout.lua` | `manifest.lua` lists every file; one version; no `utf8` in `src/` and `lib/`; every module names itself in its header; **dependencies point one way**; every Lua example in the docs loads (the rules in [architecture.md](../docs/architecture.md#modules)) |
 | `hubrun.lua` | Runs `lens-hub` for feature tests: agents (`R.agent`), Glasses Terminals, a keyboard, a script of events, `R.tap` / `R.keys` / `R.paste` / `R.queue` |
 | `helper.lua` | Shared setup (`H`): `check`, `run`, `screen` and `glasses` dumps for `make screens` |
 | `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, screen shape, modem, others by type), `unicode`, `filesystem`, `internet`, `math.random` as the game's, and a screen tests can read |

@@ -43,9 +43,8 @@ the hub's `config` and nothing else of it; `metrics` and `codec` need nothing of
 
 | File | Written by | Holds |
 |---|---|---|
-| `/home/lens-hub.cfg` | `lens-setup` and you | Network, panels and HUD to start from, rules, `editors` |
+| `/home/lens-hub.cfg` | `lens-setup` and you | Network, the views and HUD to start from, rules, `editors` |
 | `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's pages, each player's HUDs |
-| `/home/lens-hud.cfg` | (0.2.0 betas) | Players' HUDs before the board; read once into it |
 
 ### Adding an editor
 

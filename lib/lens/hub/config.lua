@@ -8,12 +8,12 @@
   A panel (a view, lens.hub.format, which has every key): label, value (or text or dots), of, max, unit, format,
              color, thresholds, text and values, status, dots, by and states, when. (percent = true is format = "percent")
   resolution: "fit" (fill the screen's shape), "max" (the GPU's largest) or { width, height }
-  hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off. After check, hud.blocks
+  hud: the AR glasses HUD (HUD_DEFAULTS: scale, alpha, colors); hud = false turns it off. After check, hud.blocks
        is always there: { { anchor, x, y, width, elements = { element... } }... } where an element is a view
        with kind = "bar" | "text", or { kind = "alerts", count }, or { kind = "gap" }. x, y: GUI pixels from the
        anchor point, right and down positive (default 4 in from the edges).
-       Written without blocks (anchor, x, y as margins, width, alerts, bars), it becomes one block: the bars,
-       then the alerts.
+       Written without blocks (the 0.1 form: anchor, x, y as margins, width, alerts, bars; ONE_CORNER has their
+       defaults), it becomes one block: the bars, then the alerts.
   ANCHORS: the nine anchor names; config.offset(anchor) -> the default x, y for it
   checkView(view) -> err | nil   one view, as a panel is checked
   editors: nil (anyone may edit the dashboard on the screen) or a list of player names
@@ -40,9 +40,9 @@ function config.offset(anchor)
   return x, y
 end
 
-config.HUD_DEFAULTS = {
-  anchor = "top-right", x = 4, y = 4, width = 160, scale = 1, alerts = 3, alpha = 0.35, colors = "float", bars = {},
-}
+config.HUD_DEFAULTS = { scale = 1, alpha = 0.35, colors = "float" }
+-- An old one-corner hud's settings and their defaults; check turns them into one block.
+config.ONE_CORNER = { anchor = "top-right", x = 4, y = 4, width = 160, alerts = 3, bars = {} }
 
 local THRESHOLDS = { "warnAbove", "badAbove", "warnBelow", "badBelow" }
 
@@ -159,13 +159,15 @@ function config.check(c)
     for k, v in pairs(config.HUD_DEFAULTS) do if c.hud[k] == nil then c.hud[k] = v end end
     local h = c.hud
     if h.colors ~= "float" and h.colors ~= "byte" then return nil, 'hud.colors must be "float" or "byte"' end
-    for _, k in ipairs({ "width", "scale" }) do
-      if type(h[k]) ~= "number" or h[k] <= 0 then return nil, "hud." .. k .. " must be a number above 0" end
-    end
+    if type(h.scale) ~= "number" or h.scale <= 0 then return nil, "hud.scale must be a number above 0" end
     if type(h.alpha) ~= "number" or h.alpha < 0 or h.alpha > 1 then return nil, "hud.alpha must be 0..1" end
-    local e = h.blocks == nil and config.legacyBlocks(h) or nil
-    if e then return nil, e end
-    e = config.checkBlocks(h.blocks, h)
+    if h.blocks == nil then
+      for k, v in pairs(config.ONE_CORNER) do if h[k] == nil then h[k] = type(v) == "table" and {} or v end end
+      local e = config.legacyBlocks(h)
+      if e then return nil, e end
+      for k in pairs(config.ONE_CORNER) do h[k] = nil end
+    end
+    local e = config.checkBlocks(h.blocks)
     if e then return nil, e end
   end
   if c.editors ~= nil then
@@ -213,8 +215,8 @@ end
 
 local KINDS = { bar = true, text = true, alerts = true, gap = true }
 
--- Checks blocks (filling in each block's defaults from h) -> err | nil.
-function config.checkBlocks(blocks, h)
+-- Checks blocks, filling in each block's defaults -> err | nil.
+function config.checkBlocks(blocks)
   if type(blocks) ~= "table" then return "hud.blocks must be a list of blocks" end
   for i, b in ipairs(blocks) do
     local where = "hud block " .. i
@@ -223,7 +225,7 @@ function config.checkBlocks(blocks, h)
     if not ANCHOR[b.anchor] then return where .. ": anchor must be one of " .. table.concat(config.ANCHORS, ", ") end
     local dx, dy = config.offset(b.anchor)
     b.x, b.y = b.x or dx, b.y or dy
-    b.width = b.width or (h and h.width) or 160
+    b.width = b.width or 160
     if type(b.x) ~= "number" or type(b.y) ~= "number" then return where .. ": x and y must be numbers" end
     if type(b.width) ~= "number" or b.width <= 0 then return where .. ": width must be a number above 0" end
     b.elements = b.elements or {}

@@ -29,6 +29,27 @@ local ALERTS = {
   { key = "a/3", level = "warn", text = "Washer B idle 2m with work waiting", acked = false },
 }
 
+-- The layout tests below were written for one block of bars then alerts: a HUD whose draw takes
+-- model.hudBars and places the block as the checked config's first block (with its alerts count).
+local function newHud(proxy, o)
+  local h = hud.new(proxy, o)
+  local draw = h.draw
+  function h.draw(self, m)
+    if not m.hudBlocks then
+      local b = (o.blocks or {})[1] or {}
+      local count = 3
+      for _, el in ipairs(b.elements or {}) do if el.kind == "alerts" then count = el.count end end
+      local items = {}
+      for _, bar in ipairs(m.hudBars or {}) do items[#items + 1] = setmetatable({ kind = "bar" }, { __index = bar }) end
+      items[#items + 1] = { kind = "alerts", count = count }
+      m = setmetatable({ hudBlocks = { { anchor = b.anchor, x = b.x, y = b.y, width = b.width, items = items } } },
+        { __index = m })
+    end
+    return draw(self, m)
+  end
+  return h
+end
+
 local function opts(o)
   o = o or {}
   if o.anchor == nil then o.anchor, o.x, o.y = "top-left", o.x or 4, o.y or 20 end   -- the layout tests' frame
@@ -43,7 +64,7 @@ end
 ---------------------------------------------------------------- the layout
 do
   local G = glassesMock.new()
-  local h = hud.new(G.proxy, opts())
+  local h = newHud(G.proxy, opts())
   h:draw(model())
   local bg, strip = G.live()[1], G.live()[2]
   check(bg.kind == "rect" and strip.kind == "rect" and bg.x == 4 and bg.y == 20 and bg.w == 160 and bg.alpha == 0.35,
@@ -102,7 +123,7 @@ end
 ---------------------------------------------------------------- anchors
 do
   local G = glassesMock.new()
-  local h = hud.new(G.proxy, assert(config.check({})).hud)
+  local h = newHud(G.proxy, assert(config.check({})).hud)
   h:draw(model())
   local bg = G.live()[1]
   check(bg.x == 854 - 4 - 160 and bg.y == 4, "by default the block sits top-right, 4 from the edges of an 854-wide view")
@@ -110,7 +131,7 @@ do
   check(bg.x == 1000 - 4 - 160 and G.find("Ore").x == bg.x + 6, "a wider view (from glasses_on) moves it, rows and all")
 
   G = glassesMock.new()
-  hud.new(G.proxy, opts({ anchor = "bottom-left", x = 10, y = 10 })):draw(model({ screen = { w = 800, h = 400 } }))
+  newHud(G.proxy, opts({ anchor = "bottom-left", x = 10, y = 10 })):draw(model({ screen = { w = 800, h = 400 } }))
   bg = G.live()[1]
   check(bg.x == 10 and bg.y + bg.h == 390, "bottom-left: x and y are margins from the left and bottom")
   local _, err = config.check({ hud = { anchor = "middle" } })
@@ -120,20 +141,22 @@ end
 ---------------------------------------------------------------- options and config
 do
   local G = glassesMock.new()
-  hud.new(G.proxy, opts({ colors = "byte" })):draw(model())
+  newHud(G.proxy, opts({ colors = "byte" })):draw(model())
   check(G.live()[2].color[1] == 0x4f and G.live()[1].alpha == 89, 'colors = "byte": 0..255 colors and alpha')
 
   G = glassesMock.new()
-  hud.new(G.proxy, opts({ x = 100, y = 50, scale = 2, width = 320 })):draw(model())
+  newHud(G.proxy, opts({ x = 100, y = 50, scale = 2, width = 320 })):draw(model())
   local label = G.find("Ore")
   check(label.x == 106 and label.y == 52 and label.scale == 2 and G.live()[1].w == 320, "position, scale and width")
 
   G = glassesMock.new()
-  hud.new(G.proxy, opts({ alpha = 0 })):draw(model())
+  newHud(G.proxy, opts({ alpha = 0 })):draw(model())
   check(not G.live()[1].visible, "alpha = 0: no backdrop")
 
   local c = assert(config.check({ hud = { bars = { { label = "Ore", value = "sum(prism_backlog_items)", max = 2e6 } } } }))
-  check(#c.hud.bars == 1 and c.hud.anchor == "top-right", "hud.bars take the panel form")
+  local el = c.hud.blocks[1].elements[1]
+  check(el.kind == "bar" and el.label == "Ore" and el.max == 2e6 and c.hud.blocks[1].anchor == "top-right"
+    and c.hud.bars == nil, "hud.bars take the panel form, and become the first block's elements")
   local _, err = config.check({ hud = { bars = { { label = "Ore", value = "sum(x" } } } })
   check(err and err:find("hud.bar 1 (Ore): value: expected )", 1, true), "a bad bar query is named")
   _, err = config.check({ hud = { alpha = 2 } })

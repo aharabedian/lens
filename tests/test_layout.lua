@@ -78,4 +78,31 @@ for _, f in ipairs(lines('cd "' .. H.ROOT .. '" && find lib -name "*.lua" | sort
 end
 check(#broken == 0, "dependencies point one way" .. (#broken > 0 and (":\n    " .. table.concat(broken, "\n    ")) or ""))
 
+-- Every Lua example in the docs loads: views (panels), rules, and whole hud = / panels = settings.
+do
+  local config = require("lens.hub.config")
+  local bad = {}
+  for _, doc in ipairs({ "docs/views.md", "docs/examples.md", "docs/hud.md", "docs/hub.md" }) do
+    local text = read(doc) or ""
+    local n = 0
+    for block in text:gmatch("```lua\n(.-)```") do
+      n = n + 1
+      local body = block:gsub("^%s+", "")
+      local wrapped
+      if body:find("^hud%s*=") or body:find("^panels%s*=") then wrapped = "return { " .. body .. " }"
+      elseif body:find("^{%s*id%s*=") then wrapped = "return { rules = { " .. body .. " } }"
+      elseif body:find("^{%s*label%s*=") then wrapped = "return { panels = { " .. body .. " } }" end
+      if wrapped then
+        local chunk, err = load(wrapped, "=" .. doc, "t", {})
+        local ok, c = false, err
+        if chunk then ok, c = pcall(chunk) end
+        local checked, why = nil, c
+        if ok then checked, why = config.check(c) end
+        if not checked then bad[#bad + 1] = ("%s example %d: %s"):format(doc, n, tostring(why)) end
+      end
+    end
+  end
+  check(#bad == 0, "every Lua example in the docs loads" .. (#bad > 0 and (":\n    " .. table.concat(bad, "\n    ")) or ""))
+end
+
 H.done()

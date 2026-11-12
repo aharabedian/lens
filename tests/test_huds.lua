@@ -79,13 +79,9 @@ s = huds.new({ ["gl-b"] = B.proxy }, cfg.hud, st):settings("Bob")
 check(s.own and s.scale == 1.5 and #s.blocks == 2 and s.blocks[2].anchor == "bottom" and s.blocks[1].elements[2].kind == "text",
   "settings come back from the store")
 local odd = huds.new({}, cfg.hud, store({
-  Bob = { anchor = "bottom-left", bars = { "Power", 7 }, width = 200, alerts = 2 },
   Cy = { scale = 99, blocks = { { anchor = "middle", x = "a", elements = { { kind = "dial" }, { kind = "text", view = "Ore" } } } } },
   [3] = {},
 }))
-s = odd:settings("Bob")
-check(s.own and s.blocks[1].anchor == "bottom-left" and s.blocks[1].width == 200 and #s.blocks[1].elements == 2
-  and s.blocks[1].elements[2].count == 2, "the first editor's form (bars, anchor) becomes one block")
 s = odd:settings("Cy")
 check(s.scale == 1 and s.blocks[1].anchor == "top-right" and s.blocks[1].x == -4 and #s.blocks[1].elements == 1,
   "bad values are dropped or defaulted")

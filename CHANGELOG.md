@@ -6,31 +6,40 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- **Status dots** (`status`): rules in order, `{ level, query }`, the first true one colors the dot (none: gray).
-  `$value` is the view's value; `color = "status"` colors the value too. Levels: good, warn, bad, off.
-- **Dots per item** (`dots`, `by`, `states`): a dot per machine (or any label), its color from a map of state to
-  level. In the HUD a view's value sits beside its dots.
+- **Status dots** (`status`): rules in order, `{ level, query }`; the first true one colors the dot (none:
+  gray). `$value` is the view's value; `color = "status"` colors the value too. Levels: good, warn, bad, off.
+- **A dot per item** (`dots`, `by`, `states`): one per machine (or any label), colored by your map of state
+  to level (a default covers running, idle, down and the like).
 - **Several values in one line** (`text`, `values`): `"{stored} / {cap} EU"`, each value formatted.
-- **`when`**: a panel or HUD element shows only while its query is true.
-- The view editor has fields for all of these, with the preview showing dots and templates; it fits tier 2.
-  Status rules and dot states are rows: a color chip to tap (good, warn, bad, off), a query or name, ▲ ▼ ✕.
+- **`when`**: a panel or HUD line shows only while its query is true.
+- **View editor:** fields for all of the above, with the preview showing dots and the filled-in text. Status
+  rules and dot states are rows: a color chip to tap, a query or name, ▲ ▼ ✕.
 - **A cursor in every text field:** tap to place it, ← → Home End to move it, Backspace and Delete, typing and
-  pasting at the cursor; ↑ ↓ move between fields. Long fields scroll to keep it in view.
+  pasting at the cursor; ↑ ↓ move between fields; long fields scroll to keep it in view.
 - **Dashboard pages:** up to 8 named pages of panels, with tabs under the header; made, renamed and deleted on
-  the EDIT page. A 0.2.0 board's panels become the page `Main`.
-- **Alert log** (LOG): alerts happening now, and the last 100 that ended with when and how long they lasted.
-- **HUD presets:** each player has named HUDs (up to 8), switched, copied, renamed and deleted in the HUD
-  editor. A HUD saved by 0.2.0 becomes the preset `main`.
+  the EDIT page.
+- **Alert log** (LOG): alerts happening now, and the last 100 that ended, with when and how long they lasted.
+- **HUD presets:** up to 8 named HUDs per player, switched, copied, renamed and deleted in the HUD editor.
+- **docs/views.md**, **docs/hud.md** and **docs/examples.md** (ready-made views and HUD layouts for PRISM and
+  LUMEN; the tests load every example and check what it shows).
+
+### Changed
+- **lens-setup** writes the HUD as blocks: a line per PRISM router (its backlog, with a status dot: red when a
+  machine is down, green while one runs) instead of a bar. An old one-corner `hud` is rewritten as a block
+  with the same content.
+- `lens-board.cfg` converts itself on first start: 0.2.0's panels become the page `Main`, each player's HUD
+  becomes the preset `main`.
+- Inside: one page module per screen (`hub/pages/`), one editor module per editor (`hub/editors/`), shared
+  drawing in `hub/frame`; `tests/test_layout.lua` checks dependencies point one way. The DATA page no longer
+  fills the hub's query cache.
+
+### Removed
+- Reading `lens-hud.cfg` (the 0.2.0 pre-release file, already moved into `lens-board.cfg` by 0.2.0).
 
 ### Fixed
 - The HUD editor drew neither its position controls nor its footer when a block's list ran past the bottom of
   the screen.
 - With no panels, the dashboard said "No panels in lens-hub.cfg." It now says to tap EDIT.
-
-### Changed
-- Inside: the screen is split into one page module per screen (`hub/pages/`) and one editor module per editor
-  (`hub/editors/`), with shared drawing in `hub/frame`; `tests/test_layout.lua` checks that dependencies point
-  one way. The DATA page no longer adds every query it shows to the hub's query cache.
 
 ## [0.2.0] - 2026-11-12
 

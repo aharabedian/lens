@@ -92,7 +92,7 @@ out = setup({
   "",            -- add panels for prism-ore: yes
   "",            -- HUD: yes
   "",            -- corner: top right
-  "",            -- prism-ore's bar: machines running
+  "",            -- a HUD line for prism-ore: yes
   "",            -- start on boot: yes
   "",            -- save: yes
 })
@@ -100,16 +100,20 @@ check(has("4242 is PRISM's control-screen port"), "PRISM's control port is refus
 check(has("found power-main (power)") and has("found prism-ore (prism)"), "lists the agents that answer the hello")
 check(has("add panels for prism-ore (ore backlog, ore machines, ore down)?"), "offers a PRISM router's standard panels")
 check(has("no standard panels for power agents yet"), "says when a kind of agent has no standard panels")
-check(has("1) machines running") and has("1) top right"), "HUD: a corner, and a bar per router")
-check(has("This will be saved to " .. CFG) and has("saved 3 panel(s) and 1 HUD bar(s)"), "shows the file, then saves it")
+check(has("1) top right") and has("a HUD line for ore (its backlog, and a dot: red when a machine is down"),
+  "HUD: a corner, and a line per router")
+check(has("This will be saved to " .. CFG) and has("saved 3 panel(s) and 1 HUD line(s)"), "shows the file, then saves it")
 local text = files.read(CFG)
 check(text:find("-- lens-hub.cfg - written by lens-setup", 1, true)
   and text:find("port = 4243,%s+%-%- the LENS port") ~= nil, "the file is commented")
 check(text:find([[value = 'sum(prism_backlog_items{node="prism-ore"})']], 1, true) ~= nil,
   "queries are written in single quotes, readable")
 local c = assert(config.load(CFG))
+local els = c.hud.blocks and c.hud.blocks[1].elements or {}
 check(c.node == "hub" and c.port == 4243 and c.token == nil and #c.panels == 3 and c.panels[2].of
-  and c.hud.anchor == "top-right" and #c.hud.bars == 1 and c.hud.bars[1].label == "ore", "the saved config loads and checks")
+  and c.hud.blocks[1].anchor == "top-right" and #els == 2 and els[1].label == "ore" and els[1].status[1][1] == "bad"
+  and els[2].kind == "alerts", "the saved config loads and checks: a block with the line, then the alerts")
+check(text:find("blocks = {", 1, true) and not text:find("bars =", 1, true), "the HUD is written as blocks")
 check(files.read(SHRC) == "echo hello\nprism\nlens-hub\n", "start on boot adds lens-hub to .shrc and keeps the rest")
 check(not files.exists(CFG .. ".bak"), "no .bak on the first save")
 
@@ -122,26 +126,27 @@ M.onPull = function(k)
   local ev = prevPull(k)
   if ev then return ev end
   if M.time > 8 then
-    seen.panel, seen.bar = M.find("ore backlog") ~= nil, G.find("1/1") ~= nil
+    seen.panel, seen.bar = M.find("ore backlog") ~= nil, G.find("10 items") ~= nil
     return { "interrupted" }
   end
 end
 local okHub = pcall(H.run, "lens-hub.lua", CFG)
 M.onPull = nil
-check(okHub and seen.panel and seen.bar, "lens-hub runs the saved config: panels and the HUD bar")
+check(okHub and seen.panel and seen.bar, "lens-hub runs the saved config: panels and the HUD line")
 
 ---------------------------------------------------------------- re-run: keeps everything, offers only new agents
 local edited = files.read(CFG):gsub("staleAfter = 3", "staleAfter = 5")
 f = assert(io.open(CFG, "w")); f:write(edited); f:close()
 world({ glasses = true, agents = { { "prism-ore", "prism", true }, { "prism-smelt", "prism", false } } })
-out = setup({ "", "", "", "", "", "", "", "", "", "" })   -- ..., smelt's bar: backlog, full at 10000, ...
+out = setup({ "", "", "", "", "", "", "", "", "" })   -- ..., smelt's HUD line: yes, ...
 check(has("[hub]") and has("[4243]") and not has("add panels for prism-ore"),
   "re-run: answers are the defaults, and agents with panels aren't offered again")
 check(has("add panels for prism-smelt (smelt backlog)?"), "a router without machines gets just a backlog panel")
-check(has("1) backlog (a bar against a size you pick)"), "and a backlog bar (no machines to count)")
+check(has("a HUD line for smelt (its backlog)?"), "and a HUD line without a dot (no machines to watch)")
 c = assert(config.load(CFG))
-check(#c.panels == 4 and c.staleAfter == 5 and #c.hud.bars == 2 and c.hud.bars[2].max == 10000
-  and c.hud.bars[2].badAbove == 9000, "new panels and bars are added; hand edits are kept")
+els = c.hud.blocks[1].elements
+check(#c.panels == 4 and c.staleAfter == 5 and #els == 3 and els[2].label == "smelt" and els[2].status == nil
+  and els[3].kind == "alerts", "new panels and lines are added (before the alerts); hand edits are kept")
 check(files.exists(CFG .. ".bak") and files.read(CFG .. ".bak"):find("staleAfter = 5", 1, true),
   "the previous file is kept as .bak")
 check(files.read(SHRC) == "echo hello\nprism\nlens-hub\n", ".shrc unchanged when start on boot didn't change")
@@ -152,8 +157,23 @@ out = setup({ "", "", "s3cret", "n", "", "" })
 check(has("no agents answered") and has("lensToken"), "no agents (the router has another secret): says how to connect them")
 check(has("no Glasses Terminal attached: skipped (hud settings are kept)"), "no glasses: the HUD step is skipped")
 c = assert(config.load(CFG))
-check(c.token == "s3cret" and #c.hud.bars == 2, "the secret is saved; HUD settings kept")
+check(c.token == "s3cret" and #c.hud.blocks[1].elements == 3, "the secret is saved; HUD settings kept")
 check(files.read(SHRC) == "echo hello\nprism\n", "start on boot off removes the lens-hub line")
+
+---------------------------------------------------------------- an old one-corner hud becomes blocks
+do
+  f = assert(io.open(CFG, "w"))
+  f:write([[return { hud = { anchor = "bottom-left", x = 10, y = 20, alerts = 2,
+    bars = { { label = "Ore", value = "sum(prism_backlog_items)", max = 10000 } } } }]])
+  f:close()
+  world({ glasses = true, agents = {} })
+  out = setup({ "", "", "", "", "", "", "", "" })     -- name, port, secret, HUD yes, corner kept, boot, save
+  c = assert(config.load(CFG))
+  local b = c.hud.blocks and c.hud.blocks[1]
+  check(b and b.anchor == "bottom-left" and b.x == 10 and b.y == -20 and b.elements[1].label == "Ore"
+    and b.elements[1].kind == "bar" and b.elements[2].count == 2 and c.hud.bars == nil,
+    "an old one-corner hud is rewritten as a block with the same bars, alerts and place")
+end
 
 ---------------------------------------------------------------- no network card
 world({ noModem = true })

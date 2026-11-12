@@ -15,8 +15,9 @@ local function str(s)
   return ("%q"):format(s)
 end
 
-local ORDER = { "id", "kind", "label", "level", "text", "value", "when", "of", "max", "percent", "unit", "format",
-  "color", "warnAbove", "badAbove", "warnBelow", "badBelow", "for", "count" }
+local ORDER = { "id", "anchor", "x", "y", "width", "kind", "label", "level", "text", "value", "when", "of", "max",
+  "percent", "unit", "format", "color", "warnAbove", "badAbove", "warnBelow", "badBelow", "values", "status", "dots",
+  "by", "states", "for", "count" }
 local RANK = {}
 for i, k in ipairs(ORDER) do RANK[k] = i end
 
@@ -77,25 +78,44 @@ function R.hub(c)
     local line = ("  %s = %s,"):format(s[1], v == nil and "nil" or R.lua(v))
     L[#L + 1] = ("%-40s -- %s"):format(line, s[2])
   end
-  list(L, "panels", c.panels or {}, "the dashboard's panels: docs/hub.md#panels")
+  list(L, "panels", c.panels or {}, "the views the dashboard starts with: docs/views.md")
 
   L[#L + 1] = ""
-  L[#L + 1] = "  -- the AR glasses HUD (a Glasses Terminal on this computer): docs/hub.md#ar-glasses-hud; false = off"
+  L[#L + 1] = "  -- everyone's default AR glasses HUD (Glasses Terminals on this computer): docs/hud.md; false = off"
   if c.hud == false then
     L[#L + 1] = "  hud = false,"
   else
     local hud = {}
-    for k, v in pairs(c.hud or {}) do if k ~= "bars" then hud[k] = v end end
+    for k, v in pairs(c.hud or {}) do if k ~= "bars" and k ~= "blocks" then hud[k] = v end end
     local head = R.lua(hud)
     L[#L + 1] = "  hud = " .. head:sub(1, -3) .. (head == "{}" and "{" or ",")
-    local bars = (c.hud or {}).bars or {}
-    if #bars == 0 then
-      L[#L + 1] = "    bars = {},"
-    else
+    local bars = (c.hud or {}).bars
+    if bars then                                -- an old one-corner hud, kept as it was
       L[#L + 1] = "    bars = {"
       for _, b in ipairs(bars) do L[#L + 1] = "      " .. R.lua(b) .. "," end
       L[#L + 1] = "    },"
     end
+    L[#L + 1] = "    blocks = {"
+    for _, b in ipairs((c.hud or {}).blocks or {}) do
+      local blk = {}
+      for k, v in pairs(b) do if k ~= "elements" then blk[k] = v end end
+      local bh = R.lua(blk)
+      L[#L + 1] = "      " .. bh:sub(1, -3) .. (bh == "{}" and "{" or ",") .. " elements = {"
+      for _, el in ipairs(b.elements or {}) do
+        local line = R.lua(el)
+        if el.status and #line > 110 then              -- long: a rule per line
+          local rest = {}
+          for k, v in pairs(el) do if k ~= "status" then rest[k] = v end end
+          L[#L + 1] = "        " .. R.lua(rest):sub(1, -3) .. ", status = {"
+          for _, r in ipairs(el.status) do L[#L + 1] = "          " .. R.lua(r) .. "," end
+          L[#L + 1] = "        } },"
+        else
+          L[#L + 1] = "        " .. line .. ","
+        end
+      end
+      L[#L + 1] = "      } },"
+    end
+    L[#L + 1] = "    },"
     L[#L + 1] = "  },"
   end
 

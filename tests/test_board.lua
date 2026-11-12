@@ -19,14 +19,13 @@ local cfg = assert(config.check({
   hud = { bars = { { label = "Net", value = "3" } } },
 }))
 local path = H.TMP .. "/lens-board.cfg"
-local legacy = H.TMP .. "/lens-hud.cfg"
-write(legacy, 'return { Bob = { scale = 1, blocks = { { anchor = "top", elements = { { kind = "bar", view = "Ore" } } } } } }')
-local b = board.new(path, cfg, legacy)
+local b = board.new(path, cfg)
 local views = b:views()
 check(#views == 3 and views[1].label == "Ore" and views[2].format == "percent" and views[3].label == "Net"
   and views[1].source == "config", "the library starts as lens-hub.cfg's panels, then its HUD views")
 check(#b:panels() == 2 and b:panels()[2].label == "Power", "the dashboard starts as lens-hub.cfg's panels")
-check(b:players().Bob and b:players().Bob.blocks[1].anchor == "top", "players' HUDs come over from lens-hud.cfg")
+check(b:setPlayers({ Bob = { scale = 1, blocks = { { anchor = "top", elements = { { kind = "bar", view = "Ore" } } } } } })
+  and b:players().Bob.blocks[1].anchor == "top", "players' HUDs are kept with the rest")
 
 check(b:setView({ label = "Net 5m", value = "lumen_net_5m_eut", format = "signed", color = "sign" }), "a new view")
 check(b:view("Net 5m").source == "screen" and not b:onDashboard("Net 5m"), "it's in the library, not on the dashboard yet")
@@ -45,7 +44,7 @@ b:setPlayers(b:players())
 check(b:setView({ label = "Net (5 min)", value = "lumen_net_5m_eut" }, "Net 5m") and b:onDashboard("Net (5 min)")
   and b:players().Bob.blocks[1].elements[2].view == "Net (5 min)", "renaming a view: the dashboard and HUDs follow")
 
-local again = board.new(path, cfg, legacy)
+local again = board.new(path, cfg)
 check(again:panels()[2].label == "Net (5 min)" and again:view("Ore").max == 10000 and again:players().Bob,
   "everything comes back after a restart")
 local text = files.read(path)
@@ -62,7 +61,7 @@ for _ = 1, 30 do b:undo() end
 check(not b.canUndo, "undo goes back as far as it remembers")
 
 -- A panel added to lens-hub.cfg later (lens-setup) shows up once; one taken off on the screen stays off.
-b = board.new(path, cfg, legacy)
+b = board.new(path, cfg)
 b:setPanels({ "Power" })
 local cfg2 = assert(config.check({ panels = { { label = "Ore", value = "1" }, { label = "Power", value = "2" },
   { label = "Smelt", value = "4" } } }))
