@@ -9,7 +9,7 @@ is its interface; this page is the map.
 |---|---|---|
 | `lens.metrics` | agents | Registry of gauges, counters, alerts and health for one node. Produces `describe` and `snapshot` bodies. Pure |
 | `lens.codec` | agents, hub | Envelope, splitting messages into packets of at most 7 KB, decoding with token and proto checks, joining parts back together. Pure apart from OpenOS `serialization` |
-| `lens.hub.store` | hub | Per node: descriptors, the latest series, counter rates, health, staleness. Asks for a `hello` when a snapshot's descriptors are missing |
+| `lens.hub.store` | hub | Per node: descriptors, the latest series, counter rates, health, staleness; every metric there is to query (DATA). Asks for a `hello` when a snapshot's descriptors are missing |
 | `lens.hub.query` | hub | The selector language ([queries.md](queries.md)), compiled to a function of a lookup |
 | `lens.hub.rules` | hub | The hub's own alerts: queries that must stay true for `for` seconds |
 | `lens.hub.alerts` | hub | One list of every active alert: dedupe by `node/id`, since, acks, ordering |
@@ -17,6 +17,7 @@ is its interface; this page is the map.
 | `lens.hub.dashboard` | hub | The screen: builds a frame of rows from a model, sends the GPU only the segments that changed, touch targets |
 | `lens.hub.format` | hub | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD. Pure |
 | `lens.hub.board` | hub | `/home/lens-board.cfg`, written only here: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's panels, players' HUDs; undo |
+| `lens.hub.explore` | hub | The DATA page's query building: a metric, label filters, a function -> query text; label values that still match. Pure |
 | `lens.hub.viewedit` | hub | A view being edited: fields as text, keys and pastes, back to a checked view. Pure |
 | `lens.hub.huds` | hub | One `lens.hub.hud` per Glasses Terminal, with its wearer's blocks (`/home/lens-hud.cfg`, written only here) or `hud` from the config; elements name views by label; the HUD editor's changes |
 | `lens.hub.hud` | hub | Draws HUD blocks (bar, text, alerts, gap elements, placed from nine anchors) as widgets on one Glasses Terminal; made once, setters called only on change, calls counted |

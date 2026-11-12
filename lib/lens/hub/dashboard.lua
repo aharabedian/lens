@@ -19,6 +19,9 @@
     viewEdit = nil | { player, old = label | nil (new), source, fields = { { key, name, kind, text }... },
                        focus = key, preview = { text, frac, level } | { error }, keyboard = bool, error,
                        closesIn }   one view's fields
+    data = nil | { player, metrics = store:metrics, page, metric = one of them | nil, labels = explore.labels,
+                   fn, funcs, query, value = text, series = { { labels, text, rate? }... }, canPanel, canHud,
+                   error, closesIn }   the DATA page
     editor = nil | { player, own, scale, blocks = n, block = i (being edited), anchor, x, y, width, step,
                      rows = { { index, kind, label?, count? }... } (the block's elements), hidden = { label... },
                      wearing = n, error = text | nil, closesIn = seconds }   the HUD editor, drawn instead
@@ -28,7 +31,9 @@
               hudMove(i, -1 | 1), hudAlerts(-1 | 1), hudGap, hudRemove(i), hudAnchor(anchor), hudNudge(dx, dy),
               hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1),
               edit(player), dashDone, dashUndo, dashMove(i, -1 | 1), dashRemove(i), dashAdd(label), dashView(label),
-              dashNew, viewFocus(key), viewCycle(key), viewSave, viewCancel, viewDelete }
+              dashNew, viewFocus(key), viewCycle(key), viewSave, viewCancel, viewDelete,
+              data(player), dataDone, dataPick(name, type), dataBack, dataPage(-1 | 1), dataFilter(label, value | nil),
+              dataFn(fn), dataPanel, dataHud }
 
   Layout: 120 columns or more puts nodes and alerts on the left and panels (in two columns when there's room)
   on the right; narrower screens stack panels, nodes and alerts. Lists that don't fit end with "+N more".
@@ -96,7 +101,6 @@ local function header(f, m, actions)
   f:text(8, 1, " " .. (HEALTH_TEXT[m.health] or "?") .. " ", C.bg, hc)
   local c = m.counts or { bad = 0, warn = 0 }
   local summary = ("%d node%s   alerts: %d bad, %d warn"):format(#m.nodes, #m.nodes == 1 and "" or "s", c.bad, c.warn)
-  f:text(17, 1, summary, C.text, C.panel)
   local right = ("%s · port %d · v%s"):format(m.node or "hub", m.port or 0, m.version or "?")
   local qx = f.w - 7
   local rx = qx
@@ -106,6 +110,12 @@ local function header(f, m, actions)
   end
   rx = rx - 7
   f:button(rx, 1, "EDIT", actions.edit, C.btnOn)
+  rx = rx - 7
+  f:button(rx, 1, "DATA", actions.data, C.btnOn)
+  if 17 + Gui.len(summary) + 1 > rx then
+    summary = ("%d node%s · %d bad %d warn"):format(#m.nodes, #m.nodes == 1 and "" or "s", c.bad, c.warn)
+  end
+  f:text(17, 1, Gui.fit(summary, math.max(1, rx - 18)), C.text, C.panel)
   local room = rx - 2 - (17 + Gui.len(summary) + 2)
   if Gui.len(right) > room then right = "v" .. (m.version or "?") end   -- narrow: just the version
   if Gui.len(right) <= room then f:text(rx - Gui.len(right) - 2, 1, right, C.dim, C.panel) end
@@ -237,6 +247,122 @@ local function viewEditor(f, m, actions)
     f:button(nx, y + 1, e.source == "edited" and "BACK TO lens-hub.cfg" or "DELETE VIEW", actions.viewDelete, C.line)
   end
   editorFooter(f, e)
+end
+
+---------------------------------------------------------------- the DATA page
+-- Buttons in rows from (x, y), wrapping at x + width. Returns the row after the last.
+local function chips(f, x, y, width, items)
+  local cx = x
+  for _, it in ipairs(items) do
+    local w = Gui.len(it[1]) + 3
+    if cx > x and cx + w > x + width then cx, y = x, y + 1 end
+    cx = f:button(cx, y, it[1], it[2], it[3])
+  end
+  return y + 1
+end
+
+local function metricList(f, d, actions, x, y, width, last)
+  heading(f, x, y, ("METRICS (%d)"):format(#d.metrics), width)
+  y = y + 1
+  if #d.metrics == 0 then
+    f:text(x, y, Gui.fit("Nothing yet: waiting for agents to report.", width), C.dim)
+    return
+  end
+  local per = math.max(1, last - y)                  -- leave a row for paging
+  local pages = math.max(1, (#d.metrics + per - 1) // per)
+  local page = math.min(d.page or 1, pages)
+  for i = (page - 1) * per + 1, math.min(#d.metrics, page * per) do
+    local mt = d.metrics[i]
+    local chosen = d.metric and d.metric.name == mt.name
+    local name, kind = mt.name, mt.type
+    f:text(x, y, Gui.fit(mt.name, width - 10), chosen and C.text or C.dim, chosen and C.sel or nil)
+    f:text(x + width - 9, y, Gui.rfit(tostring(mt.series), 3), C.dim)
+    f:text(x + width - 5, y, mt.type == "counter" and "ctr" or "", C.dim)
+    f:hit(x, y, x + width - 1, y, function(p) actions.dataPick(p, name, kind) end)
+    y = y + 1
+  end
+  if pages > 1 then
+    if page > 1 then f:button(x, last, "◀", function(p) actions.dataPage(p, -1) end) end
+    f:text(x + 5, last, ("page %d of %d"):format(page, pages), C.dim)
+    if page < pages then f:button(x + 19, last, "▶", function(p) actions.dataPage(p, 1) end) end
+  end
+end
+
+local function metricDetail(f, d, actions, x, y, width, last, narrow)
+  local mt = d.metric
+  if narrow then
+    f:button(x, y, "◀ METRICS", actions.dataBack, C.line)
+    y = y + 2
+  end
+  local title = mt.name .. (mt.unit and ("  (" .. mt.unit .. ")") or "") .. (mt.type == "counter" and "  counter" or "")
+  f:text(x, y, Gui.fit(title, width), C.accent)
+  y = y + 1
+  if mt.help then f:text(x, y, Gui.fit(mt.help, width), C.dim); y = y + 1 end
+  y = y + 1
+  for _, l in ipairs(d.labels) do
+    local label = l.label
+    f:text(x, y, Gui.fit(label, 9), C.dim)
+    local items = { { "any", function(p) actions.dataFilter(p, label, nil) end, l.chosen == nil and C.btnOn or C.btn } }
+    for _, v in ipairs(l.values) do
+      local value = v
+      items[#items + 1] = { Gui.fit(v, math.min(Gui.len(v), 20)), function(p) actions.dataFilter(p, label, value) end,
+        l.chosen == v and C.btnOn or C.btn }
+    end
+    y = chips(f, x + 10, y, width - 10, items)
+  end
+  f:text(x, y, "combine", C.dim)
+  local fns = {}
+  for _, fn in ipairs(d.funcs) do
+    local name = fn
+    fns[#fns + 1] = { fn, function(p) actions.dataFn(p, name) end, d.fn == fn and C.btnOn or C.btn }
+  end
+  y = chips(f, x + 10, y, width - 10, fns) + 1
+  f:text(x, y, "query", C.dim)
+  f:text(x + 10, y, Gui.fit(d.query, width - 10), C.text)
+  y = y + 1
+  f:text(x, y, "value", C.dim)
+  f:text(x + 10, y, Gui.fit(d.value, width - 10), C.accent)
+  y = y + 2
+  local bx = x
+  if d.canPanel then bx = f:button(bx, y, "SAVE AS PANEL", actions.dataPanel) end
+  if d.canHud then bx = f:button(bx, y, "ADD TO MY HUD", actions.dataHud) end
+  if not d.canPanel then
+    f:text(bx, y, Gui.fit(("Only %s can add panels."):format(table.concat(d.editors or {}, ", ")), x + width - bx), C.dim)
+  end
+  y = y + 2
+  heading(f, x, y, ("SERIES (%d)"):format(#d.series), width)
+  y = y + 1
+  for i, r in ipairs(d.series) do
+    if y > last then break end
+    if y == last and i < #d.series then
+      f:text(x, y, ("+%d more"):format(#d.series - i + 1), C.dim)
+      break
+    end
+    local value = r.text .. (r.rate and ("  " .. r.rate) or "")
+    f:text(x, y, Gui.fit(r.labels, width - Gui.len(value) - 1), C.dim)
+    f:text(x + width - Gui.len(value), y, value, C.text)
+    y = y + 1
+  end
+end
+
+local function dataPage(f, m, actions)
+  local d = m.data
+  editorHeader(f, "Data", { { "DONE", actions.dataDone } })
+  local last = f.h - 2
+  if f.w >= 100 then
+    local lw = 44
+    metricList(f, d, actions, 2, 3, lw, last)
+    if d.metric then
+      metricDetail(f, d, actions, 2 + lw + 3, 3, f.w - lw - 6, last, false)
+    else
+      f:text(2 + lw + 3, 4, "Tap a metric to see its series and build a query.", C.dim)
+    end
+  elseif d.metric then
+    metricDetail(f, d, actions, 2, 3, f.w - 2, last, true)
+  else
+    metricList(f, d, actions, 2, 3, f.w - 2, last)
+  end
+  editorFooter(f, d)
 end
 
 ---------------------------------------------------------------- the HUD editor
@@ -495,6 +621,9 @@ function Dash:build(m, actions)
     return f
   elseif m.viewEdit then
     viewEditor(f, m, actions)
+    return f
+  elseif m.data then
+    dataPage(f, m, actions)
     return f
   end
   header(f, m, actions)

@@ -13,6 +13,8 @@
       series = { name, value, labels, type, rate? }; labels include node = <node name>
       rate: for counters, per second since the previous snapshot of the same boot (nil on the first
       snapshot, after a restart, or when the value went down)
+  s:metrics(now) -> { { name, type, help?, unit?, series = n, nodes = { name... } }... }   every metric sent by
+      a node that isn't stale, sorted by name; help and unit from the first node describing it
   s:forget(name)
 
   Series exist while the node sends them: each snapshot replaces all of a node's series.
@@ -130,6 +132,37 @@ function Store:lookup(name, now)
     if not isStale(self, n, now) then
       for _, s in ipairs(n.byMetric[name] or {}) do out[#out + 1] = s end
     end
+  end
+  return out
+end
+
+function Store:metrics(now)
+  local by = {}
+  local names = {}
+  for _, n in pairs(self.byName) do
+    if not isStale(self, n, now) then
+      for name, list in pairs(n.byMetric) do
+        local m = by[name]
+        if not m then
+          m = { name = name, series = 0, nodes = {} }
+          by[name] = m
+          names[#names + 1] = name
+        end
+        local d = (n.metrics or {})[name] or {}
+        m.type = m.type or d.type
+        m.help, m.unit = m.help or d.help, m.unit or d.unit
+        m.series = m.series + #list
+        m.nodes[#m.nodes + 1] = n.name
+      end
+    end
+  end
+  table.sort(names)
+  local out = {}
+  for _, name in ipairs(names) do
+    local m = by[name]
+    m.type = m.type or "gauge"
+    table.sort(m.nodes)
+    out[#out + 1] = m
   end
   return out
 end

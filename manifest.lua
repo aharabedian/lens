@@ -20,6 +20,7 @@ return {
   { "lib/lens/hub/format.lua", "lib/lens/hub/format.lua" },
   { "lib/lens/hub/board.lua", "lib/lens/hub/board.lua" },
   { "lib/lens/hub/viewedit.lua", "lib/lens/hub/viewedit.lua" },
+  { "lib/lens/hub/explore.lua", "lib/lens/hub/explore.lua" },
   { "lib/lens/hub/query.lua", "lib/lens/hub/query.lua" },
   { "lib/lens/hub/rules.lua", "lib/lens/hub/rules.lua" },
   { "lib/lens/hub/store.lua", "lib/lens/hub/store.lua" },
