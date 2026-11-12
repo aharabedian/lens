@@ -7,6 +7,8 @@
   M.onPull(n)            called on every event.pullMultiple; return an event table to deliver it, or nil
                          to let time pass: pullMultiple(timeout) with no event moves M.time by `timeout`
   M.modem                the modem component.modem returns (set it to a mocks/net.lua endpoint)
+  M.components[addr] = { type, methods = { [name] = doc string } }
+                         components for component.list / type / methods / doc / proxy (lens-discover)
   M.resize(w, h)         a blank w x h screen (160x50 = tier 3, 80x25 = tier 2)
   M.row(y), M.find(text, minY, minX), M.dump(path)   read what the GPU drew
   M.fgAt(x, y), M.bgAt(x, y)
@@ -147,8 +149,37 @@ function M.dump(path)
 end
 
 ---------------------------------------------------------------- component
+M.components = {}
 local component = {
   gpu = gpu,
+  -- Like OpenOS: a callable table address -> type; filter matches part of the type unless exact.
+  list = function(filter, exact)
+    local found, keys = {}, {}
+    for addr, c in pairs(M.components) do
+      if not filter or (exact and c.type == filter) or (not exact and c.type:find(filter, 1, true)) then
+        found[addr] = c.type
+        keys[#keys + 1] = addr
+      end
+    end
+    table.sort(keys)
+    local i = 0
+    return setmetatable(found, { __call = function()
+      i = i + 1
+      if keys[i] then return keys[i], found[keys[i]] end
+    end })
+  end,
+  type = function(addr) return M.components[addr] and M.components[addr].type end,
+  methods = function(addr)
+    local c = M.components[addr]
+    if not c then return nil, "no such component" end
+    local out = {}
+    for name in pairs(c.methods or {}) do out[name] = true end
+    return out
+  end,
+  doc = function(addr, method)
+    local c = M.components[addr]
+    return c and c.methods and c.methods[method] or nil
+  end,
   isAvailable = function(t)
     if t == "gpu" or t == "screen" then return true end
     if t == "modem" then return M.modem ~= nil end

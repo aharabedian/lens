@@ -16,6 +16,7 @@ is its interface; this page is the map.
 | `lens.hub.config` | hub | `/home/lens-hub.cfg`: defaults and checks, with readable errors ([hub.md](hub.md)) |
 | `lens.hub.dashboard` | hub | The screen: builds a frame of rows from a model, sends the GPU only the segments that changed, touch targets |
 | `lens.hub.app` | hub | The program's state: hub core + panels (values, history) + dashboard; reacts to packets, touches and ticks |
+| `lens.discover` | lens-discover | Components, their methods and docs as report lines (pure over OpenOS `component`) |
 | `lens.gui` | hub | GPU primitives and the palette (adapted from PRISM's) |
 | `lens.hub.core` | hub | The above together, without screens or an event loop: `receive(data, from, now)` → replies, `tick(now)` → alert changes, `query`, `health` |
 
@@ -36,6 +37,7 @@ local enc = codec.encoder{ node = cfg.node, role = "power", boot = codec.newBoot
 | Program (`src/`) | Does |
 |---|---|
 | `lens-hub.lua` | The hub: the event loop around `lens.hub.app` (packets, touches, a tick a second) |
+| `lens-discover.lua` | Lists this computer's components with every method and doc string, into `/home/lens-discover.txt`: for designing against a mod's real API (`lens.discover`) |
 | `lens-update.lua` | Installs and updates from GitHub what `manifest.lua` lists. Self-contained: it installs the modules |
 
 Each program but `lens-update` starts with the same three lines as PRISM's: add `/home/lib/?.lua` to the path,
@@ -49,6 +51,7 @@ forget cached `lens.*` modules, and say "run lens-update" if they're missing.
 | `test_hub.lua` | `store`, `query`, `rules`, `alerts` on their own |
 | `test_net.lua` | Agents and the hub over `mocks/net.lua`: discovery, parts, lost packets, staleness, restarts, tokens, rules |
 | `test_dashboard.lua` | `lens-hub` end to end on the mock screen with an agent on `mocks/net.lua`: panels, alerts and acks by touch, stale nodes, beeps, GPU calls per quiet second, tier 2, config errors |
+| `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering |
 | `test_update.lua` | `lens-update`: releases, main, branches, forks, keeping `lens-hub.cfg`, refusing broken downloads |
 | `test_layout.lua` | `manifest.lua` lists every file; one version |
 | `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, modem), `unicode`, `filesystem`, `internet`, and a screen tests can read |

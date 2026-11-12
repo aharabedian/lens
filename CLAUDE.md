@@ -38,7 +38,7 @@ make screens                      # render the screens tests draw to PNGs (Pytho
 ## Layout
 
 ```
-src/        programs: lens-hub.lua, lens-update.lua (self-contained)
+src/        programs: lens-hub.lua, lens-discover.lua, lens-update.lua (self-contained)
 lib/lens/   modules: metrics, codec (agents + hub), gui, hub/
 manifest.lua  every file lens-update installs
 config/     lens-hub.example.cfg

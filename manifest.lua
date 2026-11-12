@@ -2,9 +2,11 @@
 -- tests/test_layout.lua checks that every file in src/ and lib/ is listed, so a new module only needs a line here.
 -- Programs go to bin/, modules to lib/ at the same path.
 return {
+  { "src/lens-discover.lua", "bin/lens-discover.lua" },
   { "src/lens-hub.lua", "bin/lens-hub.lua" },
   { "src/lens-update.lua", "bin/lens-update.lua" },
   { "lib/lens/codec.lua", "lib/lens/codec.lua" },
+  { "lib/lens/discover.lua", "lib/lens/discover.lua" },
   { "lib/lens/gui.lua", "lib/lens/gui.lua" },
   { "lib/lens/hub/alerts.lua", "lib/lens/hub/alerts.lua" },
   { "lib/lens/hub/app.lua", "lib/lens/hub/app.lua" },
