@@ -7,6 +7,10 @@
     action: "enter" for Enter, "tab" for Tab, "up" / "down" for ↑ ↓, else nil (the caller decides).
   textfield.paste(text, cursor, s, max?) -> text, cursor   a clipboard event: inserted at the cursor, line breaks
                                            and tabs as spaces
+  A field as a table, for one being typed into (the editors' renames):
+  textfield.new(text, max?) -> field       { text, cursor (at the end), max }
+  textfield.type(field, char, code) -> action   textfield.key on it, in place
+  textfield.put(field, s)                  textfield.paste on it, in place
   textfield.KEYS                           the OpenComputers key codes it knows
 ]]
 
@@ -65,5 +69,15 @@ function textfield.paste(text, cursor, s, max)
   if type(s) ~= "string" then return text, cursor end
   return insert(text, cursor, (s:gsub("[\r\n\t]+", " ")), max)
 end
+
+function textfield.new(text, max) return { text = text or "", cursor = nil, max = max } end
+
+function textfield.type(field, char, code)
+  local action
+  field.text, field.cursor, action = textfield.key(field.text, field.cursor, char, code, field.max)
+  return action
+end
+
+function textfield.put(field, s) field.text, field.cursor = textfield.paste(field.text, field.cursor, s, field.max) end
 
 return textfield

@@ -45,13 +45,13 @@ Details: PRISM's `docs/configuration.md`, "Reporting to LENS".
    |---|---|
    | 1. Hub | Its name, port and secret |
    | 2. Agents and panels | Says hello on the port and lists the agents that answer; for each PRISM router, offers its panels: backlog, machines running, machines down |
-   | 3. AR glasses HUD | With a Glasses Terminal attached: show a HUD, which corner, and a bar for each router (machines running, or backlog against a size you pick) |
+   | 3. AR glasses HUD | With a Glasses Terminal attached: show a HUD, which corner, and a line for each router (its backlog, with a dot: red when a machine is down, green while one runs) |
    | 4. Start on boot | Adds `lens-hub` to `/home/.shrc` (other lines are kept) |
 
    It shows the file before saving `/home/lens-hub.cfg` (the old one is kept as `lens-hub.cfg.bak`).
 3. Run **`lens-hub`** (or reboot, with start on boot).
 
-Run `lens-setup` again whenever you add an agent: your settings are the defaults, panels and bars you have
+Run `lens-setup` again whenever you add an agent: your settings are the defaults, panels and HUD lines you have
 are kept, and only new agents are offered. Anything else (rules, thresholds, `nonCritical`) is edited in
 `/home/lens-hub.cfg`: [hub.md](hub.md) has every option. Hand edits survive a `lens-setup` run; comments don't.
 

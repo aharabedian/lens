@@ -65,19 +65,11 @@ end
 
 local function within(v, lim) return type(v) == "number" and v >= lim[1] and v <= lim[2] end
 
--- Settings read from the file (or edited): only well-formed parts survive. The first editor's form
--- (anchor, bars = { labels }, width, alerts) becomes one block.
+-- Settings read from the board (or edited): only well-formed parts survive.
 local function clean(s)
   if type(s) ~= "table" then return nil end
   local out = { scale = within(s.scale, huds.LIMITS.scale) and s.scale or nil, blocks = {} }
   local blocks = s.blocks
-  if blocks == nil and (s.bars or s.anchor) then
-    local anchor = ANCHOR[s.anchor] and s.anchor or "top-right"
-    local elements = {}
-    for _, b in ipairs(type(s.bars) == "table" and s.bars or {}) do elements[#elements + 1] = { kind = "bar", view = b } end
-    elements[#elements + 1] = { kind = "alerts", count = within(s.alerts, huds.LIMITS.count) and s.alerts or 3 }
-    blocks = { { anchor = anchor, width = s.width, elements = elements } }
-  end
   if type(blocks) ~= "table" then return nil end
   for _, b in ipairs(blocks) do
     if type(b) == "table" and #out.blocks < huds.LIMITS.blocks[2] then
@@ -103,9 +95,8 @@ local function clean(s)
   return out
 end
 
--- A player's record: { active = name, presets = { { name, scale?, blocks? }... } }. An older record (one HUD:
--- scale and blocks, or the first editor's form) becomes one preset, "main". A preset without blocks follows
--- the defaults.
+-- A player's record: { active = name, presets = { { name, scale?, blocks? }... } }. A 0.2.0 record (one HUD:
+-- scale and blocks) becomes one preset, "main". A preset without blocks follows the defaults.
 local function cleanRecord(r)
   if type(r) ~= "table" then return nil end
   local out = { presets = {} }
@@ -115,7 +106,7 @@ local function cleanRecord(r)
       if type(p) == "table" and type(p.name) == "string" and p.name ~= "" and not seen[p.name]
         and #out.presets < huds.MAX_PRESETS then
         seen[p.name] = true
-        local c = (p.blocks or p.bars or p.anchor) and clean(p) or nil
+        local c = p.blocks and clean(p) or nil
         out.presets[#out.presets + 1] = { name = p.name, settings = c }
       end
     end

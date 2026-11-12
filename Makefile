@@ -39,6 +39,7 @@ docs-images: screens
 	cp build/screens/data.png docs/images/data.png
 	cp build/screens/elements.png docs/images/elements.png
 	cp build/screens/pages.png docs/images/pages.png
+	cp build/screens/examples.png docs/images/examples.png
 	cp build/screens/log.png docs/images/log.png
 	cp build/screens/dashboard-portrait.png docs/images/dashboard-portrait.png
 

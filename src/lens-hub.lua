@@ -42,7 +42,7 @@ local terminals = {}
 for address in component.list("glasses", true) do terminals[address] = component.proxy(address) end
 local dir = path:match("^(.*)/[^/]*$") or "/home"
 local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, terminals = terminals,
-  boardPath = dir .. "/lens-board.cfg", hudPath = dir .. "/lens-hud.cfg",
+  boardPath = dir .. "/lens-board.cfg",
   keyboard = component.isAvailable("keyboard"), beep = computer.beep })
 if not app then error(path .. ": " .. tostring(why), 0) end
 

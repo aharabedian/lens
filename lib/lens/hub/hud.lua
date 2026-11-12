@@ -6,10 +6,9 @@
                     glasses_on; default 854 x 480) and model.hudBlocks = { { anchor, x, y, width, items }... },
                     items evaluated: { kind = "bar" | "text", label, text, frac, level, dots? } | { kind =
                     "alerts", count } | { kind = "gap" }. An item with dots shows its label, a colored dot
-                    per group and its value (when it has one), whatever its kind. Without hudBlocks: one
-                    block placed as opts.blocks[1], with model.hudBars then the alerts. Widgets are made on
-                    first use; afterwards a setter is called only when its value changed, because every call
-                    is a component call.
+                    per group and its value (when it has one), whatever its kind. Widgets are made on first
+                    use; afterwards a setter is called only when its value changed, because every call is a
+                    component call.
   opts              scale, alpha, colors (lens.hub.config's hud)
   hud.place(block, w, h, screen) -> x, y   a block's top left: its anchor (one of nine) plus x, y (right and
                     down positive), kept on screen
@@ -233,19 +232,7 @@ function Hud:block(i, b, m, unacked, used)
 end
 
 function Hud:draw(m)
-  local o = self.opts
-  local blocks = m.hudBlocks
-  if not blocks then
-    -- One block from the opts' first block (or the old opts), with m.hudBars then the alerts.
-    local first = (o.blocks and o.blocks[1]) or {}
-    local items = {}
-    for _, bar in ipairs(m.hudBars or {}) do
-      local it = setmetatable({ kind = "bar" }, { __index = bar })
-      items[#items + 1] = it
-    end
-    items[#items + 1] = { kind = "alerts", count = o.alerts or 3 }
-    blocks = { { anchor = first.anchor or o.anchor, x = first.x, y = first.y, width = first.width or o.width, items = items } }
-  end
+  local blocks = m.hudBlocks or {}
   local unacked = unackedOf(m)
   local used = {}
   for i, b in ipairs(blocks) do self:block(i, b, m, unacked, used) end

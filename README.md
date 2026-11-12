@@ -58,7 +58,10 @@ Details: **[docs/setup.md](docs/setup.md)**.
 | Doc | What's in it |
 |---|---|
 | [docs/setup.md](docs/setup.md) | Hardware, install, connecting agents, first run, updating |
-| [docs/hub.md](docs/hub.md) | The dashboard, DATA, EDIT, the AR glasses HUD, and every `lens-hub.cfg` option |
+| [docs/hub.md](docs/hub.md) | The dashboard and its pages (LOG, DATA, EDIT), and every `lens-hub.cfg` option |
+| [docs/views.md](docs/views.md) | What a panel or HUD line can show: formats, colors, status dots, a dot per machine, several values, `when`; the view editor |
+| [docs/hud.md](docs/hud.md) | The AR glasses HUD: blocks, a HUD per player, presets, the HUD editor |
+| [docs/examples.md](docs/examples.md) | Ready-made views and HUD layouts for PRISM and LUMEN |
 | [docs/queries.md](docs/queries.md) | The query language for panels, bars and rules |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Common problems and fixes |
 | [docs/telemetry.md](docs/telemetry.md) | The `lens/1` protocol, for writing an agent |

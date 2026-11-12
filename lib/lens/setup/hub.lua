@@ -4,11 +4,14 @@
     1. Hub: name, port (not PRISM's 4242), secret
     2. Agents and panels: says hello and lists the agents that answer; offers each PRISM router's standard
        panels (backlog, machines running, machines down), skipping panels already there
-    3. AR glasses HUD (when a Glasses Terminal is attached): the corner, and a bar per PRISM router
+    3. AR glasses HUD (when a Glasses Terminal is attached): the first block's corner, and a line per PRISM
+       router (its backlog, with a status dot when it monitors machines). An old one-corner hud is rewritten as
+       blocks with the same content
     4. Start on boot: a lens-hub line in .shrc (other lines are kept)
     Then shows the file and saves it after a yes, keeping the old one as .bak. Settings, panels, bars and
     rules it doesn't ask about are kept. Raises input.CANCEL on Ctrl+D (nothing saved).
   panelsFor(node, hasMachines) -> panels      the standard panels for a PRISM router
+  hudLineFor(node, hasMachines) -> element    the HUD line for one
   discover(modem, port, token, seconds) -> { { node, role, machines } }   who answers a hello
 ]]
 
@@ -118,6 +121,28 @@ local function agentsStep(c, env, found)
   end
 end
 
+-- An old hud (one corner, bars, then alerts) as blocks, with the same content; scale, alpha and colors stay.
+local function toBlocks(h)
+  if h.blocks then return end
+  local old = { anchor = h.anchor or "top-right", x = h.x or 4, y = h.y or 4, alerts = h.alerts or 3,
+    bars = h.bars or {}, width = h.width or 160 }
+  if config.legacyBlocks(old) then return end         -- not convertible: left as it is
+  h.blocks = old.blocks
+  h.anchor, h.x, h.y, h.alerts, h.bars, h.width = nil, nil, nil, nil, nil, nil
+end
+
+function S.hudLineFor(node, hasMachines)
+  local sel = ('node="%s"'):format(node)
+  local line = { kind = "text", label = short(node), value = ("sum(prism_backlog_items{%s})"):format(sel), unit = "items" }
+  if hasMachines then
+    line.status = {
+      { "bad", ('sum(prism_machine_state{%s, state="down"}) > 0'):format(sel) },
+      { "good", ('sum(prism_machine_state{%s, state="running"}) > 0'):format(sel) },
+    }
+  end
+  return line
+end
+
 local function hudStep(c, env, found)
   input.header("AR glasses HUD")
   if not env.glasses then
@@ -127,30 +152,32 @@ local function hudStep(c, env, found)
   if not input.yes("  show a HUD in glasses linked to this terminal?", c.hud ~= false) then c.hud = false; return end
   if c.hud == false or c.hud == nil then c.hud = {} end
   local h = c.hud
-  if h.blocks then
-    print("  hud uses blocks: change it in lens-hub.cfg, or each player on the dashboard (tap HUD)")
-    return
+  toBlocks(h)
+  h.blocks = h.blocks or {}
+  if #h.blocks == 0 then
+    local x, y = config.offset("top-right")
+    h.blocks[1] = { anchor = "top-right", x = x, y = y, width = 160, elements = { { kind = "alerts", count = 3 } } }
   end
+  local b = h.blocks[1]
+  b.elements = b.elements or {}
   local current = 1
-  for i, corner in ipairs(CORNERS) do if corner == (h.anchor or "top-right") then current = i end end
-  h.anchor = CORNERS[input.choose({ "top right", "top left", "bottom right", "bottom left" }, current)]
-  h.bars = h.bars or {}
+  for i, corner in ipairs(CORNERS) do if corner == (b.anchor or "top-right") then current = i end end
+  local corner = CORNERS[input.choose({ "top right", "top left", "bottom right", "bottom left" }, current)]
+  if corner ~= b.anchor then b.anchor, b.x, b.y = corner, config.offset(corner) end
   local have = {}
-  for _, b in ipairs(h.bars) do have[b.label] = true end
+  for _, blk in ipairs(h.blocks) do
+    for _, el in ipairs(blk.elements or {}) do if el.label then have[el.label] = true end end
+  end
   for _, n in ipairs(found) do
     local label = short(n.node)
     if n.role == "prism" and not have[label] then
-      local choices = { "backlog (a bar against a size you pick)", "none" }
-      if n.machines then table.insert(choices, 1, "machines running (a bar of running / all)") end
-      local pick = choices[input.choose(choices, 1)]
-      local sel = ('node="%s"'):format(n.node)
-      if pick:find("^machines") then
-        h.bars[#h.bars + 1] = { label = label, value = ('sum(prism_machine_state{%s, state="running"})'):format(sel),
-          of = ('count(prism_machine_state{%s, state="running"})'):format(sel) }
-      elseif pick:find("^backlog") then
-        local full = input.number("  backlog that counts as a full bar", 10000, 1, 2 ^ 53)
-        h.bars[#h.bars + 1] = { label = label, value = ("sum(prism_backlog_items{%s})"):format(sel), max = full,
-          warnAbove = math.floor(full * 0.6), badAbove = math.floor(full * 0.9) }
+      local what = n.machines and "its backlog, and a dot: red when a machine is down, green while one runs"
+        or "its backlog"
+      if input.yes(("  a HUD line for %s (%s)?"):format(label, what), true) then
+        -- Before the alerts, so they stay at the bottom of the block.
+        local at = #b.elements + 1
+        for i, el in ipairs(b.elements) do if el.kind == "alerts" and at > i then at = i end end
+        table.insert(b.elements, at, S.hudLineFor(n.node, n.machines))
       end
     end
   end
@@ -212,8 +239,12 @@ function S.run(env)
     ok, saveErr = files.writeAtomic(env.shrcPath, shrc)
     if not ok then error("can't write " .. env.shrcPath .. ": " .. tostring(saveErr), 0) end
   end
+  local lines = 0
+  for _, blk in ipairs(type(c.hud) == "table" and c.hud.blocks or {}) do
+    for _, el in ipairs(blk.elements or {}) do if el.kind ~= "alerts" and el.kind ~= "gap" then lines = lines + 1 end end
+  end
   print(("saved %d panel(s)%s. Start lens-hub (or restart it) to use it."):format(#(c.panels or {}),
-    c.hud and c.hud.bars and #c.hud.bars > 0 and (" and " .. #c.hud.bars .. " HUD bar(s)") or ""))
+    lines > 0 and (" and " .. lines .. " HUD line(s)") or ""))
   return true
 end
 

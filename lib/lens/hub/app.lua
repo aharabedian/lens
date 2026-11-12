@@ -1,12 +1,12 @@
 --[[ lens.hub.app: the hub program's state and reactions, without the event loop (src/lens-hub.lua has that).
 
-  local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, terminals?, boardPath?, hudPath?,
-                                                        keyboard?, beep?, boot? })
+  local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, terminals?, boardPath?, keyboard?,
+                                                        beep?, boot? })
     cfg: lens.hub.config output. err when the hub core refuses the config (bad rules).
     terminals: { [address] = Glasses Terminal }; each shows its wearer's HUD every tick (lens.hub.huds) unless
     cfg.hud is false. A HUD failure is shown on the dashboard (model.hudError) and never stops the hub.
-    boardPath: lens-board.cfg (lens.hub.board: views, the dashboard's panels, players' HUDs); hudPath: an older
-    per-player file, read once into the board. keyboard: whether one is attached (fields can be typed).
+    boardPath: lens-board.cfg (lens.hub.board: views, the dashboard's pages, players' HUDs). keyboard: whether
+    one is attached (fields can be typed).
   app:start(now)                         open the port, broadcast hello, draw
   app:tick(now)                          about once a second: alerts, panel samples, beep, redraw
   app:onModem(from, port, data, now)     feed a packet to the hub core, send its replies
@@ -67,7 +67,7 @@ function app.new(cfg, env)
   local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0, now = 0,
     page = 1 }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
-  self.board = board.new(env.boardPath, cfg, env.hudPath)
+  self.board = board.new(env.boardPath, cfg)
   if env.terminals and next(env.terminals) and cfg.hud ~= false then
     self.huds = huds.new(env.terminals, cfg.hud, self.board)
   end
