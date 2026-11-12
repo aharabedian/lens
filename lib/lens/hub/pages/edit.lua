@@ -21,7 +21,7 @@ local function pages(f, e, actions)
   local items = {}
   for i, name in ipairs(e.pages) do
     if e.renaming and i == e.page then
-      items[#items + 1] = { e.renaming .. "▏", nil, C.sel }
+      items[#items + 1] = { frame.withCursor(e.renaming, e.cursor), nil, C.sel }
     else
       items[#items + 1] = { name, function(p) actions.editPage(p, i) end, i == e.page and C.btnOn or C.btn }
     end

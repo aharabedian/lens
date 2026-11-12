@@ -141,7 +141,8 @@ local steps = {
   end,
   function()
     local _, fy = M.find("Format", 3)
-    st.typed = M.find("Net 5m", 3) and not M.find("Net 5mNet 5m", 3) and M.find("lumen_net_5m_eut▏", 3)
+    local qx, qy = M.find("lumen_net_5m_eut", 3)
+    st.typed = M.find("Net 5m", 3) and not M.find("Net 5mNet 5m", 3) and qx and M.bgAt(qx + 16, qy) == 0xe6e9ec  -- the cursor cell
       and M.find("-2.4k", fy)
     st.typedOnce = true
     return { "touch", "screen", 16, fy, 0, "Aaron" }   -- format: auto -> percent

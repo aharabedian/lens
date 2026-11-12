@@ -305,7 +305,7 @@ do
   viewdraft.key(d, string.byte("t"), 0)
   viewdraft.cycle(d, "format"); viewdraft.cycle(d, "format"); viewdraft.cycle(d, "format")
   viewdraft.cycle(d, "color")
-  check(d.fields.format == "signed" and d.fields.color == "sign", "choices cycle")
+  check(d.choices.format == "signed" and d.choices.color == "sign", "choices cycle")
   viewdraft.focus(d, "warnBelow")
   viewdraft.key(d, string.byte("x"), 0)
   local v, verr = viewdraft.view(d)
@@ -316,7 +316,7 @@ do
   check(v and v.label == "Net" and v.value == "lumen_net_5m_eut" and v.format == "signed" and v.color == "sign"
     and v.warnBelow == -100 and v.unit == nil and v.max == nil, "a view: empty fields left out, defaults not written")
   d = viewdraft.draft({ label = "Power", value = "x / y", format = "percent", badBelow = 0.1 })
-  check(d.fields.badBelow == "0.1" and d.fields.format == "percent" and d.fields.color == "thresholds", "a view's fields as text")
+  check(d.fields.badBelow == "0.1" and d.choices.format == "percent" and d.choices.color == "thresholds", "a view's fields as text")
   d.fields.max, d.fields.of = "10", "y"
   check(select(2, viewdraft.view(d)) == "use Bar max or Bar of, not both", "max or of")
 end
@@ -380,7 +380,7 @@ do
   check(v and v.values.s == "sum(lumen_stored_eu)" and v.values.c == "sum(lumen_capacity_eu)" and v.value == nil,
     "and read back")
   d.fields.values = "s sum(x)"
-  check(select(2, viewdraft.view(d)):find("name=value", 1, true), "a malformed values line says how to write it")
+  check(select(2, viewdraft.view(d)):find("name=query", 1, true), "a malformed values line says how to write it")
 end
 
 ---------------------------------------------------------------- alert history
@@ -438,15 +438,65 @@ do
   view.color = nil
 
   local d = viewdraft.draft(view)
-  check(d.fields.status == "bad: sum(down) > 0; warn: $value > 50000; good: sum(running) > 0",
-    "status typed as one line, in order")
+  check(#d.rules == 3 and d.rules[2][1] == "warn" and d.rules[2][2] == "$value > 50000", "the draft: rules as rows, in order")
   local back = viewdraft.view(d)
-  check(back and back.status[2][1] == "warn" and back.status[2][2] == "$value > 50000", "and read back in order")
-  d.fields.status = "bad sum(x)"
-  check(select(2, viewdraft.view(d)):find("level: query", 1, true), "a malformed status line says how to write it")
-  d.fields.status, d.fields.states = "", "running=good; idle=off"
+  check(back and back.status[2][1] == "warn" and back.status[2][2] == "$value > 50000", "and back to rules")
+  viewdraft.ruleLevel(d, 2)
+  check(d.rules[2][1] == "bad", "a rule's color cycles good, warn, bad, off")
+  viewdraft.moveRule(d, 2, -1)
+  check(d.rules[1][2] == "$value > 50000" and d.rules[2][2] == "sum(down) > 0", "rules move")
+  viewdraft.removeRule(d, 1)
+  viewdraft.addRule(d)
+  check(#d.rules == 3 and d.rules[3][1] == "good" and d.focus == "rule:3", "+ RULE: a new row, typed into")
+  for _, c in utf8.codes("sum(x) > 1") do viewdraft.key(d, c, 0) end
+  check(d.rules[3][2] == "sum(x) > 1", "typing fills the rule's query")
+  viewdraft.addRule(d)                                    -- left empty: dropped
   back = viewdraft.view(d)
-  check(back and back.states.running == "good" and back.states.idle == "off", "dot states typed as state=level")
+  check(#back.status == 3 and back.status[3][2] == "sum(x) > 1", "empty rules are left out")
+  viewdraft.addState(d)
+  for _, c in utf8.codes("idle") do viewdraft.key(d, c, 0) end
+  viewdraft.stateLevel(d, 1); viewdraft.stateLevel(d, 1); viewdraft.stateLevel(d, 1)
+  back = viewdraft.view(d)
+  check(back.states and back.states.idle == "off", "dot states: a name and a color per row")
+  local dd = viewdraft.draft({ label = "x", dots = "m", states = { running = "good", down = "bad" } })
+  check(#dd.states == 2 and dd.states[1][1] == "down" and dd.states[2][2] == "good", "states come in as rows, by name")
+  viewdraft.removeState(dd, 1)
+  check(viewdraft.view(dd).states.down == nil, "and go")
+end
+
+---------------------------------------------------------------- typing with a cursor
+do
+  local textfield = require("lens.hub.textfield")
+  local K = textfield.KEYS
+  local t, c = "sum(lumen_stored)", nil
+  t, c = textfield.key(t, c, 0, K.left)
+  t, c = textfield.key(t, c, 0, K.left)
+  check(c == 15, "← moves the cursor back")
+  for _, ch in utf8.codes("_eu") do t, c = textfield.key(t, c, ch, 0) end
+  check(t == "sum(lumen_store_eud)" and c == 18, "typing inserts at the cursor")
+  t, c = textfield.key("sum(lumen_storedd)", 17, 0, K.back)
+  check(t == "sum(lumen_stored)" and c == 16, "Backspace deletes before the cursor")
+  t, c = textfield.key("xsum(a)", 0, 0, K.delete)
+  check(t == "sum(a)" and c == 0, "Delete deletes after it")
+  c = select(2, textfield.key("abc", 1, 0, K["end"]))
+  check(c == 3 and select(2, textfield.key("abc", 2, 0, K.home)) == 0, "Home and End")
+  c = select(2, textfield.key("abc", 3, 0, K.right))
+  check(c == 3 and select(2, textfield.key("abc", 0, 0, K.left)) == 0, "← → stop at the ends")
+  t, c = textfield.paste("a d", 2, "b c\n")
+  check(t == "a b c d" and c == 6, "a paste goes in at the cursor")
+  t, c = textfield.key("abcd", 2, string.byte("x"), 0, 4)
+  check(t == "abcd" and c == 2, "max: no more characters")
+  local frame = require("lens.hub.frame")
+  check(frame.window(5, 5, 10) == 1 and frame.window(30, 30, 10) == 22 and frame.window(30, 0, 10) == 1
+    and frame.window(30, 15, 10) == 7, "a long field scrolls so the cursor shows")
+  local d = viewdraft.draft({ label = "Net 5m", value = "x" })
+  viewdraft.focus(d, "label", 3)
+  viewdraft.key(d, string.byte("!"), 0)
+  check(d.fields.label == "Net! 5m" and d.cursor == 4, "the view editor types at the cursor")
+  viewdraft.key(d, 0, K.down)
+  check(d.focus == "value" and d.cursor == 1, "↓ (and Enter) go to the next field, the cursor at its end")
+  viewdraft.key(d, 0, K.up)
+  check(d.focus == "label", "↑ goes back")
 end
 
 H.done()

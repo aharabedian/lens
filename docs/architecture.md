@@ -19,8 +19,8 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.core` | The above together: `receive(data, from, now)` → replies, `tick(now)` → alert changes, `query`, `lookup`, `metrics`, `health` |
 | **Views** (pure) | `lens.hub.format` | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD |
 | | `lens.hub.explore` | Building a query by tapping: a metric, label filters, a function → query text |
-| | `lens.hub.viewdraft` | A view being typed: fields as text, keys and pastes, back to a checked view |
-| | `lens.hub.textfield` | One line being typed (keys, pastes, a length limit): used by viewdraft and the editors' renames |
+| | `lens.hub.viewdraft` | A view being edited: fields as text, status rules and dot states as rows, focus and cursor, back to a checked view |
+| | `lens.hub.textfield` | One line being typed, with a cursor (insert, ← → Home End, Backspace, Delete, pastes, a length limit): used by viewdraft and the editors' renames |
 | **Settings and state** | `lens.hub.config` | `/home/lens-hub.cfg`: defaults and checks, readable errors ([hub.md](hub.md)); views, HUD blocks |
 | | `lens.hub.board` | `/home/lens-board.cfg`: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's pages and their panels, players' HUD presets; undo |
 | | `lens.hub.huds` | One `lens.hub.hud` per Glasses Terminal with its wearer's blocks (kept by the board) or the config's `hud` |

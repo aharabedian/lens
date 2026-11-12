@@ -4,7 +4,7 @@
   local d = require("lens.hub.dashboard").new(gpu, w, h)
   d:draw(model, actions)   build a frame (lens.hub.frame) with the page for the model, then redraw only the rows
                            (or, when a row keeps its shape, the segments) that differ from the last draw
-  d:tap(x, y, player?) -> bool   run the touch target under (x, y); it gets the player who tapped
+  d:tap(x, y, player?) -> bool   run the touch target under (x, y): fn(player, x, y)
   d:restore()              plain terminal colors again (on exit)
 
   model = {
@@ -101,7 +101,7 @@ function Dash:tap(x, y, player)
   for i = #self.hits, 1, -1 do
     local h = self.hits[i]
     if x >= h[1] and x <= h[3] and y >= h[2] and y <= h[4] then
-      if h[5] then h[5](player) end
+      if h[5] then h[5](player, x, y) end
       return true
     end
   end

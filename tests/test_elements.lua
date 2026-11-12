@@ -147,6 +147,74 @@ check(seen.gray, "no rule true: gray (off)")
 check(seen.hudHidden and seen.hudShown, "the HUD: an element with when appears only while it's true, colored")
 check(seen.preview, "the view editor: a template typed in, previewed with its values")
 
+-- Status rules made in the view editor: + RULE, tap the color to cycle it, type the query; fix a typo with
+-- the cursor (tap into the text, ←, Delete); order with ▲; SAVE.
+M.setTime(0)
+M.resize(160, 50)
+local K = require("lens.hub.textfield").KEYS
+local files = require("lens.files")
+local rs = {}
+local rstep = 0
+local dir
+ok, err, dir = R.run{ cfg = "return {}", dir = "rules", agents = agents(), keyboard = true, script = function(t)
+  if t < 3 then return nil end
+  rstep = rstep + 1
+  if rstep == 1 then return R.tap(" EDIT ", "Aaron", 1) end
+  if rstep == 2 then return R.tap("+ NEW", "Aaron", 3) end
+  if rstep == 3 then
+    R.queue(R.keys("Ore", "Aaron"))
+    R.queue(R.key(K.enter, "Aaron"))                         -- to Query
+    R.queue(R.keys('sum(prism_backlog_items{node="prism-ore"})', "Aaron"))
+    return nil
+  end
+  if rstep == 4 then rs.empty = M.find("none: no status dot", 3) ~= nil; return R.tap("+ RULE", "Aaron", 3) end
+  if rstep == 5 then
+    rs.row = M.find("first true", 3) and M.find(" good ", 3)
+    R.queue(R.keys('sum(prism_machine_state{node="prism-ore", state="runnning"}) > 0', "Aaron"))   -- a typo
+    return nil
+  end
+  if rstep == 6 then
+    -- Tap just after "runnn" and delete one n: the cursor goes where the tap is.
+    local x, y = M.find("runnning", 3)
+    return { "touch", "screen", x + 5, y, 0, "Aaron" }
+  end
+  if rstep == 7 then R.queue(R.key(K.back, "Aaron")); return nil end
+  if rstep == 8 then
+    rs.fixed = M.find('state="running"}) > 0', 3) ~= nil
+    return R.tap("+ RULE", "Aaron", 3)
+  end
+  if rstep == 9 then
+    R.queue(R.keys('sum(prism_machine_state{node="prism-ore", state="down"}) > 0', "Aaron"))
+    return nil
+  end
+  if rstep == 10 then
+    local _, y = M.find('state="down"', 3)
+    rs.chipY = y
+    return { "touch", "screen", M.find(" good ", y), y, 0, "Aaron" }   -- good -> warn
+  end
+  if rstep == 11 then return { "touch", "screen", M.find(" warn ", rs.chipY), rs.chipY, 0, "Aaron" } end   -- -> bad
+  if rstep == 12 then
+    rs.bad = M.find(" bad  ", rs.chipY) ~= nil
+    return { "touch", "screen", M.find("▲", rs.chipY), rs.chipY, 0, "Aaron" }    -- the down rule first
+  end
+  if rstep == 13 then
+    local _, dy = M.find('state="down"', 3)
+    local _, ry = M.find('state="running"', 3)
+    rs.ordered = dy < ry
+    H.screen("view-editor-rules")
+    return R.tap("SAVE", "Aaron", 1)
+  end
+  return "stop"
+end }
+check(ok, "lens-hub runs" .. (ok and "" or (": " .. tostring(err))))
+check(rs.empty and rs.row, "+ RULE adds a row: a color chip and a query, typed into")
+check(rs.fixed, "a tap puts the cursor in the text; Backspace there fixes a typo")
+check(rs.bad and rs.ordered, "tapping the chip cycles its color; ▲ orders the rules")
+local saved = files.loadTable(dir .. "/lens-board.cfg")
+local st = saved and saved.views[1] and saved.views[1].status
+check(st and #st == 2 and st[1][1] == "bad" and st[1][2]:find('state="down"', 1, true) and st[2][1] == "good"
+  and st[2][2]:find('state="running"', 1, true), "SAVE: the rules, in order, in lens-board.cfg")
+
 -- The view editor, now with 16 fields, fits a tier 2 screen.
 M.setTime(0)
 M.resize(80, 25)

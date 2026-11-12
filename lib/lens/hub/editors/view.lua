@@ -6,7 +6,9 @@
                          a new view (addTo = "dash": put it on the dashboard; "hud": in the player's HUD).
                          back: the editor state to return to on SAVE or CANCEL.
   State: { kind = "view", player, draft, old = label | nil (new), source, back, addTo }
-  Actions: viewFocus(key), viewCycle(key), viewSave, viewCancel, viewDelete. Keys and pastes type.
+  Actions: viewFocus(focus, position?) (a field key, "rule:<i>" or "state:<i>"), viewCycle(key), viewSave,
+  viewCancel, viewDelete; status rules: viewRuleAdd, viewRuleLevel(i), viewRuleMove(i, -1 | 1), viewRuleRemove(i);
+  dot states: viewStateAdd, viewStateLevel(i), viewStateRemove(i). Keys and pastes type at the cursor.
 ]]
 
 local query = require("lens.hub.query")
@@ -35,8 +37,16 @@ local function preview(app, d, now)
 end
 
 function E.actions(app, a, mine)
-  a.viewFocus = mine(function(_, key) viewdraft.focus(app.editing.draft, key) end)
-  a.viewCycle = mine(function(_, key) viewdraft.cycle(app.editing.draft, key) end)
+  local function draft(fn) return mine(function(_, ...) fn(app.editing.draft, ...) end) end
+  a.viewFocus = draft(viewdraft.focus)
+  a.viewCycle = draft(viewdraft.cycle)
+  a.viewRuleAdd = draft(viewdraft.addRule)
+  a.viewRuleLevel = draft(viewdraft.ruleLevel)
+  a.viewRuleMove = draft(viewdraft.moveRule)
+  a.viewRuleRemove = draft(viewdraft.removeRule)
+  a.viewStateAdd = draft(viewdraft.addState)
+  a.viewStateLevel = draft(viewdraft.stateLevel)
+  a.viewStateRemove = draft(viewdraft.removeState)
   a.viewCancel = mine(function(player) back(app, player) end)
   a.viewSave = mine(function(player)
     local e = app.editing
@@ -62,12 +72,25 @@ function E.actions(app, a, mine)
 end
 
 function E.model(app, e, now)
+  local d = e.draft
   local fields = {}
   for _, f in ipairs(viewdraft.FIELDS) do
-    fields[#fields + 1] = { key = f.key, name = f.name, kind = f.kind, text = e.draft.fields[f.key] }
+    local fd = { key = f.key, name = f.name, kind = f.kind }
+    if f.kind == "choice" then
+      fd.text = d.choices[f.key]
+    elseif f.kind == "status" then
+      fd.rows = {}
+      for i, r in ipairs(d.rules) do fd.rows[i] = { focus = "rule:" .. i, level = r[1], text = r[2] } end
+    elseif f.kind == "states" then
+      fd.rows = {}
+      for i, st in ipairs(d.states) do fd.rows[i] = { focus = "state:" .. i, level = st[2], text = st[1] } end
+    else
+      fd.text = d.fields[f.key]
+    end
+    fields[#fields + 1] = fd
   end
-  return { old = e.old, source = e.source, fields = fields, focus = e.draft.focus, preview = preview(app, e.draft, now),
-    keyboard = app.env.keyboard ~= false }
+  return { old = e.old, source = e.source, fields = fields, focus = d.focus, cursor = d.cursor,
+    preview = preview(app, d, now), keyboard = app.env.keyboard ~= false }
 end
 
 function E.key(_, e, char, code) viewdraft.key(e.draft, char, code) end

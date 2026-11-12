@@ -101,6 +101,7 @@ function E.actions(app, a, mine)
     local name, err = app.huds:addPreset(player)
     if not name then return nil, err end
     app.editing.renaming = name
+    app.editing.cursor = nil
     return true
   end)
   a.hudPresetDelete = mine(function(player)
@@ -111,6 +112,7 @@ function E.actions(app, a, mine)
   a.hudRename = mine(function(player)
     local _, active = app.huds:presets(player)
     app.editing.renaming = active
+    app.editing.cursor = nil
   end)
   a.hudRenameCancel = mine(function() app.editing.renaming = nil end)
   a.hudRenameOk = mine(function(player) return E.rename(app, app.editing, player) end)
@@ -125,8 +127,8 @@ end
 
 function E.key(app, e, char, code)
   if not e.renaming then return end
-  local text, action = textfield.key(e.renaming, char, code, huds.NAME_LENGTH)
-  e.renaming = text
+  local text, cursor, action = textfield.key(e.renaming, e.cursor, char, code, huds.NAME_LENGTH)
+  e.renaming, e.cursor = text, cursor
   if action == "enter" then
     local ok, err = E.rename(app, e, e.player)
     if not ok then app.editError = err end
@@ -134,7 +136,7 @@ function E.key(app, e, char, code)
 end
 
 function E.paste(_, e, text)
-  if e.renaming then e.renaming = textfield.paste(e.renaming, text, huds.NAME_LENGTH) end
+  if e.renaming then e.renaming, e.cursor = textfield.paste(e.renaming, e.cursor, text, huds.NAME_LENGTH) end
 end
 
 function E.model(app, e)
@@ -153,7 +155,7 @@ function E.model(app, e)
   local presets, active = app.huds:presets(e.player)
   return { own = s.own, scale = s.scale, blocks = #s.blocks, block = e.block, anchor = b.anchor, x = b.x, y = b.y,
     width = b.width, rows = rows, hidden = hidden, step = e.step, wearing = app.huds:wearing(e.player),
-    presets = presets, preset = active, renaming = e.renaming, keyboard = app.env.keyboard ~= false }
+    presets = presets, preset = active, renaming = e.renaming, cursor = e.cursor, keyboard = app.env.keyboard ~= false }
 end
 
 return E
