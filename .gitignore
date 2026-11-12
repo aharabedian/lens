@@ -1,0 +1,12 @@
+# build output
+build/
+
+# local tooling (make dev)
+lua_modules/
+.luarocks/
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
