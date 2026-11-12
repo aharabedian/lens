@@ -16,6 +16,8 @@
        Written without blocks (anchor, x, y as margins, width, alerts, bars), it becomes one block: the bars,
        then the alerts.
   ANCHORS: the nine anchor names; config.offset(anchor) -> the default x, y for it
+  checkView(view) -> err | nil   one view, as a panel is checked
+  editors: nil (anyone may edit the dashboard on the screen) or a list of player names
 ]]
 
 local query = require("lens.hub.query")
@@ -24,7 +26,7 @@ local rules = require("lens.hub.rules")
 local config = {}
 
 config.DEFAULTS = {
-  node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10, resolution = "fit",
+  node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10, resolution = "fit", editors = nil,
   nonCritical = {}, panels = {}, rules = {}, hud = {},
 }
 
@@ -73,6 +75,12 @@ local function checkPanel(i, p)
   if p.color ~= nil and not COLOR[p.color] then return where .. ': color must be "thresholds", "sign" or "none"' end
 end
 
+-- A view (a panel, or a HUD bar or text) on its own -> err | nil. Fills format from percent, like check.
+function config.checkView(v)
+  local e = checkPanel(0, v)
+  return e and (e:gsub("^panel 0[^:]*: ", "")) or nil
+end
+
 function config.check(c)
   if type(c) ~= "table" then return nil, "the config must return a table" end
   for k, v in pairs(config.DEFAULTS) do
@@ -112,6 +120,12 @@ function config.check(c)
     if e then return nil, e end
     e = config.checkBlocks(h.blocks, h)
     if e then return nil, e end
+  end
+  if c.editors ~= nil then
+    if type(c.editors) ~= "table" then return nil, 'editors must be a list of player names: { "Steve" }' end
+    for _, n in ipairs(c.editors) do
+      if type(n) ~= "string" then return nil, 'editors must be a list of player names: { "Steve" }' end
+    end
   end
   local r = c.resolution
   if r ~= "fit" and r ~= "max" and not (type(r) == "table" and math.type(r[1]) == "integer"

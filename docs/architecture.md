@@ -16,6 +16,8 @@ is its interface; this page is the map.
 | `lens.hub.config` | hub | `/home/lens-hub.cfg`: defaults and checks, with readable errors ([hub.md](hub.md)) |
 | `lens.hub.dashboard` | hub | The screen: builds a frame of rows from a model, sends the GPU only the segments that changed, touch targets |
 | `lens.hub.format` | hub | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD. Pure |
+| `lens.hub.board` | hub | `/home/lens-board.cfg`, written only here: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's panels, players' HUDs; undo |
+| `lens.hub.viewedit` | hub | A view being edited: fields as text, keys and pastes, back to a checked view. Pure |
 | `lens.hub.huds` | hub | One `lens.hub.hud` per Glasses Terminal, with its wearer's blocks (`/home/lens-hud.cfg`, written only here) or `hud` from the config; elements name views by label; the HUD editor's changes |
 | `lens.hub.hud` | hub | Draws HUD blocks (bar, text, alerts, gap elements, placed from nine anchors) as widgets on one Glasses Terminal; made once, setters called only on change, calls counted |
 | `lens.hub.app` | hub | The program's state: hub core + panels (values, history) + dashboard; reacts to packets, touches and ticks |
@@ -69,6 +71,7 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | `screen.getAspectRatio()` returns the multiblock screen's size in blocks; text is drawn as large as fits while keeping the resolution's shape, characters are twice as tall as wide, and a multiblock screen loses about 1/8 block of border at each edge (`resolution = "fit"`: 73 × 50 on 3 × 4) | **Reported working** (2026-11-12): a 3 × 4 screen is filled. The 1/8-block border is still our estimate; `{ width, height }` overrides |
 | OpenOS's font has ↖ ↗ ↘ ↙ ◀ ▶ (the HUD editor's anchor grid and nudges) | **Seen in game** (2026-11-12) |
 | Per-player HUDs on their own terminals; a wearer's HUD shows straight away after the hub restarts | **Reported working** (2026-11-12). Which of getBindPlayers or glasses_on did it isn't known |
+| `key_down(keyboard, char, code, player)` and `clipboard(keyboard, text, player)` reach the hub from a keyboard attached to its screen; Insert pastes | **Reported working** (2026-11-12): typing and pasting in the view editor |
 | A `glasses_on` arrives for a player already wearing glasses when the hub starts | Assumed not: getBindPlayers covers it |
 | Events (the hub uses `glasses_on`'s size to place the HUD by its anchor): `glasses_on(terminal, player, width, height)` (854x457 here, briefly 854x480), `glasses_off(terminal, player)`; clicking with glasses on sends nothing | **Seen in game** (`lens-discover --events`, 2026-11-12) |
 | Colors 0..1 (`setColor(255, 0, 0)` clamps to the same red as `(1, 0, 0)`) | **Seen in game** (`--glasses-test`, 2026-11-12) |

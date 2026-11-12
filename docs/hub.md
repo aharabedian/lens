@@ -11,7 +11,7 @@ Install, connecting agents and the first run: [setup.md](setup.md). Problems: [t
 
 | Part | Shows |
 |---|---|
-| Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, QUIT |
+| Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, **EDIT** ([editing on the screen](#editing-on-the-screen)), **HUD** (with a Glasses Terminal), QUIT |
 | NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported |
 | ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓, dimmed) until it clears, and comes back unacknowledged if it gets worse |
 | PANELS | Your panels: label, value, a bar for `max` / `of` / `percent`, and a sparkline of its history (tier 3) |
@@ -41,6 +41,7 @@ shape in blocks, so text fills it with no empty borders. Characters are twice as
 | `staleAfter` | `3` | Missed snapshots before a node counts as stopped reporting (a `BAD` alert) |
 | `beep` | `true` | Beep when a new `BAD` alert appears |
 | `sample` | `10` | Seconds between sparkline samples |
+| `editors` | `nil` | Player names who may use EDIT: `{ "Steve", "Alex" }`. `nil`: anyone |
 | `resolution` | `"fit"` | `"fit"`: match the screen's shape (see above). `"max"`: the GPU's largest. `{ width, height }`: your own, e.g. `{ 80, 25 }` for bigger text |
 | `nonCritical` | `{}` | Node names whose silence is only a warning and that don't count towards overall health |
 | `panels` | `{}` | See below |
@@ -68,6 +69,36 @@ A mistake in the file stops `lens-hub` with the panel or rule named: `panel 2 (O
 | `warnAbove`, `badAbove`, `warnBelow`, `badBelow` | Color the value and bar yellow or red past these |
 
 A query with no data shows `–`. A panel is a **view**: the same keys make a HUD bar or text.
+
+## Editing on the screen
+
+Tap **EDIT** to change the dashboard and the **library** of views. Everything you change here is saved in
+**`/home/lens-board.cfg`** (next to lens-hub.cfg), which only the hub writes; lens-hub.cfg is never touched.
+
+![The EDIT page](images/dash-editor.png)
+
+| | |
+|---|---|
+| ON THE DASHBOARD | Its panels with their values: **EDIT** opens the view, ▲ ▼ order, ✕ takes it off (it stays in the library) |
+| LIBRARY | Views not on the dashboard: **+** puts one on, **EDIT** opens it, **+ NEW** makes one. `cfg` marks a view from lens-hub.cfg; `cfg*` one changed here |
+| UNDO | Takes back the last change to views or panels (up to 20) |
+
+**A view** (the same keys as a [panel](#panels)), with its value previewed as you type:
+
+![The view editor](images/view-editor.png)
+
+Tap a field and type: **a keyboard attached to the hub's screen** is needed for that (Enter goes to the next
+field, Insert pastes your clipboard). Format and Color cycle when tapped. SAVE checks the view like lens-hub.cfg
+would and says what's wrong. A new view goes on the dashboard, and every view is offered in each player's HUD
+editor.
+
+- Views from lens-hub.cfg can be changed here (your version is kept in lens-board.cfg; **BACK TO lens-hub.cfg**
+  drops it) but keep their label and can't be deleted.
+- Renaming a view moves the dashboard and players' HUDs along with it.
+- A panel later added to lens-hub.cfg (by lens-setup, say) appears on the dashboard once; one you took off stays
+  off.
+- One editor is open at a time, for the player who opened it; only their taps and keys count, and it closes
+  after a minute without one. `editors` in lens-hub.cfg limits who may open EDIT.
 
 ### Rules
 
@@ -142,13 +173,13 @@ their taps change anything:
 | | |
 |---|---|
 | BLOCKS | A tab per block; **+** adds one, REMOVE drops the one you're editing |
-| IN BLOCK n | Its elements, in order: tap one to remove it, **BAR / TEXT** switches how it shows, ▲ ▼ order. Below: every view you could add (the default HUD's and every panel), **+ ALERTS** (then − / + for how many) and **+ GAP** |
+| IN BLOCK n | Its elements, in order: tap one to remove it, **BAR / TEXT** switches how it shows, ▲ ▼ order. Below: every view in the library you could add, **+ ALERTS** (then − / + for how many) and **+ GAP** |
 | POSITION | The anchor grid (↖ ↑ ↗ ← • → ↙ ↓ ↘), then ◀ ▲ ▼ ▶ to nudge by the step (tap it: 1, 8 or 32 px). Watch the glasses as you tap |
 | Width, Size | The block's width; text size for all your blocks |
 | BACK TO DEFAULT | Drops your settings: you get `hud` from lens-hub.cfg again |
 | DONE | Back to the dashboard (it also closes after a minute without a tap) |
 
-Changes show in your glasses straight away and are saved in **`/home/lens-hud.cfg`** (next to lens-hub.cfg),
-one entry per player. Only the hub writes it; lens-hub.cfg is untouched. A player with no settings there, or
-a terminal whose wearer isn't known yet, shows `hud` from lens-hub.cfg. New panels and queries are still added
-in lens-setup or lens-hub.cfg.
+Changes show in your glasses straight away and are saved in `lens-board.cfg` with the rest of what's edited
+on the screen (an earlier `lens-hud.cfg` is read into it once). A player with no settings there, or a terminal
+whose wearer isn't known yet, shows `hud` from lens-hub.cfg. The views offered are the whole library: make new
+ones with EDIT.

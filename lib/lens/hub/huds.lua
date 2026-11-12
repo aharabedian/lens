@@ -1,14 +1,16 @@
 --[[ lens.hub.huds: one HUD per Glasses Terminal, each showing the settings of the player wearing glasses
   linked to it. A terminal shows the same widgets to everyone linked to it (OC Glasses has no per-player
-  widgets), so per-player HUDs need a terminal each. Players' own settings live in /home/lens-hud.cfg, which
-  only the hub writes (from the dashboard's HUD editor); lens-hub.cfg's hud is everyone's default.
+  widgets), so per-player HUDs need a terminal each. Players' own settings are kept by the board
+  (lens.hub.board, /home/lens-board.cfg), changed from the dashboard's HUD editor; lens-hub.cfg's hud is
+  everyone's default.
 
-  local hs = require("lens.hub.huds").new(terminals, defaults, path)
-    terminals: { [address] = Glasses Terminal proxy }; defaults: cfg.hud (checked); path: players' settings
+  local hs = require("lens.hub.huds").new(terminals, defaults, store)
+    terminals: { [address] = Glasses Terminal proxy }; defaults: cfg.hud (checked)
+    store: a lens.hub.board (players / setPlayers), or a file path of its own, or nil (memory only)
   hs:onGlasses(address, player, w, h)   a glasses_on: that terminal's wearer and GUI size
-  hs:draw(model, evaluate, panels)      draw every terminal. evaluate(views) -> { { label, text, frac, level } }
-  hs:catalog(panels) -> { view... }     what a player can pick: views in the default HUD, then panels with
-                                        other labels (a label names a view)
+  hs:draw(model, evaluate, views)       draw every terminal. evaluate(views) -> { { label, text, frac, level } }
+  hs:catalog(views) -> { view... }      what a player can pick: `views` (the board's library), then views in
+                                        the default HUD with other labels (a label names a view)
   hs:settings(player) -> s              the player's settings, or a copy of the defaults:
     { own = bool, scale, blocks = { { anchor, x, y, width, elements = { element... } }... } }
     element: { kind = "bar" | "text", view = label } | { kind = "alerts", count } | { kind = "gap" }
@@ -125,8 +127,10 @@ end
 local Huds = {}
 Huds.__index = Huds
 
-function huds.new(terminals, defaults, path)
-  local self = setmetatable({ defaults = defaults, path = path, terms = {}, players = {}, calls = 0 }, Huds)
+function huds.new(terminals, defaults, store)
+  local path = type(store) == "string" and store or nil
+  local self = setmetatable({ defaults = defaults, path = path, store = type(store) == "table" and store or nil,
+    terms = {}, players = {}, calls = 0 }, Huds)
   local addresses = {}
   for address in pairs(terminals) do addresses[#addresses + 1] = address end
   table.sort(addresses)
@@ -135,7 +139,8 @@ function huds.new(terminals, defaults, path)
     local bound = boundPlayers(proxy)
     self.terms[#self.terms + 1] = { address = address, hud = hud.new(proxy, {}), player = #bound == 1 and bound[1] or nil }
   end
-  local saved = path and files.loadTable(path)
+  local saved
+  if self.store then saved = self.store:players() elseif path then saved = files.loadTable(path) end
   if type(saved) == "table" then
     for name, s in pairs(saved) do
       if type(name) == "string" then self.players[name] = clean(s) end
@@ -182,20 +187,21 @@ function Huds:settings(player)
   return s
 end
 
-function Huds:catalog(panels)
+function Huds:catalog(views)
   local out, seen = {}, {}
+  for _, v in ipairs(views or {}) do
+    if not seen[v.label] then out[#out + 1] = v; seen[v.label] = true end
+  end
   for _, b in ipairs(self.defaults.blocks or {}) do
     for _, el in ipairs(b.elements) do
       if (el.kind == "bar" or el.kind == "text") and not seen[el.label] then out[#out + 1] = el; seen[el.label] = true end
     end
   end
-  for _, p in ipairs(panels or {}) do
-    if not seen[p.label] then out[#out + 1] = p; seen[p.label] = true end
-  end
   return out
 end
 
 function Huds:save()
+  if self.store then return self.store:setPlayers(self.players) end
   if not self.path then return true end
   return files.writeAtomic(self.path, serialize(self.players))
 end
@@ -247,9 +253,9 @@ function Huds:blocksFor(player, byLabel, evaluate)
   return blocks, s.scale
 end
 
-function Huds:draw(m, evaluate, panels)
+function Huds:draw(m, evaluate, views)
   local byLabel = {}
-  for _, v in ipairs(self:catalog(panels)) do byLabel[v.label] = v end
+  for _, v in ipairs(self:catalog(views)) do byLabel[v.label] = v end
   local errs, calls = {}, 0
   for _, t in ipairs(self.terms) do
     local blocks, scale = self:blocksFor(t.player, byLabel, evaluate)
