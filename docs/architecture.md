@@ -61,9 +61,9 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | Assumption | Status |
 |---|---|
 | `math.random(m, n)` doesn't return an integer (the mock gives floats) | **Seen in game**: PRISM crashed on it. Use `codec.newBoot()` |
-| `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified** |
+| `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified**; a one-router base's snapshots arrived fine (2026-11-12), but splitting into parts hasn't been exercised in game |
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |
 | A packet's size is the sum of its values: string length (min 1), number 8, boolean/nil 4; over the limit raises `packet too big`; at most 8 values | **Unverified** |
-| `modem_message` event: `localAddress, remoteAddress, port, distance, ...values` | **Unverified** (PRISM relies on it) |
+| `modem_message` event: `localAddress, remoteAddress, port, distance, ...values` | **Reported working** (2026-11-12): hub heard a PRISM router; backlog, machine states and a machine-down alert showed on the dashboard |
 | `touch` event: `screenAddress, x, y, button, player` | **Unverified** (PRISM relies on it) |
 | The block characters `▁`–`▇`, `●`, `✓`, `–` draw on an OpenComputers screen | **Unverified** (PRISM uses the sparkline blocks) |
