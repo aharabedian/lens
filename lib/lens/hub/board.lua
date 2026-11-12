@@ -60,19 +60,18 @@ local function lit(v, indent)
 end
 
 local VIEW_KEYS = { "label", "value", "of", "max", "unit", "format", "color", "warnAbove", "badAbove", "warnBelow",
-  "badBelow", "text", "values", "dots", "by", "idle", "when" }
+  "badBelow", "text", "values", "status", "dots", "by", "states", "when" }
+
+local function copyAll(x)
+  if type(x) ~= "table" then return x end
+  local t = {}
+  for a, b in pairs(x) do t[a] = copyAll(b) end
+  return t
+end
 
 local function copyView(v)
   local out = {}
-  for _, k in ipairs(VIEW_KEYS) do
-    local x = v[k]
-    if type(x) == "table" then
-      local t = {}
-      for a, b in pairs(x) do t[a] = b end
-      x = t
-    end
-    out[k] = x
-  end
+  for _, k in ipairs(VIEW_KEYS) do out[k] = copyAll(v[k]) end
   return out
 end
 

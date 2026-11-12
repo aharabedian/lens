@@ -213,6 +213,9 @@ function Huds:blocksFor(player, byLabel, evaluate)
   for i, v in ipairs(evaluate(views)) do
     local item = slots[i]
     item.label, item.text, item.frac, item.level, item.dots, item.hidden = v.label, v.text, v.frac, v.level, v.dots, v.hidden
+    if v.status then                            -- the status dot comes first, before any per-item dots
+      item.dots = { { name = v.label, level = v.status }, table.unpack(v.dots or {}) }
+    end
   end
   for _, b in ipairs(blocks) do                 -- elements whose view's `when` is false now drop out
     local keep = {}

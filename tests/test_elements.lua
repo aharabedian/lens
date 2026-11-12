@@ -47,7 +47,11 @@ local CFG = [[return {
   hud = { blocks = { { anchor = "top-right", elements = {
     { kind = "text", label = "Ore", dots = 'prism_machine_state{node="prism-ore"}' },
     { kind = "text", label = "Backlog", value = 'sum(prism_backlog_items{node="prism-ore"})', unit = "items",
-      dots = 'prism_machine_state{node="prism-ore"}', by = "process", idle = "warn" },
+      status = {
+        { "bad", 'sum(prism_machine_state{node="prism-ore", state="down"}) > 0' },
+        { "warn", "$value > 50000" },
+        { "good", 'sum(prism_machine_state{node="prism-ore", state="running"}) > 0' } } },
+    { kind = "text", label = "Smelt", status = { { "good", 'sum(prism_machine_state{node="prism-smelt"}) > 0' } } },
     { kind = "text", label = "LSC", text = "{s} / {c}", values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" } },
     { kind = "text", label = "Net", value = "lumen_net_5m_eut", format = "signed", color = "sign", when = "lumen_net_5m_eut < 0" },
   } } } },
@@ -76,12 +80,16 @@ local ok, err = R.run{ cfg = CFG, agents = agents(), keyboard = true, terminals 
         if s.y == backlogLabel.y then
           seen.oneDot = (seen.oneDot or 0) + 1
           seen.green = near(s.color, P.good)
-        else
+        elseif s.y == G.find("Ore").y then
           seen.hudDots = seen.hudDots + 1
         end
       end
     end
     seen.sameRow = backlogValue and backlogValue.y == backlogLabel.y
+    local smelt = G.find("Smelt")
+    for _, s in ipairs(G.live()) do
+      if s.text == "●" and s.visible and s.y == smelt.y then seen.gray = near(s.color, P.off) end
+    end
     seen.hudTemplate = G.find("10.8G / 11.3G") ~= nil
     return nil
   end
@@ -97,7 +105,7 @@ local ok, err = R.run{ cfg = CFG, agents = agents(), keyboard = true, terminals 
     local row = G.find("Backlog").y
     for _, s in ipairs(G.live()) do
       if s.text == "●" and s.visible and near(s.color, P.bad) then
-        if s.y == row then seen.lineRed = true else red = true end
+        if s.y == row then seen.lineRed = true elseif s.y == G.find("Ore").y then red = true end
       end
     end
     seen.hudDown = red
@@ -133,8 +141,9 @@ check(seen.template, "several values in one line: {s} / {c} EU")
 check(seen.hiddenDash and seen.shown, "a panel with when shows only while it's true")
 check(seen.hudDots == 4 and seen.hudDown, "the HUD: a dot per machine, red when down")
 check(seen.hudTemplate, "the HUD: several values in one line")
-check(seen.oneDot == 1 and seen.green and seen.sameRow, "by process: the whole line is one dot, green while any machine runs, with the backlog beside it")
-check(seen.lineRed, "and red once any machine is down")
+check(seen.oneDot == 1 and seen.green and seen.sameRow, "status rules: one dot, green while a machine runs, the backlog beside it")
+check(seen.lineRed, "red once a machine is down (the first rule)")
+check(seen.gray, "no rule true: gray (off)")
 check(seen.hudHidden and seen.hudShown, "the HUD: an element with when appears only while it's true, colored")
 check(seen.preview, "the view editor: a template typed in, previewed with its values")
 
