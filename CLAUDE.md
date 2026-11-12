@@ -15,11 +15,13 @@ The telemetry format in `docs/telemetry.md` is the contract between agents and h
 make check                        # lint + all tests: run before every commit
 lua5.3 tests/run.lua [filter]     # tests (add -v for every check)
 luacheck .                        # lint
+make screens                      # render the screens tests draw to PNGs (Python + Pillow)
 ```
 
 ## Rules
 
-- **Test first.** Every behavior change gets a check in `tests/`. Never mark work done without `make check` passing.
+- **Test first.** Every behavior change gets a check in `tests/`. Screen changes get a screen test (find
+  text, tap it, assert what's drawn). Never mark work done without `make check` passing.
 - **Mocks mirror the game.** Test mocks encode our understanding of OpenComputers / GregTech / glasses APIs.
   Probe in game before designing against an API; don't present unverified API assumptions as fact.
 - **Runtime constraints (OpenComputers):** Lua 5.3, no 5.4 features, OpenOS `unicode` instead of `utf8`;
@@ -36,10 +38,11 @@ luacheck .                        # lint
 ## Layout
 
 ```
-src/        programs
-lib/lens/   modules
-manifest.lua  every file the updater installs
-docs/       telemetry spec, architecture
-tests/      run.lua, helper.lua, test_*.lua
-tools/      setup-dev.sh
+src/        programs: lens-hub.lua, lens-update.lua (self-contained)
+lib/lens/   modules: metrics, codec (agents + hub), gui, hub/
+manifest.lua  every file lens-update installs
+config/     lens-hub.example.cfg
+docs/       telemetry (the protocol), hub, queries, architecture, images/
+tests/      run.lua, helper.lua, mocks/{oc,net}.lua, test_*.lua
+tools/      setup-dev.sh, render_screens.py
 ```

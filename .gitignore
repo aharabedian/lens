@@ -1,12 +1,14 @@
-# build output
+# build output (make screens)
 build/
 
 # local tooling (make dev)
 lua_modules/
 .luarocks/
+.venv/
 
 # editors / OS
 .DS_Store
 .idea/
 .vscode/
 *.swp
+__pycache__/

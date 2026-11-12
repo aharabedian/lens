@@ -5,6 +5,7 @@
   H.check(cond, msg)     assert with a readable "ok"/"FAIL" line
   H.run(file, ...)       run src/<file> with arguments
   H.exists(path)         whether a file exists
+  H.screen(name)         dump the mock screen to $SCREENS/<name>.txt when SCREENS is set (make screens)
   H.done()               print the summary line the runner looks for
   H.ROOT, H.SRC, H.TMP   repo root, src/, and a scratch directory for this test
 ]]
@@ -37,6 +38,11 @@ function H.exists(path)
   local f = io.open(path)
   if f then f:close(); return true end
   return false
+end
+
+function H.screen(screenName)
+  local dir = os.getenv("SCREENS")
+  if dir then require("oc").dump(dir .. "/" .. screenName .. ".txt") end
 end
 
 function H.done()

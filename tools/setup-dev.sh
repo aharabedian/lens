@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # setup-dev.sh - install the development tools inside the repo, without sudo:
 #   .luarocks/  LuaRocks + luacheck (for `make lint`)
-#
-# Needs lua5.3, a C compiler, make and curl. Safe to re-run; skips what's already there.
+#   .venv/      Python venv with requirements.txt (for `make screens`)
+# Needs lua5.3, a C compiler, make, curl and python3. Safe to re-run; skips what's already there.
 # Usage: tools/setup-dev.sh            (or: make dev)
 set -euo pipefail
 
@@ -14,6 +14,7 @@ cd "$ROOT"
 need() { command -v "$1" >/dev/null || { echo "setup-dev: needs $1 ($2)" >&2; exit 1; }; }
 need lua5.3 "Debian/Ubuntu: sudo apt install lua5.3"
 need curl "Debian/Ubuntu: sudo apt install curl"
+need python3 "Debian/Ubuntu: sudo apt install python3"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -44,5 +45,20 @@ else
   .luarocks/bin/luarocks --tree "$ROOT/.luarocks" install luacheck
 fi
 
+# ---------------------------------------------------------------- Python venv
+if [ ! -x .venv/bin/python ]; then
+  echo "python: creating .venv"
+  if python3 -c "import ensurepip" 2>/dev/null; then
+    python3 -m venv .venv
+  else
+    # Debian/Ubuntu ship venv without ensurepip unless python3-venv is installed; bootstrap pip instead.
+    python3 -m venv --without-pip .venv
+    curl -fsSL https://bootstrap.pypa.io/get-pip.py -o "$WORK/get-pip.py"
+    .venv/bin/python -I "$WORK/get-pip.py" -q
+  fi
+fi
+echo "python: installing requirements.txt"
+.venv/bin/python -m pip install -q -r requirements.txt
+
 echo ""
-echo "done: make check (lint + tests)"
+echo "done: make check (lint + tests), make screens (PNGs in build/screens)"

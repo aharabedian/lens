@@ -23,7 +23,13 @@ local placed = true
 for src, dest in pairs(listed) do
   if src:find("^src/") and dest ~= "bin/" .. src:sub(5) then placed = false end
   if src:find("^lib/") and dest ~= src then placed = false end
+  if src:find("^config/") and dest ~= src:sub(8) then placed = false end
 end
 check(placed, "programs install to /home/bin and modules to /home/lib")
+
+local function read(path) local f = io.open(H.ROOT .. "/" .. path); if not f then return nil end; local t = f:read("*a"); f:close(); return t end
+local version = dofile(H.ROOT .. "/lib/lens/version.lua")
+check(read("src/lens-update.lua"):match('local VERSION = "([^"]*)"') == version,
+  "lens-update.lua's own VERSION matches lib/lens/version.lua")
 
 H.done()

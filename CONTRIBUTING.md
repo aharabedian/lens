@@ -3,8 +3,9 @@
 ## Setup
 
 - **Lua 5.3** (`lua5.3`). Debian/Ubuntu: `sudo apt install lua5.3`. macOS: `brew install lua@5.3`.
-- A C compiler, `make` and `curl`, then **`make dev`** ([tools/setup-dev.sh](tools/setup-dev.sh)) installs
-  luacheck into `.luarocks/` without sudo. The Makefile falls back to `luacheck` on the PATH.
+- A C compiler, `make`, `curl` and Python 3, then **`make dev`** ([tools/setup-dev.sh](tools/setup-dev.sh))
+  installs luacheck into `.luarocks/` and a venv with Pillow (for `make screens`) into `.venv/`, without sudo.
+  The Makefile falls back to `luacheck` and `python3` on the PATH.
 - On Windows, use WSL; the test runner shells out to `ls`, `mkdir` and `rm`.
 
 ## Workflow
@@ -30,5 +31,6 @@
 |---|---|
 | Telemetry messages, metric rules | `docs/telemetry.md` |
 | The query language | `docs/queries.md` and the header of `lib/lens/hub/query.lua` |
+| Hub settings, the screen | `docs/hub.md` and `config/lens-hub.example.cfg` |
 | Behavior, modules, verified game APIs | `docs/architecture.md` |
 | Anything a player would notice | `CHANGELOG.md` (Unreleased) |
