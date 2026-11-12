@@ -20,6 +20,7 @@ local event     = require("event")
 local term      = require("term")
 local config    = require("lens.hub.config")
 local App       = require("lens.hub.app")
+local Gui       = require("lens.gui")
 
 local path = ({ ... })[1] or "/home/lens-hub.cfg"
 local cfg, err = config.load(path)
@@ -28,6 +29,13 @@ if not cfg then error(path .. ": " .. tostring(err), 0) end
 if not component.isAvailable("modem") then error("lens-hub needs a network card (wireless, or wired to the agents)", 0) end
 local gpu = component.gpu
 local w, h = gpu.maxResolution()
+if cfg.resolution == "fit" then
+  local screen = component.isAvailable("screen") and component.screen or nil
+  local ok, bw, bh = pcall(function() return screen.getAspectRatio() end)
+  if ok then w, h = Gui.resolution(w, h, bw, bh) end
+elseif type(cfg.resolution) == "table" then
+  w, h = math.min(w, cfg.resolution[1]), math.min(h, cfg.resolution[2])
+end
 local terminals = {}
 for address in component.list("glasses", true) do terminals[address] = component.proxy(address) end
 local hudPath = (path:match("^(.*)/[^/]*$") or "/home") .. "/lens-hud.cfg"

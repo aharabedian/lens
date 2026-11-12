@@ -13,13 +13,14 @@
     hudError = text | nil,   shown in the footer
     hudPerMinute = n | nil,  HUD component calls in the last minute, shown in the footer
     huds = bool,             Glasses Terminals attached: the header has a HUD button
-    editor = nil | { player, settings = { anchor, scale, width, alerts, bars, own }, wearing = n,
-                     bars = { { label, pos = n | nil }... } (shown ones first, in order), shown = n,
-                     error = text | nil, closesIn = seconds }   the HUD editor, drawn instead of the dashboard
+    editor = nil | { player, own, scale, blocks = n, block = i (being edited), anchor, x, y, width, step,
+                     rows = { { index, kind, label?, count? }... } (the block's elements), hidden = { label... },
+                     wearing = n, error = text | nil, closesIn = seconds }   the HUD editor, drawn instead
   }
-  actions = { ack(key), ackAll(), quit(), hud(player),
-              hudDone, hudReset, hudToggle(label), hudMove(label, -1 | 1), hudAnchor(anchor), hudStep(key, -1 | 1) }
-    (the editor's actions get the tapping player first)
+  actions = { ack(key), ackAll(), quit(), hud(player), and the editor's (each gets the tapping player first):
+              hudDone, hudReset, hudBlock(i), hudBlockAdd, hudBlockRemove, hudToggle(label), hudKind(i),
+              hudMove(i, -1 | 1), hudAlerts(-1 | 1), hudGap, hudRemove(i), hudAnchor(anchor), hudNudge(dx, dy),
+              hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1) }
 
   Layout: 120 columns or more puts nodes and alerts on the left and panels (in two columns when there's room)
   on the right; narrower screens stack panels, nodes and alerts. Lists that don't fit end with "+N more".
@@ -95,69 +96,117 @@ local function header(f, m, actions)
     rx = qx - 6
     f:button(rx, 1, "HUD", actions.hud, C.btnOn)
   end
-  f:text(rx - Gui.len(right) - 2, 1, right, C.dim, C.panel)
+  local room = rx - 2 - (17 + Gui.len(summary) + 2)
+  if Gui.len(right) > room then right = "v" .. (m.version or "?") end   -- narrow: just the version
+  if Gui.len(right) <= room then f:text(rx - Gui.len(right) - 2, 1, right, C.dim, C.panel) end
   f:button(qx, 1, "QUIT", actions.quit, C.line)
 end
 
 ---------------------------------------------------------------- the HUD editor
-local function stepper(f, x, y, label, value, key, actions)
+local ARROWS = { ["top-left"] = "↖", top = "↑", ["top-right"] = "↗", left = "←", center = "•", right = "→",
+  ["bottom-left"] = "↙", bottom = "↓", ["bottom-right"] = "↘" }
+local GRID = { "top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right" }
+
+local function stepper(f, x, y, label, value, minus, plus)
   f:text(x, y, Gui.fit(label, 8), C.dim)
-  f:button(x + 9, y, "-", function(p) actions.hudStep(p, key, -1) end)
+  f:button(x + 9, y, "-", minus)
   f:text(x + 13, y, Gui.rfit(value, 5), C.text)
-  f:button(x + 19, y, "+", function(p) actions.hudStep(p, key, 1) end)
+  f:button(x + 19, y, "+", plus)
 end
 
 local function editor(f, m, actions)
   local e = m.editor
-  local s = e.settings
   f:rowBg(1, C.panel)
   f:text(2, 1, "LENS", C.accent, C.panel)
   f:text(8, 1, Gui.fit("HUD for " .. tostring(e.player or "?"), f.w - 20), C.text, C.panel)
   f:button(f.w - 7, 1, "DONE", actions.hudDone, C.btnOn)
 
+  -- Blocks: one tab each, add, remove.
+  f:text(2, 3, "BLOCKS", C.accent)
+  local bx = 9
+  for i = 1, e.blocks do
+    bx = f:button(bx, 3, tostring(i), function(p) actions.hudBlock(p, i) end, i == e.block and C.btnOn or C.btn)
+  end
+  if e.blocks < 6 then bx = f:button(bx, 3, "+", actions.hudBlockAdd) end
+  if e.blocks > 1 then f:button(bx + 1, 3, "REMOVE " .. e.block, actions.hudBlockRemove, C.line) end
+
+  -- The block's elements, then what could be added.
   local lx, lw = 2, math.min(46, f.w - 36)
-  heading(f, lx, 3, ("BARS (%d shown)"):format(e.shown), lw)
-  f:text(lx, 4, Gui.fit("Tap to show or hide; arrows order.", lw), C.dim)
-  local y, last = 6, f.h - 3
-  if #e.bars == 0 then f:text(lx, y, Gui.fit("No panels or hud.bars in lens-hub.cfg yet.", lw), C.dim) end
-  for i, b in ipairs(e.bars) do
+  f:text(lx, 5, Gui.fit(("IN BLOCK %d"):format(e.block), lw), C.accent)
+  local y, last = 6, f.h - 2
+  local function room(n)
     if y > last then
-      f:text(lx, last + 1, ("+%d more"):format(#e.bars - i + 1), C.dim)
-      break
+      f:text(lx, last + 1, ("+%d more"):format(n), C.dim)
+      return false
     end
-    local on = b.pos ~= nil
-    local label = b.label
-    f:text(lx, y, on and "[✓]" or "[ ]", on and C.good or C.dim)
-    f:text(lx + 4, y, Gui.fit(label, lw - 13), on and C.text or C.dim)
-    f:hit(lx, y, lx + lw - 10, y, function(p) actions.hudToggle(p, label) end)
-    if on then
-      if b.pos > 1 then f:button(lx + lw - 8, y, "▲", function(p) actions.hudMove(p, label, -1) end) end
-      if b.pos < e.shown then f:button(lx + lw - 4, y, "▼", function(p) actions.hudMove(p, label, 1) end) end
+    return true
+  end
+  local labelW = lw - 4 - 16
+  for k, r in ipairs(e.rows) do
+    if not room(#e.rows - k + 1 + #e.hidden) then return end
+    local i = r.index
+    f:text(lx, y, "[✓]", C.good)
+    if r.kind == "alerts" then
+      f:text(lx + 4, y, Gui.fit("Alerts", labelW - 6), C.text)
+      f:hit(lx, y, lx + 9, y, function(p) actions.hudRemove(p, i) end)
+      f:button(lx + lw - 21, y, "-", function(p) actions.hudAlerts(p, -1) end)
+      f:text(lx + lw - 17, y, tostring(r.count), C.text)
+      f:button(lx + lw - 15, y, "+", function(p) actions.hudAlerts(p, 1) end)
+    elseif r.kind == "gap" then
+      f:text(lx + 4, y, Gui.fit("(gap)", labelW), C.dim)
+      f:hit(lx, y, lx + labelW + 3, y, function(p) actions.hudRemove(p, i) end)
+    else
+      local label = r.label
+      f:text(lx + 4, y, Gui.fit(label, labelW), C.text)
+      f:hit(lx, y, lx + labelW + 3, y, function(p) actions.hudToggle(p, label) end)
+      f:button(lx + lw - 15, y, r.kind == "bar" and "BAR " or "TEXT", function(p) actions.hudKind(p, i) end,
+        r.kind == "bar" and C.btnOn or C.sel)
     end
+    if k > 1 then f:button(lx + lw - 8, y, "▲", function(p) actions.hudMove(p, i, -1) end) end
+    if k < #e.rows then f:button(lx + lw - 4, y, "▼", function(p) actions.hudMove(p, i, 1) end) end
     y = y + 1
   end
-
-  local rx = lx + lw + 4
-  heading(f, rx, 3, "CORNER", 30)
-  local cy = 4
-  for i, a in ipairs({ "top-left", "top-right", "bottom-left", "bottom-right" }) do
-    local bx = rx + ((i - 1) % 2) * 15
-    local by = cy + (i - 1) // 2
-    local label = Gui.fit(a, 12)
-    f:button(bx, by, label, function(p) actions.hudAnchor(p, a) end, s.anchor == a and C.btnOn or C.btn)
+  local hasAlerts = false
+  for _, r in ipairs(e.rows) do if r.kind == "alerts" then hasAlerts = true end end
+  for k, label in ipairs(e.hidden) do
+    if not room(#e.hidden - k + 1) then return end
+    f:text(lx, y, "[ ]", C.dim)
+    f:text(lx + 4, y, Gui.fit(label, labelW), C.dim)
+    f:hit(lx, y, lx + labelW + 3, y, function(p) actions.hudToggle(p, label) end)
+    y = y + 1
   end
-  heading(f, rx, 7, "LOOK", 30)
-  stepper(f, rx, 8, "Size", ("%.2g"):format(s.scale), "scale", actions)
-  stepper(f, rx, 9, "Width", tostring(s.width), "width", actions)
-  stepper(f, rx, 10, "Alerts", tostring(s.alerts), "alerts", actions)
-  if s.own then f:button(rx, 12, "BACK TO DEFAULT", actions.hudReset, C.line) end
+  if y <= last then
+    local ax = lx
+    if not hasAlerts then ax = f:button(ax, y, "+ ALERTS", function(p) actions.hudAlerts(p, 1) end) end
+    f:button(ax, y, "+ GAP", actions.hudGap)
+  end
+
+  -- Where the block sits: an anchor, then nudges from it.
+  local rx = lx + lw + 4
+  f:text(rx, 5, "POSITION", C.accent)
+  for k, a in ipairs(GRID) do
+    local gx, gy = rx + ((k - 1) % 3) * 4, 6 + (k - 1) // 3
+    f:button(gx, gy, ARROWS[a], function(p) actions.hudAnchor(p, a) end, e.anchor == a and C.btnOn or C.btn)
+  end
+  local nx = rx + 15
+  f:button(nx + 4, 6, "▲", function(p) actions.hudNudge(p, 0, -1) end)
+  f:button(nx, 7, "◀", function(p) actions.hudNudge(p, -1, 0) end)
+  f:button(nx + 8, 7, "▶", function(p) actions.hudNudge(p, 1, 0) end)
+  f:button(nx + 4, 8, "▼", function(p) actions.hudNudge(p, 0, 1) end)
+  f:text(rx, 10, Gui.fit(("%s, x %d y %d"):format(e.anchor, e.x, e.y), 22), C.dim)
+  f:button(rx + 23, 10, ("%dpx"):format(e.step), actions.hudStepSize, C.sel)
+  stepper(f, rx, 12, "Width", tostring(e.width), function(p) actions.hudWidth(p, -1) end,
+    function(p) actions.hudWidth(p, 1) end)
+  stepper(f, rx, 13, "Size", ("%.2g"):format(e.scale), function(p) actions.hudScale(p, -1) end,
+    function(p) actions.hudScale(p, 1) end)
+  if e.own then f:button(rx, 15, "BACK TO DEFAULT", actions.hudReset, C.line) end
   local note
   if e.wearing == 0 then
     note = { "No terminal shows this HUD yet:", "link your glasses to one", "of your own." }
   else
     note = { ("Showing on %d terminal%s."):format(e.wearing, e.wearing == 1 and "" or "s"), "Changes apply at once." }
   end
-  for i, l in ipairs(note) do f:text(rx, 13 + i, Gui.fit(l, f.w - rx), e.wearing == 0 and C.warn or C.dim) end
+  for i, l in ipairs(note) do f:text(rx, 16 + i, Gui.fit(l, f.w - rx), e.wearing == 0 and C.warn or C.dim) end
 
   f:rowBg(f.h, C.bg)
   if e.error then
@@ -257,11 +306,11 @@ end
 
 -- One panel: label and value, a bar when it has a fraction, a sparkline when tall enough.
 local function panel(f, p, x, y, width, tall)
-  local color = p.level == "bad" and C.bad or p.level == "warn" and C.warn or C.text
+  local color = p.level == "bad" and C.bad or p.level == "warn" and C.warn or p.level == "good" and C.good or C.text
   local text = p.text or "–"
   f:text(x, y, Gui.fit(p.label, width - Gui.len(text) - 1), C.dim)
   f:text(x + width - Gui.len(text), y, text, color)
-  local barColor = p.level == "bad" and C.bad or p.level == "warn" and C.warn or C.info
+  local barColor = p.level == "bad" and C.bad or p.level == "warn" and C.warn or p.level == "good" and C.good or C.info
   if p.frac then
     local filled = math.floor(math.max(0, math.min(1, p.frac)) * width + 0.5)
     if filled > 0 then f:text(x, y + 1, string.rep(" ", filled), C.text, barColor) end
@@ -325,8 +374,9 @@ function Dash:build(m, actions)
     panels(f, m, rx, 3, self.w - rx, lastRow, true)
   else
     local width = self.w - 2
-    local y = panels(f, m, 2, 3, width, self.h - 10, false)    -- leave nodes and alerts 10 rows
-    y = nodes(f, m, 2, y + 1, width, 5)
+    local tall = self.h >= 40                                  -- a portrait screen: sparklines, more nodes
+    local y = panels(f, m, 2, 3, width, self.h - (tall and 16 or 10), tall)   -- leave nodes and alerts room
+    y = nodes(f, m, 2, y + 1, width, tall and 6 or 5)
     alerts(f, m, actions, 2, y + 1, width, lastRow)
   end
   f:rowBg(self.h, C.bg)

@@ -5,10 +5,17 @@
                                err is readable ("panel 2 (Ore): expected ) at 14"). cfg.nonCritical becomes a set.
   check(cfg) -> cfg | nil, err   the same checks on a table (load uses it)
 
-  A panel: { label, value = query, of = query?, max = number?, unit = string?, percent = bool?,
-             warnAbove?, badAbove?, warnBelow?, badBelow? }
-  hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off.
-       hud.bars: bars in the same form as panels (label, value, max/of/percent, thresholds)
+  A panel (a view, lens.hub.format): { label, value = query, of = query?, max = number?, unit = string?,
+             format = "auto" | "percent" | "duration" | "signed", color = "thresholds" | "sign" | "none",
+             warnAbove?, badAbove?, warnBelow?, badBelow? }   (percent = true is the same as format = "percent")
+  resolution: "fit" (fill the screen's shape), "max" (the GPU's largest) or { width, height }
+  hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off. After check, hud.blocks
+       is always there: { { anchor, x, y, width, elements = { element... } }... } where an element is a view
+       with kind = "bar" | "text", or { kind = "alerts", count }, or { kind = "gap" }. x, y: GUI pixels from the
+       anchor point, right and down positive (default 4 in from the edges).
+       Written without blocks (anchor, x, y as margins, width, alerts, bars), it becomes one block: the bars,
+       then the alerts.
+  ANCHORS: the nine anchor names; config.offset(anchor) -> the default x, y for it
 ]]
 
 local query = require("lens.hub.query")
@@ -17,15 +24,30 @@ local rules = require("lens.hub.rules")
 local config = {}
 
 config.DEFAULTS = {
-  node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10,
+  node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10, resolution = "fit",
   nonCritical = {}, panels = {}, rules = {}, hud = {},
 }
+
+config.ANCHORS = { "top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right" }
+local ANCHOR = {}
+for _, a in ipairs(config.ANCHORS) do ANCHOR[a] = true end
+
+-- The default offset for an anchor: 4 GUI pixels in from the edges it touches.
+function config.offset(anchor)
+  local x = anchor:find("left", 1, true) and 4 or anchor:find("right", 1, true) and -4 or 0
+  local y = anchor:find("^top") and 4 or anchor:find("^bottom") and -4 or 0
+  return x, y
+end
 
 config.HUD_DEFAULTS = {
   anchor = "top-right", x = 4, y = 4, width = 160, scale = 1, alerts = 3, alpha = 0.35, colors = "float", bars = {},
 }
 
 local THRESHOLDS = { "warnAbove", "badAbove", "warnBelow", "badBelow" }
+
+local FORMAT, COLOR = {}, {}
+for _, f in ipairs(require("lens.hub.format").FORMATS) do FORMAT[f] = true end
+for _, f in ipairs(require("lens.hub.format").COLORS) do COLOR[f] = true end
 
 local function checkPanel(i, p)
   local where = "panel " .. i
@@ -44,6 +66,11 @@ local function checkPanel(i, p)
   for _, k in ipairs(THRESHOLDS) do
     if p[k] ~= nil and type(p[k]) ~= "number" then return where .. ": " .. k .. " must be a number" end
   end
+  if p.percent and p.format == nil then p.format = "percent" end
+  if p.format ~= nil and not FORMAT[p.format] then
+    return where .. ': format must be "auto", "percent", "duration" or "signed"'
+  end
+  if p.color ~= nil and not COLOR[p.color] then return where .. ': color must be "thresholds", "sign" or "none"' end
 end
 
 function config.check(c)
@@ -77,22 +104,81 @@ function config.check(c)
     for k, v in pairs(config.HUD_DEFAULTS) do if c.hud[k] == nil then c.hud[k] = v end end
     local h = c.hud
     if h.colors ~= "float" and h.colors ~= "byte" then return nil, 'hud.colors must be "float" or "byte"' end
-    local anchors = { ["top-left"] = true, ["top-right"] = true, ["bottom-left"] = true, ["bottom-right"] = true }
-    if not anchors[h.anchor] then return nil, 'hud.anchor must be "top-right", "top-left", "bottom-right" or "bottom-left"' end
-    for _, k in ipairs({ "x", "y", "alerts" }) do
-      if type(h[k]) ~= "number" or h[k] < 0 then return nil, "hud." .. k .. " must be a number" end
-    end
     for _, k in ipairs({ "width", "scale" }) do
       if type(h[k]) ~= "number" or h[k] <= 0 then return nil, "hud." .. k .. " must be a number above 0" end
     end
     if type(h.alpha) ~= "number" or h.alpha < 0 or h.alpha > 1 then return nil, "hud.alpha must be 0..1" end
-    if type(h.bars) ~= "table" then return nil, "hud.bars must be a list of bars" end
-    for i, b in ipairs(h.bars) do
-      local e = checkPanel(i, b)
-      if e then return nil, "hud." .. e:gsub("^panel", "bar") end
-    end
+    local e = h.blocks == nil and config.legacyBlocks(h) or nil
+    if e then return nil, e end
+    e = config.checkBlocks(h.blocks, h)
+    if e then return nil, e end
+  end
+  local r = c.resolution
+  if r ~= "fit" and r ~= "max" and not (type(r) == "table" and math.type(r[1]) == "integer"
+    and math.type(r[2]) == "integer" and r[1] >= 40 and r[2] >= 12) then
+    return nil, 'resolution must be "fit", "max" or { width, height } (at least { 40, 12 })'
   end
   return c
+end
+
+-- hud written the first way (one corner, margins, bars, then alerts): one block. Sets h.blocks or -> err.
+function config.legacyBlocks(h)
+  if not ANCHOR[h.anchor] or h.anchor == "top" or h.anchor == "bottom" or h.anchor == "left" or h.anchor == "right"
+    or h.anchor == "center" then
+    return 'hud.anchor must be "top-right", "top-left", "bottom-right" or "bottom-left"'
+  end
+  for _, k in ipairs({ "x", "y", "alerts" }) do
+    if type(h[k]) ~= "number" or h[k] < 0 then return "hud." .. k .. " must be a number" end
+  end
+  if type(h.bars) ~= "table" then return "hud.bars must be a list of bars" end
+  for i, b in ipairs(h.bars) do
+    local e = checkPanel(i, b)
+    if e then return "hud." .. e:gsub("^panel", "bar") end
+  end
+  local elements = {}
+  for _, b in ipairs(h.bars) do
+    local el = {}
+    for k, v in pairs(b) do el[k] = v end
+    el.kind = "bar"
+    elements[#elements + 1] = el
+  end
+  elements[#elements + 1] = { kind = "alerts", count = h.alerts }
+  h.blocks = { {
+    anchor = h.anchor, width = h.width, elements = elements,
+    x = h.anchor:find("right", 1, true) and -h.x or h.x,
+    y = h.anchor:find("^bottom") and -h.y or h.y,
+  } }
+end
+
+local KINDS = { bar = true, text = true, alerts = true, gap = true }
+
+-- Checks blocks (filling in each block's defaults from h) -> err | nil.
+function config.checkBlocks(blocks, h)
+  if type(blocks) ~= "table" then return "hud.blocks must be a list of blocks" end
+  for i, b in ipairs(blocks) do
+    local where = "hud block " .. i
+    if type(b) ~= "table" then return where .. " must be a table" end
+    b.anchor = b.anchor or "top-right"
+    if not ANCHOR[b.anchor] then return where .. ": anchor must be one of " .. table.concat(config.ANCHORS, ", ") end
+    local dx, dy = config.offset(b.anchor)
+    b.x, b.y = b.x or dx, b.y or dy
+    b.width = b.width or (h and h.width) or 160
+    if type(b.x) ~= "number" or type(b.y) ~= "number" then return where .. ": x and y must be numbers" end
+    if type(b.width) ~= "number" or b.width <= 0 then return where .. ": width must be a number above 0" end
+    b.elements = b.elements or {}
+    if type(b.elements) ~= "table" then return where .. ": elements must be a list" end
+    for j, el in ipairs(b.elements) do
+      local w = ("%s element %d"):format(where, j)
+      if type(el) ~= "table" or not KINDS[el.kind] then return w .. ': kind must be "bar", "text", "alerts" or "gap"' end
+      if el.kind == "bar" or el.kind == "text" then
+        local e = checkPanel(j, el)
+        if e then return where .. " " .. e:gsub("^panel", "element") end
+      elseif el.kind == "alerts" then
+        el.count = el.count or 3
+        if type(el.count) ~= "number" or el.count < 0 then return w .. ": count must be a number" end
+      end
+    end
+  end
 end
 
 function config.load(path)

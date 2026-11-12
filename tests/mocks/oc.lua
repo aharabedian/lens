@@ -10,6 +10,8 @@
   M.components[addr] = { type, methods = { [name] = doc string }, proxy? }
                          components for component.list / type / methods / doc / proxy (lens-discover)
   M.resize(w, h)         a blank w x h screen (160x50 = tier 3, 80x25 = tier 2)
+  M.aspect = { w, h }    the screen's size in blocks (component.screen.getAspectRatio); M.resolution: the
+                         last gpu.setResolution
   M.row(y), M.find(text, minY, minX), M.dump(path)   read what the GPU drew
   M.fgAt(x, y), M.bgAt(x, y)
   M.gpuCalls             set + fill calls so far
@@ -107,7 +109,7 @@ end
 local gpu = {
   address = "gp000000", type = "gpu",
   maxResolution = function() return GW, GH end,
-  setResolution = function() return true end,
+  setResolution = function(w, h) M.resolution = { w, h }; return true end,
   setForeground = function(c) local o = cf; cf = c; return o end,
   setBackground = function(c) local o = cb; cb = c; return o end,
   set = function(x, y, s)
@@ -183,6 +185,11 @@ local component = {
     local c = M.components[addr]
     return c and c.methods and c.methods[method] or nil
   end,
+  -- The screen: M.aspect = { blocksW, blocksH } gives it getAspectRatio (nil: the method fails).
+  screen = { getAspectRatio = function()
+    if not M.aspect then error("no aspect ratio in this mock") end
+    return M.aspect[1], M.aspect[2]
+  end },
   isAvailable = function(t)
     if t == "gpu" or t == "screen" then return true end
     if t == "modem" then return M.modem ~= nil end

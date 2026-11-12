@@ -16,8 +16,15 @@ Install, connecting agents and the first run: [setup.md](setup.md). Problems: [t
 | ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓, dimmed) until it clears, and comes back unacknowledged if it gets worse |
 | PANELS | Your panels: label, value, a bar for `max` / `of` / `percent`, and a sparkline of its history (tier 3) |
 
-On a screen narrower than 120 columns, panels, nodes and alerts stack. The hub beeps when a new `BAD`
-alert appears. It redraws only what changed (about 2 GPU calls a second when nothing happens).
+On a screen narrower than 120 columns, panels, nodes and alerts stack; on a tall one (40 rows or more)
+panels keep their sparklines. The hub beeps when a new `BAD` alert appears. It redraws only what changed
+(about 2 GPU calls a second when nothing happens).
+
+**Screen shape:** by default (`resolution = "fit"`) the hub picks the resolution that matches the screen's
+shape in blocks, so text fills it with no empty borders. Characters are twice as tall as they are wide, so a
+3 wide, 4 tall screen gets 73 × 50:
+
+![A 3 x 4 screen](images/dashboard-portrait.png)
 
 ![The hub on a tier 2 screen](images/dashboard-tier2.png)
 
@@ -34,6 +41,7 @@ alert appears. It redraws only what changed (about 2 GPU calls a second when not
 | `staleAfter` | `3` | Missed snapshots before a node counts as stopped reporting (a `BAD` alert) |
 | `beep` | `true` | Beep when a new `BAD` alert appears |
 | `sample` | `10` | Seconds between sparkline samples |
+| `resolution` | `"fit"` | `"fit"`: match the screen's shape (see above). `"max"`: the GPU's largest. `{ width, height }`: your own, e.g. `{ 80, 25 }` for bigger text |
 | `nonCritical` | `{}` | Node names whose silence is only a warning and that don't count towards overall health |
 | `panels` | `{}` | See below |
 | `hud` | `{}` | The AR glasses HUD, see [below](#ar-glasses-hud); `false` turns it off |
@@ -54,11 +62,12 @@ A mistake in the file stops `lens-hub` with the panel or rule named: `panel 2 (O
 | `value` | A [query](queries.md) (required) |
 | `max` | Draw a bar of `value / max` |
 | `of` | A query: show `value/of` and a bar of the fraction. Use `count(...)` of a state series for "how many machines" |
-| `percent` | `true` when `value` is 0..1: show it as a percentage, with a bar |
+| `format` | How the value reads: `"auto"` (`4.2k`, `1.5M`, `3G`; the default), `"percent"` (value is 0..1, shown as %, with a bar; `percent = true` does the same), `"duration"` (seconds, as `2h 05m`), `"signed"` (`+2.4k`, `-300`) |
 | `unit` | Text after the value |
+| `color` | `"thresholds"` (the default: the four keys below), `"sign"` (green above zero, red below), `"none"` |
 | `warnAbove`, `badAbove`, `warnBelow`, `badBelow` | Color the value and bar yellow or red past these |
 
-Values show as `4.2k`, `1.5M`, `3G`. A query with no data shows `–`.
+A query with no data shows `–`. A panel is a **view**: the same keys make a HUD bar or text.
 
 ### Rules
 
@@ -72,35 +81,51 @@ Values show as `4.2k`, `1.5M`, `3G`. A query with no data shows `–`.
 
 ## AR glasses HUD
 
-With an **OC Glasses** Glasses Terminal attached to the hub computer, `lens-hub` also draws a small block in
-the top-right of the view of everyone wearing glasses linked to that terminal (one terminal per player
-gives each their own HUD, [below](#a-hud-for-each-player)): the bars you choose, then the newest
-unacknowledged alerts, with a thin strip down the left in the base's overall health color.
+With an **OC Glasses** Glasses Terminal attached to the hub computer, `lens-hub` draws a HUD in the view of
+everyone wearing glasses linked to that terminal: one or more **blocks**, each a small list of bars, text lines
+and the newest unacknowledged alerts, with a thin strip down the left in the base's overall health color.
 
-![Quiet](images/hud-quiet.png) ![With alerts](images/hud-alerts.png)
+![HUD blocks](images/hud-blocks.png)
 
 Acknowledge alerts on the dashboard and they leave the HUD. Widgets are made once and only changed values are
 sent; the dashboard's footer shows how many calls the HUD made in the last minute (`HUD n calls/min`; 0 when
-nothing changes). If the terminal fails, the dashboard keeps running and shows `HUD: <error>` in its footer.
+nothing changes). If a terminal fails, the dashboard keeps running and shows `HUD: <error>` in its footer.
+
+`hud` in lens-hub.cfg is everyone's default; each player can change their own on the dashboard
+([below](#a-hud-for-each-player)).
 
 ```lua
 hud = {
-  bars = {
-    { label = "Ore", value = 'sum(prism_backlog_items{node="prism-ore"})', max = 10000, warnAbove = 5000, badAbove = 9000 },
+  blocks = {
+    { anchor = "top-right", elements = {
+      { kind = "bar", label = "Power", value = "lumen_stored_eu / lumen_capacity_eu", format = "percent", warnBelow = 0.25 },
+      { kind = "text", label = "Net 5m", value = "lumen_net_5m_eut", unit = "EU/t", format = "signed", color = "sign" },
+      { kind = "alerts", count = 3 },
+    } },
+    { anchor = "bottom-left", x = 4, y = -60, elements = {
+      { kind = "bar", label = "Ore", value = 'sum(prism_backlog_items{node="prism-ore"})', max = 10000 },
+    } },
   },
 },
 ```
 
 | `hud` key | Default | Meaning |
 |---|---|---|
-| `bars` | `{}` | Bars, in the same form as [panels](#panels): `label`, `value`, `max` / `of` / `percent`, thresholds. The fill turns amber or red past `warn…` / `bad…` |
-| `alerts` | `3` | Unacknowledged alerts shown, then `+N more` |
-| `anchor` | `"top-right"` | The corner the block sits in: `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`. The hub learns each wearer's view size when they put the glasses on (until then it assumes 854 x 480, a 1440p window at GUI scale 3) |
-| `x`, `y` | `4`, `4` | Margins from that corner, in GUI pixels (3 screen pixels each at GUI scale 3) |
-| `width` | `160` | Width of the block, in GUI pixels; text takes about 5 per character at scale 1 |
+| `blocks` | | The blocks, below. Without `blocks`, the first form still works: `anchor`, `x`, `y` (margins), `width`, `alerts`, `bars` make one block of the bars, then the alerts |
 | `scale` | `1` | Text and row size: 1 is about chat-text size, 2 doubles it (double `width` too) |
 | `alpha` | `0.35` | Backdrop opacity, 0 for none |
 | `colors` | `"float"` | `"float"` (0..1, what OC Glasses takes) or `"byte"` (0..255) for other glasses mods |
+
+| Block key | Default | Meaning |
+|---|---|---|
+| `anchor` | `"top-right"` | The point it hangs from: `"top-left"`, `"top"`, `"top-right"`, `"left"`, `"center"`, `"right"`, `"bottom-left"`, `"bottom"`, `"bottom-right"` |
+| `x`, `y` | 4 in from the edges the anchor touches | GUI pixels from the anchor, **right and down positive** (3 screen pixels each at GUI scale 3). A block never leaves the view |
+| `width` | `160` | GUI pixels; text takes about 5 per character at scale 1 |
+| `elements` | `{}` | Top to bottom: `{ kind = "bar", ...a view }`, `{ kind = "text", ...a view }` (label, then the value on the right), `{ kind = "alerts", count = 3 }`, `{ kind = "gap" }` (half a row) |
+
+A view is a panel's keys ([panels](#panels)): `format` and `color` work the same, so `color = "sign"` makes a net
+flow green or red. The hub learns each wearer's view size when they put the glasses on (until then it assumes
+854 x 480, a 1440p window at GUI scale 3).
 
 ### A HUD for each player
 
@@ -116,13 +141,14 @@ their taps change anything:
 
 | | |
 |---|---|
-| Bars | Tap one to show or hide it; ▲ ▼ order the ones shown. The choices are `hud.bars` and every panel |
-| Corner | Where the block sits |
-| Size, Width, Alerts | `scale` (0.5 to 3), `width` (100 to 400 px) and how many alerts |
+| BLOCKS | A tab per block; **+** adds one, REMOVE drops the one you're editing |
+| IN BLOCK n | Its elements, in order: tap one to remove it, **BAR / TEXT** switches how it shows, ▲ ▼ order. Below: every view you could add (the default HUD's and every panel), **+ ALERTS** (then − / + for how many) and **+ GAP** |
+| POSITION | The anchor grid (↖ ↑ ↗ ← • → ↙ ↓ ↘), then ◀ ▲ ▼ ▶ to nudge by the step (tap it: 1, 8 or 32 px). Watch the glasses as you tap |
+| Width, Size | The block's width; text size for all your blocks |
 | BACK TO DEFAULT | Drops your settings: you get `hud` from lens-hub.cfg again |
 | DONE | Back to the dashboard (it also closes after a minute without a tap) |
 
 Changes show in your glasses straight away and are saved in **`/home/lens-hud.cfg`** (next to lens-hub.cfg),
-one line per player. Only the hub writes it; lens-setup and lens-hub.cfg are untouched. A player with no
-settings there, or a terminal whose wearer isn't known yet, shows `hud` from lens-hub.cfg. New panels and
-queries are still added in lens-setup or lens-hub.cfg.
+one entry per player. Only the hub writes it; lens-hub.cfg is untouched. A player with no settings there, or
+a terminal whose wearer isn't known yet, shows `hud` from lens-hub.cfg. New panels and queries are still added
+in lens-setup or lens-hub.cfg.

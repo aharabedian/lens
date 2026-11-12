@@ -15,8 +15,8 @@ local function str(s)
   return ("%q"):format(s)
 end
 
-local ORDER = { "id", "label", "level", "text", "value", "when", "of", "max", "percent", "unit",
-  "warnAbove", "badAbove", "warnBelow", "badBelow", "for" }
+local ORDER = { "id", "kind", "label", "level", "text", "value", "when", "of", "max", "percent", "unit", "format",
+  "color", "warnAbove", "badAbove", "warnBelow", "badBelow", "for", "count" }
 local RANK = {}
 for i, k in ipairs(ORDER) do RANK[k] = i end
 
