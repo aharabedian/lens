@@ -13,6 +13,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Several values in one line** (`text`, `values`): `"{stored} / {cap} EU"`, each value formatted.
 - **`when`**: a panel or HUD element shows only while its query is true.
 - The view editor has fields for all of these (Status, Dot states and Values typed on one line), with the preview showing dots and templates; it fits tier 2.
+- **Dashboard pages:** up to 8 named pages of panels, with tabs under the header; made, renamed and deleted on
+  the EDIT page. A 0.2.0 board's panels become the page `Main`.
+- **Alert log** (LOG): alerts happening now, and the last 100 that ended with when and how long they lasted.
 - **HUD presets:** each player has named HUDs (up to 8), switched, copied, renamed and deleted in the HUD
   editor. A HUD saved by 0.2.0 becomes the preset `main`.
 

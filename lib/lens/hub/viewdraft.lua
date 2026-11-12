@@ -14,13 +14,13 @@
   viewdraft.KEYS                 the OpenComputers key codes it knows: back, enter, tab
 ]]
 
-local unicode = require("unicode")
 local config = require("lens.hub.config")
 local format = require("lens.hub.format")
+local textfield = require("lens.hub.textfield")
 
 local viewdraft = {}
 
-viewdraft.KEYS = { back = 0x0E, enter = 0x1C, tab = 0x0F }
+viewdraft.KEYS = textfield.KEYS
 
 viewdraft.FIELDS = {
   { key = "label", name = "Label", kind = "text" },
@@ -126,18 +126,13 @@ end
 function viewdraft.key(d, char, code)
   local k = d.focus
   if not k then return end
-  if code == viewdraft.KEYS.enter or code == viewdraft.KEYS.tab then
-    nextField(d)
-  elseif code == viewdraft.KEYS.back then
-    local s = d.fields[k]
-    d.fields[k] = unicode.len(s) > 0 and unicode.sub(s, 1, -2) or ""
-  elseif type(char) == "number" and char >= 32 and char ~= 127 then
-    d.fields[k] = d.fields[k] .. unicode.char(math.floor(char))
-  end
+  local typed, action = textfield.key(d.fields[k], char, code)
+  d.fields[k] = typed
+  if action then nextField(d) end
 end
 
 function viewdraft.paste(d, s)
-  if d.focus and type(s) == "string" then d.fields[d.focus] = d.fields[d.focus] .. s:gsub("[\r\n\t]+", " ") end
+  if d.focus then d.fields[d.focus] = textfield.paste(d.fields[d.focus], s) end
 end
 
 function viewdraft.cycle(d, key)

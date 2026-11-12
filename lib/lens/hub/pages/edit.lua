@@ -1,7 +1,9 @@
 --[[ lens.hub.pages.edit: the EDIT page (lens.hub.editors.edit): the dashboard's panels and the view library.
 
-  edit.draw(f, e, actions)   e: { player, panels = { panel... } (evaluated, in order; hidden ones say so), library = { { label,
-                             source }... } (views not on the dashboard), canUndo, error, closesIn }
+  edit.draw(f, e, actions)   e: { player, pages = { name... }, page = the one being edited, renaming = text | nil,
+                             keyboard, panels = { panel... } (that page's, evaluated, in order; hidden ones
+                             say so), library = { { label, source }... } (views not on that page), canUndo,
+                             error, closesIn }
 
   Two columns at 100 columns or more, else the library below the panels.
 ]]
@@ -14,8 +16,30 @@ local edit = {}
 local C = frame.C
 local SOURCE = { config = "cfg", edited = "cfg*", screen = "" }
 
+-- The pages: a tab each, + PAGE, RENAME (typed), DELETE (not the last).
+local function pages(f, e, actions)
+  local items = {}
+  for i, name in ipairs(e.pages) do
+    if e.renaming and i == e.page then
+      items[#items + 1] = { e.renaming .. "▏", nil, C.sel }
+    else
+      items[#items + 1] = { name, function(p) actions.editPage(p, i) end, i == e.page and C.btnOn or C.btn }
+    end
+  end
+  if e.renaming then
+    items[#items + 1] = { "OK", actions.editPageRenameOk, C.btnOn }
+    items[#items + 1] = { "CANCEL", actions.editPageRenameCancel, C.line }
+  else
+    if #e.pages < 8 then items[#items + 1] = { "+ PAGE", actions.editPageAdd } end
+    if e.keyboard then items[#items + 1] = { "RENAME", actions.editPageRename, C.line } end
+    if #e.pages > 1 then items[#items + 1] = { "DELETE PAGE", actions.editPageDelete, C.line } end
+  end
+  f:text(2, 2, "PAGES", C.accent)
+  f:chips(9, 2, f.w - 10, items)
+end
+
 local function onDashboard(f, e, actions, x, width, last)
-  f:heading(x, 3, ("ON THE DASHBOARD (%d)"):format(#e.panels), width)
+  f:heading(x, 3, ("ON %s (%d)"):format((e.pages[e.page] or "THE DASHBOARD"):upper(), #e.panels), width)
   local y = 4
   if #e.panels == 0 then f:text(x, y, "Nothing yet: add a view from the library.", C.dim); y = y + 1 end
   local labelW = width - 32
@@ -59,6 +83,7 @@ function edit.draw(f, e, actions)
   if e.canUndo then buttons[#buttons + 1] = { "UNDO", actions.editUndo, C.line } end
   buttons[#buttons + 1] = { "DONE", actions.editDone }
   f:editorHeader("Edit the dashboard", buttons)
+  pages(f, e, actions)
   local last = f.h - 2
   if f.w >= 100 then
     local width = (f.w - 6) // 2

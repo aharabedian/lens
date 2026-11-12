@@ -383,6 +383,23 @@ do
   check(select(2, viewdraft.view(d)):find("name=value", 1, true), "a malformed values line says how to write it")
 end
 
+---------------------------------------------------------------- alert history
+do
+  local a = alerts.new{ keep = 3 }
+  a:update(10, { { node = "n", id = "x", level = "warn", text = "low" } })
+  a:update(20, { { node = "n", id = "x", level = "bad", text = "very low" } })
+  a:update(30, {})
+  local h = a:history()
+  check(#h == 1 and h[1].key == "n/x" and h[1].level == "bad" and h[1].text == "very low" and h[1].since == 10
+    and h[1].ended == 30, "an alert that clears goes to history: its worst level, last text, start and end")
+  for i = 1, 5 do
+    a:update(40 + i, { { node = "n", id = "y" .. i, level = "warn", text = "t" } })
+    a:update(41 + i, {})
+  end
+  h = a:history()
+  check(#h == 3 and h[1].id == "y5" and h[3].id == "y3", "newest first, at most `keep`")
+end
+
 ---------------------------------------------------------------- status rules
 do
   local function err(t) local c, e = config.check(t); return c == nil and e or "" end

@@ -11,10 +11,11 @@ Install, connecting agents and the first run: [setup.md](setup.md). Problems: [t
 
 | Part | Shows |
 |---|---|
-| Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, **DATA** ([below](#the-data-page)), **EDIT** ([editing on the screen](#editing-on-the-screen)), **HUD** (with a Glasses Terminal), QUIT |
+| Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, **LOG** ([below](#the-alert-log)), **DATA** ([below](#the-data-page)), **EDIT** ([editing on the screen](#editing-on-the-screen)), **HUD** (with a Glasses Terminal), QUIT |
 | NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported |
 | ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓, dimmed) until it clears, and comes back unacknowledged if it gets worse |
-| PANELS | Your panels: label, value, a bar for `max` / `of` / `percent`, and a sparkline of its history (tier 3) |
+| Page tabs | With more than one page: tap one to show its panels (anyone may) |
+| PANELS | The shown page's panels: label, value, a bar for `max` / `of` / `percent` (or state dots), and a sparkline of its history (tier 3) |
 
 On a screen narrower than 120 columns, panels, nodes and alerts stack; on a tall one (40 rows or more)
 panels keep their sparklines. The hub beeps when a new `BAD` alert appears. It redraws only what changed
@@ -92,6 +93,14 @@ anything an agent sends.
 
 ![Dots, several values, and a panel shown only while draining](images/elements.png)
 
+## The alert log
+
+Tap **LOG** for what happened while you were away: alerts happening **now** (and for how long), then the ones
+that have **ended**, newest first, with when and how long they lasted (the worst level each reached). The hub
+keeps the last 100 that ended, in memory: a restart starts the log over.
+
+![The alert log](images/log.png)
+
 ## The DATA page
 
 Tap **DATA** to see everything the agents send and build a query without writing one:
@@ -122,8 +131,9 @@ Tap **EDIT** to change the dashboard and the **library** of views. Everything yo
 
 | | |
 |---|---|
-| ON THE DASHBOARD | Its panels with their values: **EDIT** opens the view, ▲ ▼ order, ✕ takes it off (it stays in the library) |
-| LIBRARY | Views not on the dashboard: **+** puts one on, **EDIT** opens it, **+ NEW** makes one. `cfg` marks a view from lens-hub.cfg; `cfg*` one changed here |
+| PAGES | The dashboard's pages (up to 8): tap one to edit it; **+ PAGE** adds one and asks for its name; **RENAME** (typed); **DELETE PAGE** (not the last; its panels leave the dashboard, the views stay in the library) |
+| ON *page* | That page's panels with their values: **EDIT** opens the view, ▲ ▼ order, ✕ takes it off (it stays in the library) |
+| LIBRARY | Views not on that page: **+** puts one on, **EDIT** opens it, **+ NEW** makes one (on that page). `cfg` marks a view from lens-hub.cfg; `cfg*` one changed here |
 | UNDO | Takes back the last change to views or panels (up to 20) |
 
 **A view** (the same keys as a [panel](#panels)), with its value previewed as you type:
@@ -140,8 +150,8 @@ editor.
 - Views from lens-hub.cfg can be changed here (your version is kept in lens-board.cfg; **BACK TO lens-hub.cfg**
   drops it) but keep their label and can't be deleted.
 - Renaming a view moves the dashboard and players' HUDs along with it.
-- A panel later added to lens-hub.cfg (by lens-setup, say) appears on the dashboard once; one you took off stays
-  off.
+- A panel later added to lens-hub.cfg (by lens-setup, say) appears on the first page once; one you took off
+  stays off.
 - One editor is open at a time, for the player who opened it; only their taps and keys count, and it closes
   after a minute without one. `editors` in lens-hub.cfg limits who may open EDIT.
 

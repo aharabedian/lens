@@ -13,15 +13,22 @@
                                  over them, then views made on the screen. Each has source = "config" |
                                  "edited" (a config view changed here) | "screen"
   b:view(label) -> view | nil
-  b:panels() -> { view... }      the dashboard, in order (labels whose view is gone are skipped)
-  b:onDashboard(label) -> bool
+  Pages: the dashboard is one or more named pages of panels (a board from 0.2.0 has one, "Main"). `page` is an
+  index, default 1; new lens-hub.cfg panels go on the first page.
+  b:pages() -> { { name, count }... }
+  b:panels(page?) -> { view... } a page's panels, in order (labels whose view is gone are skipped)
+  b:allPanels() -> { view... }   every page's, each once
+  b:onDashboard(label, page?) -> bool        on that page, or on any page
+  b:addPage(name?) -> index | nil, err        "Page 2", ... when no name; at most MAX_PAGES
+  b:renamePage(page, name) -> true | nil, err
+  b:deletePage(page) -> true | nil, err      not the last; its panels leave the dashboard (views stay)
   b:setView(view, old?) -> true | nil, err    add or replace (old: the label it had, to rename: panels and HUD
                                  elements follow). Checked like a panel in lens-hub.cfg. Saved.
   b:deleteView(label) -> true | nil, err      a screen view goes; an edited one goes back to lens-hub.cfg's.
                                  A config view can't be deleted (take it off the dashboard instead). Saved.
-  b:setPanels({ label... }) -> true | nil, err
-  b:addPanel(label) -> true | nil, err        at the end of the dashboard
-  b:undo() -> bool               the views and panels as they were before the last change (up to UNDO_DEPTH)
+  b:setPanels({ label... }, page?) -> true | nil, err
+  b:addPanel(label, page?) -> true | nil, err  at the end of the page
+  b:undo() -> bool               the views and pages as they were before the last change (up to UNDO_DEPTH)
   b.canUndo
   b:players() -> { [name] = hud settings }   (lens.hub.huds' form; huds reads and writes them through:)
   b:setPlayers(players) -> true | nil, err
@@ -34,6 +41,8 @@ local config = require("lens.hub.config")
 local board = {}
 
 board.UNDO_DEPTH = 20
+board.MAX_PAGES = 8
+board.NAME_LENGTH = 16
 
 ---------------------------------------------------------------- serializing
 local function lit(v, indent)
@@ -115,17 +124,34 @@ function board.new(path, cfg, legacyHudPath)
   local cfgPanels = {}
   for _, p in ipairs(cfg.panels or {}) do cfgPanels[#cfgPanels + 1] = p.label end
   local changed = false
-  if type(data.panels) == "table" then
-    self.list = {}
-    for _, l in ipairs(data.panels) do if type(l) == "string" then self.list[#self.list + 1] = l end end
-    self.seen = {}
-    for _, l in ipairs(type(data.seen) == "table" and data.seen or {}) do self.seen[l] = true end
-    for _, l in ipairs(cfgPanels) do
-      if not self.seen[l] then self.list[#self.list + 1] = l; self.seen[l] = true; changed = true end
+  local function labels(t)
+    local out = {}
+    for _, l in ipairs(type(t) == "table" and t or {}) do if type(l) == "string" then out[#out + 1] = l end end
+    return out
+  end
+  self.pagelist, self.seen = {}, {}
+  if type(data.pages) == "table" then
+    for _, pg in ipairs(data.pages) do
+      if type(pg) == "table" and type(pg.name) == "string" and #self.pagelist < board.MAX_PAGES then
+        self.pagelist[#self.pagelist + 1] = { name = pg.name, list = labels(pg.panels) }
+      end
     end
+  elseif type(data.panels) == "table" then           -- 0.2.0: one list of panels
+    self.pagelist[1] = { name = "Main", list = labels(data.panels) }
+  end
+  if #self.pagelist == 0 then
+    self.pagelist[1] = { name = "Main", list = {} }
+    for _, l in ipairs(cfgPanels) do self.pagelist[1].list[#self.pagelist[1].list + 1] = l; self.seen[l] = true end
   else
-    self.list, self.seen = {}, {}
-    for _, l in ipairs(cfgPanels) do self.list[#self.list + 1] = l; self.seen[l] = true end
+    for _, l in ipairs(labels(data.seen)) do self.seen[l] = true end
+    for _, l in ipairs(cfgPanels) do
+      if not self.seen[l] then
+        local list = self.pagelist[1].list
+        list[#list + 1] = l
+        self.seen[l] = true
+        changed = true
+      end
+    end
   end
   if type(data.huds) == "table" then
     self.huds = data.huds
@@ -146,8 +172,9 @@ function B:save()
   local text = table.concat({
     "-- lens-board.cfg: what's edited on lens-hub's screen. Written by lens-hub; edit lens-hub.cfg instead.",
     "-- views: made or changed on the screen (one with a lens-hub.cfg label replaces that one).",
-    "-- panels: the dashboard, in order. seen: lens-hub.cfg panels already offered. huds: each player's HUD.",
-    "return " .. lit({ views = self.own, panels = self.list, seen = seen, huds = self.huds }),
+    "-- pages: the dashboard's pages and their panels, in order. seen: lens-hub.cfg panels already offered.",
+    "-- huds: each player's HUDs.",
+    "return " .. lit({ views = self.own, pages = self:storedPages(), seen = seen, huds = self.huds }),
   }, "\n") .. "\n"
   local ok, err = files.writeAtomic(self.path, text)
   if not ok then return nil, err end
@@ -178,21 +205,94 @@ function B:view(label)
   for _, v in ipairs(self:views()) do if v.label == label then return v end end
 end
 
-function B:panels()
-  local by = {}
-  for _, v in ipairs(self:views()) do by[v.label] = v end
+function B:storedPages()
   local out = {}
-  for _, l in ipairs(self.list) do if by[l] then out[#out + 1] = by[l] end end
+  for _, pg in ipairs(self.pagelist) do out[#out + 1] = { name = pg.name, panels = pg.list } end
   return out
 end
 
-function B:onDashboard(label)
-  for _, l in ipairs(self.list) do if l == label then return true end end
+local function pageOf(self, page) return self.pagelist[page or 1] or self.pagelist[1] end
+
+function B:pages()
+  local out = {}
+  for _, pg in ipairs(self.pagelist) do out[#out + 1] = { name = pg.name, count = #pg.list } end
+  return out
+end
+
+function B:panels(page)
+  local by = {}
+  for _, v in ipairs(self:views()) do by[v.label] = v end
+  local out = {}
+  for _, l in ipairs(pageOf(self, page).list) do if by[l] then out[#out + 1] = by[l] end end
+  return out
+end
+
+function B:allPanels()
+  local out, seen = {}, {}
+  for i = 1, #self.pagelist do
+    for _, v in ipairs(self:panels(i)) do
+      if not seen[v.label] then out[#out + 1] = v; seen[v.label] = true end
+    end
+  end
+  return out
+end
+
+function B:onDashboard(label, page)
+  for i, pg in ipairs(self.pagelist) do
+    if page == nil or page == i then
+      for _, l in ipairs(pg.list) do if l == label then return true end end
+    end
+  end
   return false
 end
 
+local function cleanName(name)
+  name = type(name) == "string" and name:match("^%s*(.-)%s*$") or ""
+  if name == "" then return nil, "a page needs a name" end
+  if #name > board.NAME_LENGTH then return nil, ("names are at most %d characters"):format(board.NAME_LENGTH) end
+  return name
+end
+
+function B:addPage(name)
+  if #self.pagelist >= board.MAX_PAGES then return nil, ("at most %d pages"):format(board.MAX_PAGES) end
+  if name then
+    local err
+    name, err = cleanName(name)
+    if not name then return nil, err end
+  else
+    local n = #self.pagelist + 1
+    local taken = {}
+    for _, pg in ipairs(self.pagelist) do taken[pg.name] = true end
+    while taken["Page " .. n] do n = n + 1 end
+    name = "Page " .. n
+  end
+  self:snapshot()
+  self.pagelist[#self.pagelist + 1] = { name = name, list = {} }
+  local ok, err = self:save()
+  if not ok then return nil, err end
+  return #self.pagelist
+end
+
+function B:renamePage(page, name)
+  local pg = self.pagelist[page]
+  if not pg then return nil, "no such page" end
+  local clean, err = cleanName(name)
+  if not clean then return nil, err end
+  self:snapshot()
+  pg.name = clean
+  return self:save()
+end
+
+function B:deletePage(page)
+  if not self.pagelist[page] then return nil, "no such page" end
+  if #self.pagelist == 1 then return nil, "the last page stays" end
+  self:snapshot()
+  table.remove(self.pagelist, page)
+  return self:save()
+end
+
 function B:snapshot()
-  table.insert(self.undoStack, { own = deep(self.own), list = deep(self.list) })
+  table.insert(self.undoStack, { own = deep(self.own), pagelist = deep(self.pagelist) })
   while #self.undoStack > board.UNDO_DEPTH do table.remove(self.undoStack, 1) end
   self.canUndo = true
 end
@@ -200,7 +300,7 @@ end
 function B:undo()
   local s = table.remove(self.undoStack)
   if not s then return false end
-  self.own, self.list = s.own, s.list
+  self.own, self.pagelist = s.own, s.pagelist
   self.canUndo = #self.undoStack > 0
   self:save()
   return true
@@ -239,7 +339,9 @@ function B:setView(view, old)
   end
   if not replaced then self.own[#self.own + 1] = v end
   if v.label ~= old then
-    for i, l in ipairs(self.list) do if l == old then self.list[i] = v.label end end
+    for _, pg in ipairs(self.pagelist) do
+      for i, l in ipairs(pg.list) do if l == old then pg.list[i] = v.label end end
+    end
     renameInHuds(self.huds, old, v.label)
   end
   return self:save()
@@ -257,25 +359,28 @@ function B:deleteView(label)
   self:snapshot()
   table.remove(self.own, idx)
   if not wasBase then
-    local keep = {}
-    for _, l in ipairs(self.list) do if l ~= label then keep[#keep + 1] = l end end
-    self.list = keep
+    for _, pg in ipairs(self.pagelist) do
+      local keep = {}
+      for _, l in ipairs(pg.list) do if l ~= label then keep[#keep + 1] = l end end
+      pg.list = keep
+    end
     renameInHuds(self.huds, label, nil)
   end
   return self:save()
 end
 
-function B:setPanels(list)
+function B:setPanels(list, page)
   self:snapshot()
-  self.list = {}
-  for _, l in ipairs(list) do self.list[#self.list + 1] = l end
+  local pg = pageOf(self, page)
+  pg.list = {}
+  for _, l in ipairs(list) do pg.list[#pg.list + 1] = l end
   return self:save()
 end
 
-function B:addPanel(label)
-  local list = { table.unpack(self.list) }
+function B:addPanel(label, page)
+  local list = { table.unpack(pageOf(self, page).list) }
   list[#list + 1] = label
-  return self:setPanels(list)
+  return self:setPanels(list, page)
 end
 
 function B:players() return self.huds end

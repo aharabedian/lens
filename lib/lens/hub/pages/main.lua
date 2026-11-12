@@ -1,8 +1,10 @@
 --[[ lens.hub.pages.main: the dashboard itself: header, nodes, alerts, panels, footer.
 
   main.draw(f, m, actions)   f: lens.hub.frame; m: the app's model (lens.hub.dashboard has its shape);
-                             actions: ack(key), ackAll(), quit(), and the buttons that open editors: data, edit,
-                             hud (each gets the tapping player)
+                             actions: ack(key), ackAll(), quit(), page(player, i), and the buttons that open
+                             editors: log, data, edit, hud (each gets the tapping player)
+
+  With several pages, their tabs sit under the header; the panels are the shown page's.
 
   Panels whose `when` is false now (hidden) aren't shown. A panel shows state dots when its view has them.
   Layout: 120 columns or more puts nodes and alerts on the left and panels (in two columns when there's room)
@@ -28,7 +30,7 @@ local function header(f, m, actions)
   local c = m.counts or { bad = 0, warn = 0 }
   local nodes = ("%d node%s"):format(#m.nodes, #m.nodes == 1 and "" or "s")
   local summary = ("%s   alerts: %d bad, %d warn"):format(nodes, c.bad, c.warn)
-  -- Buttons from the right: QUIT, HUD (with terminals), EDIT, DATA.
+  -- Buttons from the right: QUIT, HUD (with terminals), EDIT, DATA, LOG.
   local qx = f.w - 7
   f:button(qx, 1, "QUIT", actions.quit, C.line)
   local rx = qx
@@ -40,6 +42,8 @@ local function header(f, m, actions)
   f:button(rx, 1, "EDIT", actions.edit, C.btnOn)
   rx = rx - 7
   f:button(rx, 1, "DATA", actions.data, C.btnOn)
+  rx = rx - 6
+  f:button(rx, 1, "LOG", actions.log, C.btnOn)
   if 17 + Gui.len(summary) + 1 > rx then summary = ("%s · %d bad %d warn"):format(nodes, c.bad, c.warn) end
   f:text(17, 1, Gui.fit(summary, math.max(1, rx - 18)), C.text, C.panel)
   -- The hub's name and port when there's room, else just the version, else nothing.
@@ -201,8 +205,18 @@ local function footer(f, m)
   end
 end
 
+local function tabs(f, m, actions)
+  if #(m.pages or {}) < 2 then return end
+  local items = {}
+  for i, name in ipairs(m.pages) do
+    items[#items + 1] = { name, function(p) actions.page(p, i) end, i == m.page and C.btnOn or C.btn }
+  end
+  f:chips(2, 2, f.w - 2, items)
+end
+
 function main.draw(f, m, actions)
   header(f, m, actions)
+  tabs(f, m, actions)
   local lastRow = f.h - 1
   if f.w >= 120 then
     local lw = 56

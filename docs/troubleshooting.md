@@ -43,4 +43,6 @@ The dashboard's footer shows how many calls the HUD made in the last minute: abo
 | "Only Steve can edit the dashboard." | `editors` in lens-hub.cfg lists who may; anyone can still change their own HUD |
 | SAVE says what's wrong ("value: expected ) at 14") | The query, as typed: the **Now** line shows the error as you type. [queries.md](queries.md) has the syntax |
 | A panel I added to lens-hub.cfg doesn't show | It's added to the dashboard once, unless it was taken off on the screen: tap EDIT, find it in the library, **+** |
+| A panel I added went missing | It may be on another page: the tabs under the header (or EDIT's PAGES row) show them all |
+| The LOG is empty after a restart | It's kept in memory only: it starts over when `lens-hub` starts |
 | I want to start the screen setup over | Delete `/home/lens-board.cfg` and restart `lens-hub`: lens-hub.cfg's panels and HUD come back |

@@ -1,6 +1,6 @@
 --[[ lens.hub.alerts: one list of every active alert in the base, with acknowledgements. Pure.
 
-  local a = require("lens.hub.alerts").new()
+  local a = require("lens.hub.alerts").new{ keep = 100 }   keep: how many ended alerts history() remembers
   a:update(now, active) -> { new = { key... }, cleared = { key... }, changed = bool }
       active = { { node, id, level, text, age? } }: everything firing right now (agents' alerts, the hub's
       rules, stale nodes). An alert missing from `active` has cleared and is dropped.
@@ -8,6 +8,8 @@
   a:list() -> { { key, node, id, level, text, since, acked } }   bad first, then oldest, then by key
   a:ack(key) -> bool      a:ackAll()
   a:counts() -> { bad, warn, unacked }
+  a:history() -> { { key, node, id, level, text, since, ended }... }   alerts that have cleared, newest first:
+      level is the worst it reached, text its last. Kept in memory only (a restart starts over).
 
   key is node .. "/" .. id. since is when the condition started: now - age the first time it's seen, so an
   alert keeps its age when the hub restarts. An ack lasts until the alert clears or gets worse (warn -> bad).
@@ -20,7 +22,7 @@ local SEVERITY = { warn = 1, bad = 2 }
 local Alerts = {}
 Alerts.__index = Alerts
 
-function alerts.new() return setmetatable({ byKey = {} }, Alerts) end
+function alerts.new(o) return setmetatable({ byKey = {}, ended = {}, keep = (o and o.keep) or 100 }, Alerts) end
 
 function Alerts:update(now, active)
   local seen, new, cleared, changed = {}, {}, {}, false
@@ -40,10 +42,14 @@ function Alerts:update(now, active)
       end
       if a.acked and SEVERITY[level] > SEVERITY[a.ackedLevel] then a.acked, a.ackedLevel = false, nil end
       a.level, a.text = level, x.text
+      if not a.worst or SEVERITY[level] > SEVERITY[a.worst] then a.worst = level end
     end
   end
-  for key in pairs(self.byKey) do
+  for key, a in pairs(self.byKey) do
     if not seen[key] then
+      table.insert(self.ended, 1, { key = key, node = a.node, id = a.id, level = a.worst or a.level, text = a.text,
+        since = a.since, ended = now })
+      if #self.ended > self.keep then table.remove(self.ended) end
       self.byKey[key] = nil
       cleared[#cleared + 1] = key
       changed = true
@@ -65,6 +71,12 @@ function Alerts:list()
     if x.since ~= y.since then return x.since < y.since end
     return x.key < y.key
   end)
+  return out
+end
+
+function Alerts:history()
+  local out = {}
+  for i, e in ipairs(self.ended) do out[i] = e end
   return out
 end
 

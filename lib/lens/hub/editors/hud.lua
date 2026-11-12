@@ -17,10 +17,9 @@
   Changes are saved at once (huds:change).
 ]]
 
-local unicode = require("unicode")
 local config = require("lens.hub.config")
 local huds = require("lens.hub.huds")
-local viewdraft = require("lens.hub.viewdraft")
+local textfield = require("lens.hub.textfield")
 
 local E = {}
 
@@ -126,20 +125,16 @@ end
 
 function E.key(app, e, char, code)
   if not e.renaming then return end
-  if code == viewdraft.KEYS.enter then
+  local text, action = textfield.key(e.renaming, char, code, huds.NAME_LENGTH)
+  e.renaming = text
+  if action == "enter" then
     local ok, err = E.rename(app, e, e.player)
     if not ok then app.editError = err end
-  elseif code == viewdraft.KEYS.back then
-    e.renaming = unicode.len(e.renaming) > 0 and unicode.sub(e.renaming, 1, -2) or ""
-  elseif type(char) == "number" and char >= 32 and char ~= 127 and unicode.len(e.renaming) < huds.NAME_LENGTH then
-    e.renaming = e.renaming .. unicode.char(math.floor(char))
   end
 end
 
 function E.paste(_, e, text)
-  if e.renaming and type(text) == "string" then
-    e.renaming = unicode.sub(e.renaming .. text:gsub("[\r\n\t]+", " "), 1, huds.NAME_LENGTH)
-  end
+  if e.renaming then e.renaming = textfield.paste(e.renaming, text, huds.NAME_LENGTH) end
 end
 
 function E.model(app, e)

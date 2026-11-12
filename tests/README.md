@@ -20,13 +20,14 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | File | Covers |
 |---|---|
 | `test_units.lua` | `metrics` and `codec` on their own |
-| `test_hub.lua` | The hub's pure modules on their own: `store` (and its metric list), `query`, `rules`, `alerts`, `format`, `config` (views, HUD blocks, resolution), `explore`, `viewdraft`, and the resolution that fits a screen |
+| `test_hub.lua` | The hub's pure modules on their own: `store` (and its metric list), `query`, `rules`, `alerts` (and its history), `format` (templates, dots), `config` (views, HUD blocks, resolution), `explore`, `viewdraft`, and the resolution that fits a screen |
 | `test_net.lua` | Agents and the hub over `mocks/net.lua`: discovery, parts, lost packets, staleness, restarts, tokens, rules |
 | `test_dashboard.lua` | The dashboard end to end with a PRISM-like agent: panels, alerts and acks by touch, stale nodes, beeps, GPU calls per quiet second, tier 2, config errors, fitting a 3 × 4 screen |
 | `test_hud.lua` | The HUD on one terminal (`mocks/glasses.lua`): strip, bars, alerts, nothing overlapping, only changed setters, options, blocks from nine anchors with bar / text / gap / alerts, in `lens-hub` (calls per minute), a broken terminal |
-| `test_huds.lua` | A HUD per terminal with its wearer's settings (`huds`), and the HUD editor through `lens-hub`: blocks, elements, anchors, nudges, only the tapping player, saved in `lens-board.cfg`, timing out, long lists, tier 2 and 3 × 4 screens |
-| `test_board.lua` | `lens-board.cfg` (`board`): the library, overrides, renames, deletes, undo, migration from `lens-hud.cfg`; the EDIT page and view editor through `lens-hub`: typing, pasting, preview, order, remove, `editors`, no keyboard |
+| `test_huds.lua` | A HUD per terminal with its wearer's settings (`huds`), presets, and the HUD editor through `lens-hub`: presets, blocks, elements, anchors, nudges, only the tapping player, saved in `lens-board.cfg`, timing out, long lists, tier 2 and 3 × 4 screens |
+| `test_board.lua` | `lens-board.cfg` (`board`): the library, overrides, renames, deletes, undo, pages, migration from `lens-hud.cfg` and 0.2.0's panels; the EDIT page and view editor through `lens-hub`: typing, pasting, preview, order, remove, `editors`, no keyboard |
 | `test_elements.lua` | What a view can show, through `lens-hub`: state dots, several values in one line, `when`, on the dashboard, in the HUD and in the view editor (tier 2 too) |
+| `test_pages.lua` | The dashboard's pages and the alert log through `lens-hub`: + PAGE named on the keyboard, panels per page, tabs, deleting a page, LOG now and earlier, a 3 × 4 screen |
 | `test_data.lua` | The DATA page through `lens-hub`: metrics, series, filters, functions, SAVE AS PANEL, ADD TO MY HUD, counters as rates, `editors`, paging, narrow screens |
 | `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering, `--widgets`, `--events`, `--glasses-test` |
 | `test_setup.lua` | `lens-setup` with scripted answers: finding a PRISM router, its panels and HUD bar, the file (loads, comments, `lens-hub` runs it), `.shrc`, re-runs keeping edits, PRISM's port refused, no agents, no network card, no glasses, cancelling, a broken file |
