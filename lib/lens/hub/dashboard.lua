@@ -2,7 +2,7 @@
 
   local d = require("lens.hub.dashboard").new(gpu, w, h)
   d:draw(model, actions)   build the frame and send the GPU only the rows that changed since the last draw
-  d:tap(x, y) -> bool      run the touch target under (x, y)
+  d:tap(x, y, player?) -> bool   run the touch target under (x, y); it gets the player who tapped
   d:restore()              plain terminal colors again (on exit)
 
   model = {
@@ -12,8 +12,14 @@
     panels = { { label, text, frac = 0..1 | nil, level = "warn" | "bad" | nil, history = { number... } } },
     hudError = text | nil,   shown in the footer
     hudPerMinute = n | nil,  HUD component calls in the last minute, shown in the footer
+    huds = bool,             Glasses Terminals attached: the header has a HUD button
+    editor = nil | { player, settings = { anchor, scale, width, alerts, bars, own }, wearing = n,
+                     bars = { { label, pos = n | nil }... } (shown ones first, in order), shown = n,
+                     error = text | nil, closesIn = seconds }   the HUD editor, drawn instead of the dashboard
   }
-  actions = { ack(key), ackAll(), quit() }
+  actions = { ack(key), ackAll(), quit(), hud(player),
+              hudDone, hudReset, hudToggle(label), hudMove(label, -1 | 1), hudAnchor(anchor), hudStep(key, -1 | 1) }
+    (the editor's actions get the tapping player first)
 
   Layout: 120 columns or more puts nodes and alerts on the left and panels (in two columns when there's room)
   on the right; narrower screens stack panels, nodes and alerts. Lists that don't fit end with "+N more".
@@ -70,6 +76,10 @@ local function rowKey(row)
 end
 
 ---------------------------------------------------------------- sections
+local function heading(f, x, y, text, width)
+  f:text(x, y, Gui.fit(text, width), C.accent)
+end
+
 local function header(f, m, actions)
   f:rowBg(1, C.panel)
   f:text(2, 1, "LENS", C.accent, C.panel)
@@ -80,12 +90,82 @@ local function header(f, m, actions)
   f:text(17, 1, summary, C.text, C.panel)
   local right = ("%s · port %d · v%s"):format(m.node or "hub", m.port or 0, m.version or "?")
   local qx = f.w - 7
-  f:text(qx - Gui.len(right) - 2, 1, right, C.dim, C.panel)
+  local rx = qx
+  if m.huds then
+    rx = qx - 6
+    f:button(rx, 1, "HUD", actions.hud, C.btnOn)
+  end
+  f:text(rx - Gui.len(right) - 2, 1, right, C.dim, C.panel)
   f:button(qx, 1, "QUIT", actions.quit, C.line)
 end
 
-local function heading(f, x, y, text, width)
-  f:text(x, y, Gui.fit(text, width), C.accent)
+---------------------------------------------------------------- the HUD editor
+local function stepper(f, x, y, label, value, key, actions)
+  f:text(x, y, Gui.fit(label, 8), C.dim)
+  f:button(x + 9, y, "-", function(p) actions.hudStep(p, key, -1) end)
+  f:text(x + 13, y, Gui.rfit(value, 5), C.text)
+  f:button(x + 19, y, "+", function(p) actions.hudStep(p, key, 1) end)
+end
+
+local function editor(f, m, actions)
+  local e = m.editor
+  local s = e.settings
+  f:rowBg(1, C.panel)
+  f:text(2, 1, "LENS", C.accent, C.panel)
+  f:text(8, 1, Gui.fit("HUD for " .. tostring(e.player or "?"), f.w - 20), C.text, C.panel)
+  f:button(f.w - 7, 1, "DONE", actions.hudDone, C.btnOn)
+
+  local lx, lw = 2, math.min(46, f.w - 36)
+  heading(f, lx, 3, ("BARS (%d shown)"):format(e.shown), lw)
+  f:text(lx, 4, Gui.fit("Tap to show or hide; arrows order.", lw), C.dim)
+  local y, last = 6, f.h - 3
+  if #e.bars == 0 then f:text(lx, y, Gui.fit("No panels or hud.bars in lens-hub.cfg yet.", lw), C.dim) end
+  for i, b in ipairs(e.bars) do
+    if y > last then
+      f:text(lx, last + 1, ("+%d more"):format(#e.bars - i + 1), C.dim)
+      break
+    end
+    local on = b.pos ~= nil
+    local label = b.label
+    f:text(lx, y, on and "[✓]" or "[ ]", on and C.good or C.dim)
+    f:text(lx + 4, y, Gui.fit(label, lw - 13), on and C.text or C.dim)
+    f:hit(lx, y, lx + lw - 10, y, function(p) actions.hudToggle(p, label) end)
+    if on then
+      if b.pos > 1 then f:button(lx + lw - 8, y, "▲", function(p) actions.hudMove(p, label, -1) end) end
+      if b.pos < e.shown then f:button(lx + lw - 4, y, "▼", function(p) actions.hudMove(p, label, 1) end) end
+    end
+    y = y + 1
+  end
+
+  local rx = lx + lw + 4
+  heading(f, rx, 3, "CORNER", 30)
+  local cy = 4
+  for i, a in ipairs({ "top-left", "top-right", "bottom-left", "bottom-right" }) do
+    local bx = rx + ((i - 1) % 2) * 15
+    local by = cy + (i - 1) // 2
+    local label = Gui.fit(a, 12)
+    f:button(bx, by, label, function(p) actions.hudAnchor(p, a) end, s.anchor == a and C.btnOn or C.btn)
+  end
+  heading(f, rx, 7, "LOOK", 30)
+  stepper(f, rx, 8, "Size", ("%.2g"):format(s.scale), "scale", actions)
+  stepper(f, rx, 9, "Width", tostring(s.width), "width", actions)
+  stepper(f, rx, 10, "Alerts", tostring(s.alerts), "alerts", actions)
+  if s.own then f:button(rx, 12, "BACK TO DEFAULT", actions.hudReset, C.line) end
+  local note
+  if e.wearing == 0 then
+    note = { "No terminal shows this HUD yet:", "link your glasses to one", "of your own." }
+  else
+    note = { ("Showing on %d terminal%s."):format(e.wearing, e.wearing == 1 and "" or "s"), "Changes apply at once." }
+  end
+  for i, l in ipairs(note) do f:text(rx, 13 + i, Gui.fit(l, f.w - rx), e.wearing == 0 and C.warn or C.dim) end
+
+  f:rowBg(f.h, C.bg)
+  if e.error then
+    f:text(2, f.h, Gui.fit(e.error, f.w - 2), C.bad)
+  else
+    f:text(2, f.h, Gui.fit(("Only %s can change this. Closes in %ds without a tap."):format(tostring(e.player or "?"),
+      e.closesIn or 0), f.w - 2), C.dim)
+  end
 end
 
 local function nodes(f, m, x, y, width, maxRows)
@@ -231,6 +311,10 @@ end
 
 function Dash:build(m, actions)
   local f = newFrame(self.w, self.h)
+  if m.editor then
+    editor(f, m, actions)
+    return f
+  end
   header(f, m, actions)
   local lastRow = self.h - 1
   if self.w >= 120 then
@@ -292,11 +376,11 @@ function Dash:draw(m, actions)
   self.hits = f.hits
 end
 
-function Dash:tap(x, y)
+function Dash:tap(x, y, player)
   for i = #self.hits, 1, -1 do
     local h = self.hits[i]
     if x >= h[1] and x <= h[3] and y >= h[2] and y <= h[4] then
-      if h[5] then h[5]() end
+      if h[5] then h[5](player) end
       return true
     end
   end

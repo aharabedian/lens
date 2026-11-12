@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **A HUD for each player**: the hub drives every Glasses Terminal attached to it, each showing the HUD of the
+  player wearing glasses linked to it, placed for their view size. One terminal per player.
+- **HUD editor** on the dashboard (tap **HUD**): pick and order your bars from `hud.bars` and the panels,
+  corner, size, width and alerts. Only the player who tapped can change their HUD; changes apply at once and
+  are saved in `/home/lens-hud.cfg`.
+
 ## [0.1.0] - 2026-11-12
 
 The first release. Works with PRISM 1.2.0, which reports to LENS.

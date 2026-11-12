@@ -16,6 +16,7 @@ return {
   { "lib/lens/hub/core.lua", "lib/lens/hub/core.lua" },
   { "lib/lens/hub/dashboard.lua", "lib/lens/hub/dashboard.lua" },
   { "lib/lens/hub/hud.lua", "lib/lens/hub/hud.lua" },
+  { "lib/lens/hub/huds.lua", "lib/lens/hub/huds.lua" },
   { "lib/lens/hub/query.lua", "lib/lens/hub/query.lua" },
   { "lib/lens/hub/rules.lua", "lib/lens/hub/rules.lua" },
   { "lib/lens/hub/store.lua", "lib/lens/hub/store.lua" },

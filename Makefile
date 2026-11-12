@@ -31,6 +31,7 @@ docs-images: screens
 	cp build/screens/dashboard-tier2.png docs/images/dashboard-tier2.png
 	cp build/screens/hud-quiet.png docs/images/hud-quiet.png
 	cp build/screens/hud-alerts.png docs/images/hud-alerts.png
+	cp build/screens/hud-editor.png docs/images/hud-editor.png
 
 clean:
 	rm -rf build
