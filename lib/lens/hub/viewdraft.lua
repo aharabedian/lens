@@ -1,7 +1,8 @@
 --[[ lens.hub.viewdraft: a view being edited on the screen: its fields as text, the field being typed into,
   keys and pastes, and turning it back into a view. Pure.
 
-  viewdraft.FIELDS               { { key, name, kind = "text" | "number" | "choice", choices? }... } in screen order
+  viewdraft.FIELDS               { { key, name, kind = "text" | "number" | "values" | "choice", choices? }... } in
+                                 screen order; "values" is typed as "name=query; name=query"
   viewdraft.draft(view?) -> d    d.fields = { [key] = text }, d.focus = the field typed into ("label" first)
   viewdraft.key(d, char, code)   a key_down: printable characters type; Backspace deletes; Enter and Tab go to the
                                  next text field
@@ -25,20 +26,49 @@ viewdraft.FIELDS = {
   { key = "value", name = "Query", kind = "text" },
   { key = "format", name = "Format", kind = "choice", choices = format.FORMATS },
   { key = "unit", name = "Unit", kind = "text" },
+  { key = "text", name = "Text", kind = "text" },
+  { key = "values", name = "Values", kind = "values" },
   { key = "max", name = "Bar max", kind = "number" },
   { key = "of", name = "Bar of", kind = "text" },
+  { key = "dots", name = "Dots", kind = "text" },
+  { key = "by", name = "Dots by", kind = "text" },
   { key = "color", name = "Color", kind = "choice", choices = format.COLORS },
   { key = "warnAbove", name = "Warn above", kind = "number" },
   { key = "badAbove", name = "Bad above", kind = "number" },
   { key = "warnBelow", name = "Warn below", kind = "number" },
   { key = "badBelow", name = "Bad below", kind = "number" },
+  { key = "when", name = "Show when", kind = "text" },
 }
 
 local BY = {}
 for _, f in ipairs(viewdraft.FIELDS) do BY[f.key] = f end
 
+-- values as one line: "a=query; b=query" (names sorted), and back.
+local function valuesText(t)
+  local names = {}
+  for k in pairs(t) do names[#names + 1] = k end
+  table.sort(names)
+  local parts = {}
+  for _, k in ipairs(names) do parts[#parts + 1] = k .. "=" .. t[k] end
+  return table.concat(parts, "; ")
+end
+
+local function parseValues(s)
+  local out = {}
+  for part in (s .. ";"):gmatch("(.-);") do
+    part = part:match("^%s*(.-)%s*$")
+    if part ~= "" then
+      local name, q = part:match("^([%w_]+)%s*=%s*(.+)$")
+      if not name then return nil, ("Values: write name=query; name=query (got %q)"):format(part) end
+      out[name] = q
+    end
+  end
+  return next(out) and out or nil
+end
+
 local function text(v)
   if v == nil then return "" end
+  if type(v) == "table" then return valuesText(v) end
   if math.type(v) == "float" and v == math.floor(v) and math.abs(v) < 2 ^ 53 then return tostring(math.floor(v)) end
   return tostring(v)
 end
@@ -108,6 +138,10 @@ function viewdraft.view(d)
           local n = tonumber(s)
           if not n then return nil, f.name .. " must be a number" end
           v[f.key] = n
+        elseif f.kind == "values" then
+          local t, err = parseValues(s)
+          if err then return nil, err end
+          v[f.key] = t
         else
           v[f.key] = s
         end

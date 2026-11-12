@@ -2,6 +2,8 @@
 
   local q, err = require("lens.hub.query").compile('sum(prism_machine_state{process="ore", state="running"})')
   q(lookup) -> number | nil       lookup(metricName) -> series[] (store:lookup bound to `now`)
+  local s, err = query.select('prism_machine_state{node="prism-ore"}')   just a selector
+  s(lookup) -> series[]           the matching series themselves (for state dots)
 
   Grammar (Lua-like precedence, loosest first):
     expr     := and { "or" and }
@@ -271,13 +273,13 @@ function Parser:expr()
   return left
 end
 
-function query.compile(text)
+local function parse(text, rule)
   if type(text) ~= "string" then return nil, "query must be a string" end
   local toks, err = tokenize(text)
   if not toks then return nil, err end
   local p = setmetatable({ toks = toks, i = 1 }, Parser)
   local ok, res = pcall(function()
-    local e = p:expr()
+    local e = rule(p)
     p:expect("eof", "end of query")
     return e
   end)
@@ -287,5 +289,9 @@ function query.compile(text)
   end
   return res
 end
+
+function query.select(text) return parse(text, Parser.selector) end
+
+function query.compile(text) return parse(text, Parser.expr) end
 
 return query

@@ -60,15 +60,28 @@ A mistake in the file stops `lens-hub` with the panel or rule named: `panel 2 (O
 | Key | Meaning |
 |---|---|
 | `label` | Name shown on the panel (required) |
-| `value` | A [query](queries.md) (required) |
+| `value` | A [query](queries.md). Required unless the view has `text` or `dots` |
 | `max` | Draw a bar of `value / max` |
 | `of` | A query: show `value/of` and a bar of the fraction. Use `count(...)` of a state series for "how many machines" |
 | `format` | How the value reads: `"auto"` (`4.2k`, `1.5M`, `3G`; the default), `"percent"` (value is 0..1, shown as %, with a bar; `percent = true` does the same), `"duration"` (seconds, as `2h 05m`), `"signed"` (`+2.4k`, `-300`) |
 | `unit` | Text after the value |
 | `color` | `"thresholds"` (the default: the four keys below), `"sign"` (green above zero, red below), `"none"` |
 | `warnAbove`, `badAbove`, `warnBelow`, `badBelow` | Color the value and bar yellow or red past these |
+| `text`, `values` | **Several values in one line**: `text = "{s} / {c} EU"` with `values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" }`. Each `{name}` is formatted with `format`; `{value}` and `{of}` are the view's own |
+| `dots`, `by` | **State dots**: a [selector](queries.md) such as `'prism_machine_state{node="prism-ore"}'`, one dot per `by` label (default `machine`). The dot follows the series' `state` label: running green, idle dim, down red, anything else yellow; series without a `state` label are green above 0, red at 0 (`lumen_lsc_up`, `by = "lsc"`) |
+| `when` | **Show only while** this query is true (non-zero): `when = "lumen_net_5m_eut < 0"`. The EDIT page still lists it, as `hidden` |
 
-A query with no data shows `–`. A panel is a **view**: the same keys make a HUD bar or text.
+A query with no data shows `–`. A panel is a **view**: the same keys make a HUD bar or text (a view with dots
+shows its dots in either).
+
+```lua
+{ label = "Ore line", dots = 'prism_machine_state{node="prism-ore"}' },
+{ label = "LSC", text = "{s} / {c} EU", values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" } },
+{ label = "Draining", value = "lumen_net_5m_eut", unit = "EU/t", format = "signed", color = "sign",
+  when = "lumen_net_5m_eut < 0" },
+```
+
+![Dots, several values, and a panel shown only while draining](images/elements.png)
 
 ## The DATA page
 
@@ -109,7 +122,7 @@ Tap **EDIT** to change the dashboard and the **library** of views. Everything yo
 ![The view editor](images/view-editor.png)
 
 Tap a field and type: **a keyboard attached to the hub's screen** is needed for that (Enter goes to the next
-field, Insert pastes your clipboard). Format and Color cycle when tapped. SAVE checks the view like lens-hub.cfg
+field, Insert pastes your clipboard). **Values** is typed on one line: `s=sum(lumen_stored_eu); c=sum(lumen_capacity_eu)`. Format and Color cycle when tapped. SAVE checks the view like lens-hub.cfg
 would and says what's wrong. A new view goes on the dashboard, and every view is offered in each player's HUD
 editor.
 

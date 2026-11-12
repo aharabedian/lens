@@ -4,8 +4,9 @@
   local h = require("lens.hub.hud").new(proxy, opts)    opts = cfg.hud (lens.hub.config has the defaults)
   h:draw(model)     model: the dashboard's model plus model.screen = { w, h } (the wearer's GUI size, from
                     glasses_on; default 854 x 480) and model.hudBlocks = { { anchor, x, y, width, items }... },
-                    items evaluated: { kind = "bar" | "text", label, text, frac, level } | { kind = "alerts",
-                    count } | { kind = "gap" }. Without hudBlocks: one block placed as opts.blocks[1], with
+                    items evaluated: { kind = "bar" | "text", label, text, frac, level, dots? } | { kind =
+                    "alerts", count } | { kind = "gap" }. An item with dots shows its label and a colored dot
+                    each, whatever its kind. Without hudBlocks: one block placed as opts.blocks[1], with
                     model.hudBars then the alerts. Widgets are made on first use; afterwards a setter is called
                     only when its value changed, because every call is a component call.
   opts              scale, alpha, colors (lens.hub.config's hud)
@@ -167,6 +168,16 @@ function Hud:block(i, b, m, unacked, used)
         self:rect(mark(k .. "f"), barX, barY, barW * math.min(1, item.frac), barH, color, 1)
       end
       self:text(mark(k .. "v"), right - valueW, y, cut(item.text or "-", valueChars), item.level and P[item.level] or P.text)
+      y = y + line
+    elseif item.dots then
+      -- State dots: the label, then a dot per item in its level's color, as many as fit.
+      self:text(mark(k .. "l"), tx, y, cut(item.label, labelChars), P.dim)
+      local dx = tx + labelW
+      local fit = math.max(0, math.floor((right - dx) / (2 * char)))
+      for d = 1, math.min(#item.dots, fit) do
+        local dot = item.dots[d]
+        self:text(mark(k .. "d" .. d), dx + math.floor((d - 1) * 2 * char), y, "●", dot.level and P[dot.level] or P.stale)
+      end
       y = y + line
     elseif item.kind == "text" then
       local value = cut(item.text or "-", math.max(4, math.floor(inner / char) - 4))

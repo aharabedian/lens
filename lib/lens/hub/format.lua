@@ -1,14 +1,25 @@
 --[[ lens.hub.format: a view's value as text, a bar fraction and a color level, the same on the dashboard and
   in the HUD. Pure.
 
-  A view (a panel, a HUD bar or text): { label, value = query, of = query?, max?, unit?,
+  A view (a panel, a HUD bar or text): { label, value = query?, of = query?, max?, unit?,
     format = "auto" | "percent" | "duration" | "signed",   default "auto" ("percent": value is 0..1)
     color = "thresholds" | "sign" | "none",                 default "thresholds"
-    warnAbove?, badAbove?, warnBelow?, badBelow? }          (thresholds compare the value itself)
+    warnAbove?, badAbove?, warnBelow?, badBelow?,           (thresholds compare the value itself)
+    text = "{stored} / {cap} EU"?, values = { stored = query, cap = query }?   several values in one line:
+                                                            each {name} formatted with `format`; {value} and
+                                                            {of} are the value and of queries'
+    dots = selector?, by = label?,                          state dots: one per `by` (default "machine")
+    when = query? }                                         shown only while true (non-zero)
   FORMATS, COLORS               the allowed names, in the order the editor cycles them
-  format.view(view, v, total?) -> text, frac, level
-    v: the value (nil: no data, text "–"); total: the `of` query's value. frac: 0..1 for a bar, or nil.
-    level: "bad" | "warn" | "good" | nil. "sign": above 0 good, below 0 bad.
+  format.view(view, v, total?, values?) -> text, frac, level
+    v: the value (nil: no data, text "–"); total: the `of` query's value; values: { [name] = number } for the
+    text template. frac: 0..1 for a bar, or nil. level: "bad" | "warn" | "good" | nil ("sign": above 0 good,
+    below 0 bad).
+  format.dots(series, by?) -> { { name, level }... }   series grouped by the `by` label (default "machine"),
+    sorted by name. A group's state is the `state` label of its series that's above 0: running, ok, up, on and
+    active are good, idle and waiting dim (nil), down, off, bad and broken bad, anything else warn. Series
+    without a `state` label: above 0 good, else bad.
+  format.template(view, values) -> text
   format.number(v) -> "1.2M", "640", "0.25"
   format.duration(seconds) -> "45s", "12m", "2h 05m", "3d 4h"
 ]]
@@ -51,7 +62,65 @@ local function level(view, v)
   return nil
 end
 
-function format.view(view, v, total)
+-- One number as the view's format would show it, without a unit.
+local function one(view, v)
+  local kind = view.format or "auto"
+  if v == nil then return "–" end
+  if kind == "percent" then return math.floor(v * 100 + 0.5) .. "%" end
+  if kind == "duration" then return format.duration(v) end
+  if kind == "signed" then return (v > 0 and "+" or "") .. format.number(v) end
+  return format.number(v)
+end
+
+function format.template(view, values)
+  return (view.text:gsub("{([%w_]+)}", function(name)
+    if values[name] == nil and not (name == "value" or name == "of" or (view.values or {})[name]) then return "?" end
+    return one(view, values[name])
+  end))
+end
+
+local GOOD = { running = true, ok = true, up = true, on = true, active = true, working = true }
+local DIM = { idle = true, waiting = true }
+local BAD = { down = true, off = true, bad = true, broken = true }
+
+function format.dots(series, by)
+  by = by or "machine"
+  local groups, names = {}, {}
+  for _, s in ipairs(series or {}) do
+    local labels = s.labels or {}
+    local name = labels[by]
+    if not name then
+      local parts = {}
+      for k, x in pairs(labels) do if k ~= "node" and k ~= "state" then parts[#parts + 1] = k .. "=" .. x end end
+      table.sort(parts)
+      name = #parts > 0 and table.concat(parts, " ") or (labels.node or "?")
+    end
+    local g = groups[name]
+    if not g then g = { name = name }; groups[name] = g; names[#names + 1] = name end
+    if labels.state then
+      if s.value and s.value > 0 then g.state = labels.state end
+    else
+      g.up = (g.up or false) or (s.value ~= nil and s.value > 0)
+    end
+  end
+  table.sort(names)
+  local out = {}
+  for _, name in ipairs(names) do
+    local g = groups[name]
+    local lv
+    if g.state then
+      if GOOD[g.state] then lv = "good"
+      elseif BAD[g.state] then lv = "bad"
+      elseif not DIM[g.state] then lv = "warn" end
+    elseif g.up ~= nil then
+      lv = g.up and "good" or "bad"
+    end
+    out[#out + 1] = { name = name, level = lv }
+  end
+  return out
+end
+
+function format.view(view, v, total, values)
   local unit = view.unit and (" " .. view.unit) or ""
   local kind = view.format or "auto"
   local text, frac
@@ -70,6 +139,11 @@ function format.view(view, v, total)
       text = format.number(v) .. (v and unit or "")
     end
     frac = (v and view.max) and v / view.max or nil
+  end
+  if view.text then
+    local all = { value = v, of = total }
+    for k, x in pairs(values or {}) do all[k] = x end
+    text = format.template(view, all)
   end
   if frac then frac = math.max(0, math.min(1, frac)) end
   return text, frac, level(view, v)

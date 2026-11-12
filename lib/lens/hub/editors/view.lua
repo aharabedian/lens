@@ -9,7 +9,6 @@
   Actions: viewFocus(key), viewCycle(key), viewSave, viewCancel, viewDelete. Keys and pastes type.
 ]]
 
-local format = require("lens.hub.format")
 local query = require("lens.hub.query")
 local viewdraft = require("lens.hub.viewdraft")
 
@@ -25,16 +24,14 @@ local function back(app, player)
   app:switch(player, app.editing.back or { kind = "edit" })
 end
 
--- The draft's value as it would show, or why it can't. Compiled fresh, not cached: every keystroke is a new
--- query.
+-- The draft's value as it would show (lens.hub.app's evaluateWith), or why it can't. Compiled fresh, not
+-- cached: every keystroke is a new query.
 local function preview(app, d, now)
   local v, err = viewdraft.view(d)
   if not v then return { error = err } end
   local lookup = app.hub:lookup(now)
-  local value = query.compile(v.value)(lookup)
-  local total = v.of and query.compile(v.of)(lookup) or nil
-  local text, frac, level = format.view(v, value, total)
-  return { text = text, frac = frac, level = level }
+  return app.evaluateWith(v, function(text) return query.compile(text)(lookup) end,
+    function(text) return query.select(text)(lookup) end)
 end
 
 function E.actions(app, a, mine)

@@ -16,7 +16,9 @@
   app:onGlasses(address, player, width, height, now)   a glasses_on: that terminal's wearer and GUI size
   app:stop()
   app:panels(now) -> the dashboard's panels, evaluated (with history)
-  app:evaluate(views, history?, now) -> { { label, text, frac, level, history, value }... }
+  app:evaluate(views, history?, now) -> { { label, text, frac, level, history, value, dots?, hidden? }... }
+                                         hidden: the view's `when` is false now; dots: lens.hub.format.dots
+  App.evaluateWith(view, query, select)  the same for one view, with your own query(text) and select(text)
   app.running, app.hub (lens.hub.core), app.board, app.huds (or nil), app.dash (lens.hub.dashboard), app.now
 
   Editors (lens.hub.editors.<kind>: hud, edit, view, data; their interface is in editors/hud.lua). One is open
@@ -137,13 +139,33 @@ function App:onKey(char, code, now, player) self:typing(player, now, "key", char
 function App:onClipboard(text, now, player) self:typing(player, now, "paste", text) end
 
 ---------------------------------------------------------------- panels and the HUD
+-- One view's value now: { label, text, frac, level, value, dots?, hidden? }. query(text) and select(text)
+-- evaluate a query and a selector (the hub's cached ones, or fresh ones for a view being typed).
+function App.evaluateWith(p, query, select)
+  local v = p.value and query(p.value) or nil
+  local total = p.of and query(p.of) or nil
+  local values
+  if p.values then
+    values = {}
+    for name, q in pairs(p.values) do values[name] = query(q) end
+  end
+  local text, frac, level = format.view(p, v, total, values)
+  local out = { label = p.label, text = text, frac = frac, level = level, value = v }
+  if p.dots then out.dots = format.dots(select(p.dots), p.by) end
+  if p.when then
+    local w = query(p.when)
+    out.hidden = not (w ~= nil and w ~= 0)
+  end
+  return out
+end
+
 function App:evaluate(list, history, now)
+  local query = function(text) return (self.hub:query(text, now)) end
+  local select = function(text) return self.hub:select(text, now) or {} end
   local out = {}
   for i, p in ipairs(list) do
-    local v = self.hub:query(p.value, now)
-    local total = p.of and self.hub:query(p.of, now) or nil
-    local text, frac, level = format.view(p, v, total)
-    out[i] = { label = p.label, text = text, frac = frac, level = level, history = history and history[p.label], value = v }
+    out[i] = App.evaluateWith(p, query, select)
+    out[i].history = history and history[p.label]
   end
   return out
 end
@@ -157,7 +179,7 @@ function App:sample(now)
   local keep = {}
   for _, p in ipairs(self.board:panels()) do
     local h = self.history[p.label] or {}
-    local v = self.hub:query(p.value, now)
+    local v = p.value and self.hub:query(p.value, now) or nil
     h[#h + 1] = v == nil and false or v
     if #h > HISTORY then table.remove(h, 1) end
     keep[p.label] = h

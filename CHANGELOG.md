@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **State dots** (`dots`, `by`): a dot per machine, colored by its state, on the dashboard and in the HUD.
+- **Several values in one line** (`text`, `values`): `"{stored} / {cap} EU"`, each value formatted.
+- **`when`**: a panel or HUD element shows only while its query is true.
+- The view editor has fields for all three, with the preview showing dots and templates; it fits tier 2.
+
 ### Fixed
 - The HUD editor drew neither its position controls nor its footer when a block's list ran past the bottom of
   the screen.

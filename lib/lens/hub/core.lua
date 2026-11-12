@@ -12,6 +12,7 @@
       Messages that don't decode (other proto, wrong token, garbage) are ignored.
   hub:tick(now) -> alerts:update result       call every second or so: stale nodes, agent alerts, rules
   hub:query(text, now) -> value | nil, err    compiled once per text
+  hub:select(text, now) -> series[] | nil, err   a bare selector's series (state dots), compiled once per text
   hub:health(now) -> "ok" | "warn" | "bad"    worst over critical nodes; a stale critical node is bad
   hub:nodes(now)                              store:nodes(now)
   hub:metrics(now)                            store:metrics(now): what's there to query
@@ -41,7 +42,7 @@ function core.new(o)
     node = o.node, token = o.token, nonCritical = o.nonCritical or {},
     enc = codec.encoder{ node = o.node, role = "hub", boot = o.boot or 1, token = o.token },
     asm = codec.assembler(), store = store.new{ staleAfter = o.staleAfter }, rules = r,
-    alerts = alerts.new(), compiled = {},
+    alerts = alerts.new(), compiled = {}, selected = {},
   }, Hub)
 end
 
@@ -96,6 +97,17 @@ function Hub:query(text, now)
     self.compiled[text] = q
   end
   return q(self:lookup(now))
+end
+
+function Hub:select(text, now)
+  local s = self.selected[text]
+  if not s then
+    local err
+    s, err = query.select(text)
+    if not s then return nil, err end
+    self.selected[text] = s
+  end
+  return s(self:lookup(now))
 end
 
 local RANK = { ok = 0, warn = 1, bad = 2, stale = 2 }

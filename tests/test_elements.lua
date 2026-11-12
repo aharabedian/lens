@@ -1,0 +1,137 @@
+-- test_elements.lua: what a view can show, through lens-hub: state dots (one per machine), several values in
+-- one line (text templates), and views shown only while their `when` is true, on the dashboard, in the HUD
+-- and in the view editor's preview. (format, query.select and the checks on their own: test_hub.)
+-- Previews: make screens.
+local H = dofile((debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./") .. "helper.lua")
+local M = require("oc")
+local R = require("hubrun")(H)
+local check = H.check
+local hud = require("lens.hub.hud")
+local glassesMock = require("glasses")
+local P = hud.COLORS
+
+local function near(color, hex)
+  local r, g, b = hud.rgb(hex, "float")
+  return math.abs(color[1] - r) < 1e-6 and math.abs(color[2] - g) < 1e-6 and math.abs(color[3] - b) < 1e-6
+end
+
+-- An ore line whose third machine goes down at t = 20, and an LSC that starts draining at t = 20.
+local function agents()
+  local ore = R.agent{ node = "prism-ore", role = "prism", setup = function(m)
+    m:gauge("prism_machine_state", "state")
+  end, cycle = function(m, now)
+    local state = m:gauge("prism_machine_state", "state")
+    for i = 1, 4 do
+      local st = (i == 3 and now >= 20) and "down" or (i == 4 and "idle" or "running")
+      for _, s in ipairs({ "running", "idle", "down" }) do
+        state:set(s == st and 1 or 0, { process = "ore", machine = "mac" .. i, state = s })
+      end
+    end
+  end }
+  local power = R.agent{ node = "power-room", role = "lumen", cycle = function(m, now)
+    m:gauge("lumen_stored_eu", "s", "EU"):set(10773450724, { lsc = "Main" })
+    m:gauge("lumen_capacity_eu", "c", "EU"):set(11340000000, { lsc = "Main" })
+    m:gauge("lumen_net_5m_eut", "n", "EU/t"):set(now >= 20 and -1100 or 2400, { lsc = "Main" })
+  end }
+  return { ore, power }
+end
+
+local CFG = [[return {
+  panels = {
+    { label = "Ore line", dots = 'prism_machine_state{node="prism-ore"}' },
+    { label = "LSC", text = "{s} / {c} EU", values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" } },
+    { label = "Draining", value = "lumen_net_5m_eut", unit = "EU/t", format = "signed", color = "sign",
+      when = "lumen_net_5m_eut < 0" },
+  },
+  hud = { blocks = { { anchor = "top-right", elements = {
+    { kind = "text", label = "Ore", dots = 'prism_machine_state{node="prism-ore"}' },
+    { kind = "text", label = "LSC", text = "{s} / {c}", values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" } },
+    { kind = "text", label = "Net", value = "lumen_net_5m_eut", format = "signed", color = "sign", when = "lumen_net_5m_eut < 0" },
+  } } } },
+}]]
+
+M.setTime(0)
+M.resize(160, 50)
+local G = glassesMock.new()
+G.proxy.getBindPlayers = function() return "Aaron" end
+local seen = {}
+local ok, err = R.run{ cfg = CFG, agents = agents(), keyboard = true, terminals = { ["gl-a"] = G }, script = function(t)
+  if t >= 8 and not seen.before then
+    seen.before = true
+    local lx, ly = M.find("Ore line", 3)           -- its dots are on the row below (NODES has dots too)
+    local dx, dy = lx, ly + 1
+    local dots = {}
+    for x = dx, dx + 6, 2 do dots[#dots + 1] = M.fgAt(x, dy) end
+    seen.dots = M.row(dy):sub(1):find("●", 1, true) and dots[1] == 0x4cd17a and dots[2] == 0x4cd17a and dots[3] == 0x4cd17a
+      and dots[4] == 0x7d8a96
+    seen.template = M.find("10.8G / 11.3G EU", 3) ~= nil
+    seen.hiddenDash = not M.find("Draining", 3)
+    seen.hudDots, seen.hudHidden = 0, not G.find("Net")
+    for _, s in ipairs(G.live()) do if s.kind == "text" and s.text == "●" and s.visible then seen.hudDots = seen.hudDots + 1 end end
+    seen.hudTemplate = G.find("10.8G / 11.3G") ~= nil
+    return nil
+  end
+  if t >= 26 and not seen.after then
+    seen.after = true
+    local dx, dy = M.find("Ore line", 3)
+    seen.down = M.fgAt(dx + 4, dy + 1) == 0xff5c5c
+    local _, ry = M.find("Draining", 3)
+    seen.shown = ry and M.find("-1.1k EU/t", ry)
+    local net = G.find("-1.1k")
+    seen.hudShown = net and near(net.color, P.bad)
+    local red
+    for _, s in ipairs(G.live()) do if s.text == "●" and s.visible and near(s.color, P.bad) then red = true end end
+    seen.hudDown = red
+    H.screen("elements")
+    H.glasses("hud-elements", G)
+    return R.tap(" EDIT ", "Aaron", 1)
+  end
+  if seen.after and not seen.editing then
+    seen.editing = true
+    return R.tap("+ NEW", "Aaron", 3)
+  end
+  if seen.editing and not seen.typed then
+    seen.typed = true
+    local _, ty = M.find("Text", 3)
+    R.queue({ "touch", "screen", 20, ty, 0, "Aaron" }, R.keys("{s} EU", "Aaron"))
+    local _, vy = M.find("Values", 3)
+    R.queue({ "touch", "screen", 20, vy, 0, "Aaron" }, R.paste("s=sum(lumen_stored_eu)", "Aaron"))
+    local _, ly = M.find("Label", 3)
+    R.queue({ "touch", "screen", 20, ly, 0, "Aaron" }, R.keys("Stored", "Aaron"))
+    return nil
+  end
+  if seen.typed and not seen.preview then
+    seen.preview = M.find("Now", 3) and M.find("10.8G EU", 3)
+    H.screen("view-editor-template")
+    return "stop"
+  end
+  if t > 200 then return "stop" end
+end }
+check(ok, "lens-hub runs" .. (ok and "" or (": " .. tostring(err))))
+check(seen.dots, "dots: one per machine, green while running, dim while idle")
+check(seen.down, "a machine that goes down turns its dot red")
+check(seen.template, "several values in one line: {s} / {c} EU")
+check(seen.hiddenDash and seen.shown, "a panel with when shows only while it's true")
+check(seen.hudDots == 4 and seen.hudDown, "the HUD: a dot per machine, red when down")
+check(seen.hudTemplate, "the HUD: several values in one line")
+check(seen.hudHidden and seen.hudShown, "the HUD: an element with when appears only while it's true, colored")
+check(seen.preview, "the view editor: a template typed in, previewed with its values")
+
+-- The view editor, now with 16 fields, fits a tier 2 screen.
+M.setTime(0)
+M.resize(80, 25)
+M.oob = 0
+local step = 0
+ok = R.run{ cfg = CFG, dir = "tier2", agents = agents(), keyboard = true, script = function(t)
+  if t < 6 then return nil end
+  step = step + 1
+  if step == 1 then return R.tap(" EDIT ", "Aaron", 1) end
+  if step == 2 then return R.tap("EDIT", "Aaron", 4) end
+  seen.tier2 = M.find("Show when", 3) and M.find("Now", 3) and M.find("SAVE", 1)
+  H.screen("view-editor-tier2")
+  return "stop"
+end }
+check(ok and seen.tier2 and M.oob == 0, "the view editor fits a tier 2 screen")
+M.resize(160, 50)
+
+H.done()

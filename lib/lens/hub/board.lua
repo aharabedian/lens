@@ -59,11 +59,20 @@ local function lit(v, indent)
   return "{\n" .. inner .. table.concat(parts, ",\n" .. inner) .. ",\n" .. indent .. "}"
 end
 
-local VIEW_KEYS = { "label", "value", "of", "max", "unit", "format", "color", "warnAbove", "badAbove", "warnBelow", "badBelow" }
+local VIEW_KEYS = { "label", "value", "of", "max", "unit", "format", "color", "warnAbove", "badAbove", "warnBelow",
+  "badBelow", "text", "values", "dots", "by", "when" }
 
 local function copyView(v)
   local out = {}
-  for _, k in ipairs(VIEW_KEYS) do out[k] = v[k] end
+  for _, k in ipairs(VIEW_KEYS) do
+    local x = v[k]
+    if type(x) == "table" then
+      local t = {}
+      for a, b in pairs(x) do t[a] = b end
+      x = t
+    end
+    out[k] = x
+  end
   return out
 end
 

@@ -4,6 +4,7 @@
                              actions: ack(key), ackAll(), quit(), and the buttons that open editors: data, edit,
                              hud (each gets the tapping player)
 
+  Panels whose `when` is false now (hidden) aren't shown. A panel shows state dots when its view has them.
   Layout: 120 columns or more puts nodes and alerts on the left and panels (in two columns when there's room)
   on the right; narrower screens stack panels, nodes and alerts, with sparklines when 40 rows or taller. Lists
   that don't fit end with "+N more".
@@ -134,12 +135,14 @@ local function spark(history, width)
   return table.concat(out)
 end
 
--- One panel: label and value, a bar when it has a fraction, a sparkline when tall.
+-- One panel: label and value, then state dots, a bar when it has a fraction, or a rule; a sparkline when tall.
 local function panel(f, p, x, y, width, tall)
-  local text = p.text or "–"
+  local text = (p.text ~= "–" or not p.dots) and p.text or ""
   f:text(x, y, Gui.fit(p.label, width - Gui.len(text) - 1), C.dim)
   f:text(x + width - Gui.len(text), y, text, frame.levelColor(p.level, C.text))
-  if p.frac then
+  if p.dots then
+    f:dots(x, y + 1, width, p.dots)
+  elseif p.frac then
     local filled = math.floor(math.max(0, math.min(1, p.frac)) * width + 0.5)
     if filled > 0 then f:text(x, y + 1, string.rep(" ", filled), C.text, frame.levelColor(p.level, C.info)) end
     if filled < width then f:text(x + filled, y + 1, string.rep(" ", width - filled), C.text, C.line) end
@@ -152,24 +155,30 @@ end
 local function panels(f, m, x, y, width, lastRow, tall)
   f:heading(x, y, "PANELS", width)
   y = y + 1
+  local shown = {}
+  for _, p in ipairs(m.panels) do if not p.hidden then shown[#shown + 1] = p end end
   if #m.panels == 0 then
     f:text(x, y, Gui.fit(m.missingConfig and "No panels yet: run lens-setup, or tap EDIT."
       or "No panels yet: tap EDIT to add some.", width), C.dim)
     return y + 2
   end
+  if #shown == 0 then
+    f:text(x, y, Gui.fit("Nothing to show right now.", width), C.dim)
+    return y + 2
+  end
   local cols = width >= 90 and 2 or 1
   local pw = (width - (cols - 1) * 3) // cols
   local step = tall and 4 or 3
-  for i, p in ipairs(m.panels) do
+  for i, p in ipairs(shown) do
     local row, col = (i - 1) // cols, (i - 1) % cols
     local py = y + row * step
     if py + step - 2 > lastRow then
-      f:text(x, lastRow, ("+%d more panels"):format(#m.panels - i + 1), C.dim)
+      f:text(x, lastRow, ("+%d more panels"):format(#shown - i + 1), C.dim)
       return lastRow + 1
     end
     panel(f, p, x + col * (pw + 3), py, pw, tall)
   end
-  return y + ((#m.panels + cols - 1) // cols) * step
+  return y + ((#shown + cols - 1) // cols) * step
 end
 
 local function footer(f, m)

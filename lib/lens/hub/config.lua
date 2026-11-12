@@ -5,9 +5,8 @@
                                err is readable ("panel 2 (Ore): expected ) at 14"). cfg.nonCritical becomes a set.
   check(cfg) -> cfg | nil, err   the same checks on a table (load uses it)
 
-  A panel (a view, lens.hub.format): { label, value = query, of = query?, max = number?, unit = string?,
-             format = "auto" | "percent" | "duration" | "signed", color = "thresholds" | "sign" | "none",
-             warnAbove?, badAbove?, warnBelow?, badBelow? }   (percent = true is the same as format = "percent")
+  A panel (a view, lens.hub.format, which has every key): label, value (or text or dots), of, max, unit, format,
+             color, thresholds, text and values, dots and by, when. (percent = true is format = "percent")
   resolution: "fit" (fill the screen's shape), "max" (the GPU's largest) or { width, height }
   hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off. After check, hud.blocks
        is always there: { { anchor, x, y, width, elements = { element... } }... } where an element is a view
@@ -56,11 +55,35 @@ local function checkPanel(i, p)
   if type(p) ~= "table" then return where .. ": must be a table" end
   if type(p.label) ~= "string" or p.label == "" then return where .. ": needs a label" end
   where = ("panel %d (%s)"):format(i, p.label)
-  for _, k in ipairs({ "value", "of" }) do
-    if p[k] ~= nil or k == "value" then
+  if p.value == nil and p.text == nil and p.dots == nil then return where .. ": needs a value (or text, or dots)" end
+  for _, k in ipairs({ "value", "of", "when" }) do
+    if p[k] ~= nil then
       local q, err = query.compile(p[k])
       if not q then return where .. ": " .. k .. ": " .. tostring(err) end
     end
+  end
+  if p.text ~= nil and type(p.text) ~= "string" then return where .. ": text must be text, with {name}s" end
+  if p.values ~= nil then
+    if type(p.values) ~= "table" then return where .. ": values must be { name = query, ... }" end
+    for name, q in pairs(p.values) do
+      if type(name) ~= "string" or not name:find("^[%w_]+$") then return where .. ": values: bad name " .. tostring(name) end
+      local ok, err = query.compile(q)
+      if not ok then return where .. ": values." .. name .. ": " .. tostring(err) end
+    end
+  end
+  if p.text then
+    for name in p.text:gmatch("{([%w_]+)}") do
+      if name ~= "value" and name ~= "of" and not (p.values or {})[name] then
+        return where .. ": text uses {" .. name .. "}, which isn't in values"
+      end
+    end
+  end
+  if p.dots ~= nil then
+    local s, err = query.select(p.dots)
+    if not s then return where .. ": dots: " .. tostring(err) .. " (dots take a selector: name{label=\"x\"})" end
+  end
+  if p.by ~= nil and (type(p.by) ~= "string" or not p.by:find("^[%a_][%w_]*$")) then
+    return where .. ": by must be a label name"
   end
   if p.max ~= nil and (type(p.max) ~= "number" or p.max <= 0) then return where .. ": max must be a number above 0" end
   if p.max ~= nil and p.of ~= nil then return where .. ": use max or of, not both" end

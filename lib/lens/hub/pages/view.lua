@@ -3,7 +3,7 @@
 
   view.draw(f, e, actions)   e: { player, old = label | nil (a new view), source = "config" | "edited" | "screen"
                              | nil, fields = { { key, name, kind = "text" | "number" | "choice", text }... },
-                             focus = key, preview = { text, frac, level } | { error }, keyboard = bool, error,
+                             focus = key, preview = { text, frac, level, dots?, hidden? } | { error }, keyboard = bool, error,
                              closesIn }
 ]]
 
@@ -41,8 +41,12 @@ local function preview(f, pv, y, nx, fx, fw)
     return
   end
   local color = frame.levelColor(pv.level, C.text)
-  f:text(fx, y, Gui.fit(pv.text or "–", 16), color)
-  if pv.frac then
+  local text = (pv.dots and pv.text == "–") and "" or pv.text or "–"   -- dots alone: no "–" before them
+  f:text(fx, y, Gui.fit(text, 16), color)
+  if pv.hidden then f:text(fx + 17, y, "(hidden now: Show when is false)", C.dim); return end
+  if pv.dots then
+    f:dots(fx + 18, y, math.max(0, fw - 18), pv.dots)
+  elseif pv.frac then
     local bw = math.max(0, fw - 18)
     local filled = math.floor(math.max(0, math.min(1, pv.frac)) * bw + 0.5)
     if filled > 0 then f:text(fx + 18, y, string.rep(" ", filled), C.text, frame.levelColor(pv.level, C.info)) end
@@ -55,9 +59,10 @@ function view.draw(f, e, actions)
     { { "SAVE", actions.viewSave }, { "CANCEL", actions.viewCancel, C.line } })
   local nx, fx = 2, 15
   local fw = f.w - fx - 1
-  local y = fields(f, e, actions, nx, fx, fw) + 1
+  local gap = f.h >= 30 and 1 or 0                    -- spacer rows only when there's room (tier 2 has 25)
+  local y = fields(f, e, actions, nx, fx, fw) + gap
   preview(f, e.preview or {}, y, nx, fx, fw)
-  y = y + 2
+  y = y + 1 + gap
   if e.keyboard then
     f:text(nx, y, Gui.fit("Tap a field and type. Enter: the next field. Insert pastes your clipboard.", f.w - 2), C.dim)
   else
@@ -69,7 +74,7 @@ function view.draw(f, e, actions)
     y = y + 1
   end
   if e.old and e.source ~= "config" then
-    f:button(nx, y + 1, e.source == "edited" and "BACK TO lens-hub.cfg" or "DELETE VIEW", actions.viewDelete, C.line)
+    f:button(nx, y + gap, e.source == "edited" and "BACK TO lens-hub.cfg" or "DELETE VIEW", actions.viewDelete, C.line)
   end
   f:editorFooter(e)
 end

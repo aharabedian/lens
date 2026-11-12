@@ -330,4 +330,55 @@ do
   check(select(1, Gui.resolution(80, 25, nil, nil)) == 80, "unknown shape: the largest")
 end
 
+---------------------------------------------------------------- several values, state dots, when
+do
+  local machines = function(name)
+    if name == "m" then
+      return { { value = 1, labels = { node = "a", machine = "mac1", state = "running" } },
+               { value = 0, labels = { node = "a", machine = "mac1", state = "down" } },
+               { value = 1, labels = { node = "a", machine = "mac2", state = "down" } },
+               { value = 1, labels = { node = "a", machine = "mac3", state = "idle" } },
+               { value = 1, labels = { node = "b", machine = "mac0", state = "warming" } } }
+    end
+    if name == "up" then return { { value = 1, labels = { node = "a", lsc = "Main" } }, { value = 0, labels = { node = "a", lsc = "Spare" } } } end
+    return {}
+  end
+  local sel = query.select('m{node="a"}')
+  check(sel and #sel(machines) == 4, "query.select: a selector's series themselves")
+  check(select(2, query.select("sum(m)")) ~= nil, "query.select takes only a selector")
+  local dots = format.dots(sel(machines))
+  check(#dots == 3 and dots[1].name == "mac1" and dots[1].level == "good" and dots[2].level == "bad"
+    and dots[3].level == nil, "dots: one per machine; running good, down bad, idle dim")
+  check(format.dots(query.select("m")(machines))[1].level == "warn", "an unknown state: warn")
+  local ups = format.dots(machines("up"), "lsc")
+  check(ups[1].name == "Main" and ups[1].level == "good" and ups[2].level == "bad", "no state label: above 0 good, else bad; by any label")
+  check(format.template({ text = "{stored} / {cap} EU" }, { stored = 10773450724, cap = 11340000000 }) == "10.8G / 11.3G EU",
+    "a template: each value formatted")
+  check(format.template({ text = "{a} in, {b} out", format = "signed" }, { a = 2400, b = -1100 }) == "+2.4k in, -1.1k out",
+    "with the view's format")
+  check(format.template({ text = "{value} of {of}", format = "percent" }, { value = 0.5, of = 1 }) == "50% of 100%",
+    "{value} and {of}")
+  check(format.template({ text = "{x}", values = { x = "q" } }, {}) == "–", "a value with no data: –")
+  local text, _, lv = format.view({ text = "{s}/{c}", values = { s = "1", c = "2" }, value = "v", badBelow = 5 }, 3, nil, { s = 5, c = 9 })
+  check(text == "5/9" and lv == "bad", "format.view: the template's text, the value's level")
+
+  local function err(t) local c, e = config.check(t); return c == nil and e or "" end
+  check(config.check({ panels = { { label = "LSC", text = "{s} / {c}", values = { s = "a", c = "b" } } } }),
+    "a view with text and values needs no value")
+  check(config.check({ panels = { { label = "Ore", dots = 'prism_machine_state{node="x"}', by = "machine" } } }), "nor with dots")
+  check(err({ panels = { { label = "x" } } }):find("needs a value", 1, true), "but with none of them, it's refused")
+  check(err({ panels = { { label = "x", text = "{nope}" } } }):find("uses {nope}", 1, true), "a template's names must be in values")
+  check(err({ panels = { { label = "x", text = "{a}", values = { a = "sum(" } } } }):find("values.a:", 1, true), "values are checked")
+  check(err({ panels = { { label = "x", dots = "sum(x)" } } }):find("dots take a selector", 1, true), "dots take a selector")
+  check(err({ panels = { { label = "x", value = "1", when = "x >" } } }):find("when:", 1, true), "when is checked")
+
+  local d = viewdraft.draft({ label = "LSC", text = "{s} / {c} EU", values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" } })
+  check(d.fields.values == "c=sum(lumen_capacity_eu); s=sum(lumen_stored_eu)", "values typed as one line, name=query; ...")
+  local v = viewdraft.view(d)
+  check(v and v.values.s == "sum(lumen_stored_eu)" and v.values.c == "sum(lumen_capacity_eu)" and v.value == nil,
+    "and read back")
+  d.fields.values = "s sum(x)"
+  check(select(2, viewdraft.view(d)):find("name=query", 1, true), "a malformed values line says how to write it")
+end
+
 H.done()

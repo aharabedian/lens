@@ -9,7 +9,8 @@
     store: where players' settings live: { players() -> table, setPlayers(table) -> true | nil, err }, which
     lens.hub.board is; nil keeps them in memory
   hs:onGlasses(address, player, w, h)   a glasses_on: that terminal's wearer and GUI size
-  hs:draw(model, evaluate, views)       draw every terminal. evaluate(views) -> { { label, text, frac, level } }
+  hs:draw(model, evaluate, views)       draw every terminal. evaluate(views) -> { { label, text, frac, level, dots?,
+                                        hidden? } } (lens.hub.app's evaluate); hidden elements aren't drawn
   hs:catalog(views) -> { view... }      what a player can pick: `views` (the board's library), then views in
                                         the default HUD with other labels (a label names a view)
   hs:settings(player) -> s              the player's settings, or a copy of the defaults:
@@ -211,7 +212,12 @@ function Huds:blocksFor(player, byLabel, evaluate)
   end
   for i, v in ipairs(evaluate(views)) do
     local item = slots[i]
-    item.label, item.text, item.frac, item.level = v.label, v.text, v.frac, v.level
+    item.label, item.text, item.frac, item.level, item.dots, item.hidden = v.label, v.text, v.frac, v.level, v.dots, v.hidden
+  end
+  for _, b in ipairs(blocks) do                 -- elements whose view's `when` is false now drop out
+    local keep = {}
+    for _, item in ipairs(b.items) do if not item.hidden then keep[#keep + 1] = item end end
+    b.items = keep
   end
   return blocks, s.scale
 end
