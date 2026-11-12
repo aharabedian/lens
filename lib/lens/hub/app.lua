@@ -15,13 +15,15 @@
   app:onClipboard(text, now, player)     a paste, the same way
   app:onGlasses(address, player, width, height, now)   a glasses_on: that terminal's wearer and GUI size
   app:stop()
-  app:panels(now) -> the dashboard's panels, evaluated (with history)
+  app:panels(now) -> the shown page's panels, evaluated (with history)
+  app.page                               the dashboard page shown (an index into board:pages()); tapping a
+                                         tab changes it for everyone looking at the screen
   app:evaluate(views, history?, now) -> { { label, text, frac, level, history, value, dots?, hidden? }... }
                                          hidden: the view's `when` is false now; dots: lens.hub.format.dots
   App.evaluateWith(view, query, select)  the same for one view, with your own query(text) and select(text)
   app.running, app.hub (lens.hub.core), app.board, app.huds (or nil), app.dash (lens.hub.dashboard), app.now
 
-  Editors (lens.hub.editors.<kind>: hud, edit, view, data; their interface is in editors/hud.lua). One is open
+  Editors (lens.hub.editors.<kind>: hud, edit, view, data, log; their interface is in editors/hud.lua). One is open
   at a time (app.editing = { kind, player, until, ... }), for the player who opened it: only that player's taps
   and keys change anything, and it closes after EDIT_TIMEOUT seconds without one. For editors:
   app:open(kind, player, state)   open one, unless someone else has one open (app.notice says who)
@@ -50,6 +52,7 @@ local EDITORS = {
   edit = require("lens.hub.editors.edit"),
   view = require("lens.hub.editors.view"),
   data = require("lens.hub.editors.data"),
+  log  = require("lens.hub.editors.log"),
 }
 
 local App = {}
@@ -59,8 +62,8 @@ function app.new(cfg, env)
   local hub, err = core.new{ node = cfg.node, boot = env.boot or codec.newBoot(), token = cfg.token,
     staleAfter = cfg.staleAfter, nonCritical = cfg.nonCritical, rules = cfg.rules }
   if not hub then return nil, err end
-  local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0, now = 0 },
-    App)
+  local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0, now = 0,
+    page = 1 }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
   self.board = board.new(env.boardPath, cfg, env.hudPath)
   if env.terminals and next(env.terminals) and cfg.hud ~= false then
@@ -70,6 +73,7 @@ function app.new(cfg, env)
     ack = function(key) self.hub.alerts:ack(key) end,
     ackAll = function() self.hub.alerts:ackAll() end,
     quit = function() self.running = false end,
+    page = function(_, i) self.page = i end,
   }
   for kind, E in pairs(EDITORS) do
     E.actions(self, self.actions, function(fn) return self:mine(kind, fn) end)
@@ -170,14 +174,17 @@ function App:evaluate(list, history, now)
   return out
 end
 
-function App:panels(now) return self:evaluate(self.board:panels(), self.history, now) end
+function App:panels(now)
+  self.page = math.max(1, math.min(self.page, #self.board:pages()))
+  return self:evaluate(self.board:panels(self.page), self.history, now)
+end
 
 -- One value per panel every cfg.sample seconds; panels that are gone lose their history.
 function App:sample(now)
   if now < self.nextSample then return end
   self.nextSample = now + self.cfg.sample
   local keep = {}
-  for _, p in ipairs(self.board:panels()) do
+  for _, p in ipairs(self.board:allPanels()) do      -- every page's, so switching pages shows a history
     local h = self.history[p.label] or {}
     local v = p.value and self.hub:query(p.value, now) or nil
     h[#h + 1] = v == nil and false or v
@@ -204,12 +211,19 @@ function App:drawHuds(m, now)
 end
 
 ---------------------------------------------------------------- drawing and events
+function App:pageNames()
+  local out = {}
+  for _, pg in ipairs(self.board:pages()) do out[#out + 1] = pg.name end
+  return out
+end
+
 function App:model(now)
   return {
     now = now, port = self.cfg.port, node = self.cfg.node, version = VERSION, health = self.hub:health(now),
     missingConfig = self.cfg.missing, nodes = self.hub:nodes(now),
     alerts = self.hub.alerts:list(), counts = self.hub.alerts:counts(), panels = self:panels(now),
     huds = self.huds ~= nil, editor = self:editorModel(now), notice = self.notice,
+    pages = self:pageNames(), page = self.page, logged = #self.hub.alerts:history(),
   }
 end
 

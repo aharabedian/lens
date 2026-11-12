@@ -16,7 +16,9 @@
     notice = text | nil,     shown in the footer (who has the editor, who may edit)
     hudError = text | nil,   shown in the footer
     hudPerMinute = n | nil,  HUD component calls in the last minute, shown in the footer
-    editor = nil | { kind = "hud" | "edit" | "view" | "data", player, error, closesIn, ... }
+    pages = { name... }, page = i   the dashboard's pages and the one shown (tabs when there are several)
+    logged = n               ended alerts the LOG page has
+    editor = nil | { kind = "hud" | "edit" | "view" | "data" | "log", player, error, closesIn, ... }
                              an editor is open: its page (lens.hub.pages.<kind>) is drawn instead of the
                              dashboard; the rest of its fields are that page's (its header comment)
   }
@@ -34,6 +36,7 @@ local PAGES = {
   edit = require("lens.hub.pages.edit"),
   view = require("lens.hub.pages.view"),
   data = require("lens.hub.pages.data"),
+  log  = require("lens.hub.pages.log"),
 }
 
 local function rowKey(row)

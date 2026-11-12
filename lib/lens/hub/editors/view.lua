@@ -45,7 +45,7 @@ function E.actions(app, a, mine)
     local ok, why = app.board:setView(v, e.old)
     if not ok then return nil, why end
     if not e.old and e.addTo == "dash" then
-      app.board:addPanel(v.label)
+      app.board:addPanel(v.label, e.back and e.back.page or app.page)
     elseif not e.old and e.addTo == "hud" and app.huds then
       app.huds:change(player, function(s)
         local els = s.blocks[1].elements

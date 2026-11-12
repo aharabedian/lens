@@ -14,7 +14,8 @@
   f:dots(x, y, width, dots) -> columns used    state dots (lens.hub.format.dots), colored by level; "+N" when
                                              they don't all fit
   f:editorHeader(title, { { label, fn, bg? }... })   an editor's top row: LENS, title, buttons on the right
-  f:editorFooter(e)                  e.error in red, or who the editor is for and when it closes
+  f:editorFooter(e, what?)           e.error in red, or who the editor is for and when it closes (what: the
+                                     verb, default "can change this")
   frame.C                            the palette (lens.gui)
   frame.levelColor(level, default)   bad, warn and good as colors; anything else: default
   frame.ago(seconds) -> "45s", "12m", "2h05m"
@@ -112,13 +113,13 @@ function Frame:editorHeader(title, buttons)
   self:text(8, 1, Gui.fit(title, math.max(1, x - 10)), C.text, C.panel)
 end
 
-function Frame:editorFooter(e)
+function Frame:editorFooter(e, what)
   self:rowBg(self.h, C.bg)
   if e.error then
     self:text(2, self.h, Gui.fit(e.error, self.w - 2), C.bad)
   else
-    self:text(2, self.h, Gui.fit(("Only %s can change this. Closes in %ds without a tap."):format(
-      tostring(e.player or "?"), e.closesIn or 0), self.w - 2), C.dim)
+    self:text(2, self.h, Gui.fit(("Only %s %s. Closes in %ds without a tap."):format(
+      tostring(e.player or "?"), what or "can change this", e.closesIn or 0), self.w - 2), C.dim)
   end
 end
 

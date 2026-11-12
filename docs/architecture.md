@@ -15,18 +15,19 @@ that every module's header names it and that dependencies only point the ways li
 | **Hub core** (pure) | `lens.hub.store` | Per node: descriptors, the latest series, counter rates, health, staleness; the list of metrics there is to query. Asks for a `hello` when a snapshot's descriptors are missing |
 | | `lens.hub.query` | The selector language ([queries.md](queries.md)), compiled to a function of a lookup |
 | | `lens.hub.rules` | The hub's own alerts: queries that must stay true for `for` seconds |
-| | `lens.hub.alerts` | One list of every active alert: dedupe by `node/id`, since, acks, ordering |
+| | `lens.hub.alerts` | One list of every active alert: dedupe by `node/id`, since, acks, ordering; the last 100 that ended (LOG) |
 | | `lens.hub.core` | The above together: `receive(data, from, now)` → replies, `tick(now)` → alert changes, `query`, `lookup`, `metrics`, `health` |
 | **Views** (pure) | `lens.hub.format` | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD |
 | | `lens.hub.explore` | Building a query by tapping: a metric, label filters, a function → query text |
 | | `lens.hub.viewdraft` | A view being typed: fields as text, keys and pastes, back to a checked view |
+| | `lens.hub.textfield` | One line being typed (keys, pastes, a length limit): used by viewdraft and the editors' renames |
 | **Settings and state** | `lens.hub.config` | `/home/lens-hub.cfg`: defaults and checks, readable errors ([hub.md](hub.md)); views, HUD blocks |
-| | `lens.hub.board` | `/home/lens-board.cfg`: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's panels, players' HUDs; undo |
+| | `lens.hub.board` | `/home/lens-board.cfg`: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's pages and their panels, players' HUD presets; undo |
 | | `lens.hub.huds` | One `lens.hub.hud` per Glasses Terminal with its wearer's blocks (kept by the board) or the config's `hud` |
 | | `lens.hub.hud` | Draws HUD blocks (bar, text, alerts, gap; nine anchors) as widgets on one terminal; setters only on change, calls counted |
-| **Editors** | `lens.hub.editors.<kind>` | One per editor: `hud` (a player's HUD), `edit` (the dashboard's panels and the library), `view` (one view's fields), `data` (queries by tapping). Each has `actions(app, a, mine)` and `model(app, e, now)`, and `key` / `paste` if it takes typing; state and actions only, no drawing |
+| **Editors** | `lens.hub.editors.<kind>` | One per editor: `hud` (a player's HUD presets), `edit` (the dashboard's pages, their panels, the library), `view` (one view's fields), `data` (queries by tapping), `log` (the alert log, read-only). Each has `actions(app, a, mine)` and `model(app, e, now)`, and `key` / `paste` if it takes typing; state and actions only, no drawing |
 | **Screen** | `lens.hub.frame` | One screenful being built (row segments, touch targets) and the widgets pages share |
-| | `lens.hub.pages.<kind>` | One per page: `main` (the dashboard) and one per editor. `draw(f, model, actions)`; drawing only |
+| | `lens.hub.pages.<kind>` | One per page: `main` (the dashboard, with page tabs) and one per editor. `draw(f, model, actions)`; drawing only |
 | | `lens.hub.dashboard` | Picks the page for the model, then sends the GPU only the rows or segments that changed; touch dispatch |
 | **Program** | `lens.hub.app` | The hub program's state: core, board, HUDs, panels and their history, the one open editor; reacts to packets, touches, keys and ticks |
 | **Setup** | `lens.setup.hub`, `.input`, `.render` | `lens-setup`'s steps, questions on the terminal, `lens-hub.cfg` as commented Lua |
@@ -43,7 +44,7 @@ the hub's `config` and nothing else of it; `metrics` and `codec` need nothing of
 | File | Written by | Holds |
 |---|---|---|
 | `/home/lens-hub.cfg` | `lens-setup` and you | Network, panels and HUD to start from, rules, `editors` |
-| `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's panels, each player's HUD |
+| `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's pages, each player's HUDs |
 | `/home/lens-hud.cfg` | (0.2.0 betas) | Players' HUDs before the board; read once into it |
 
 ### Adding an editor
