@@ -1,8 +1,9 @@
 --[[ lens-hub.lua - the LENS hub: hears every agent in the base (PRISM routers, ...) and shows the whole
   base on one screen: nodes, alerts and the panels set in /home/lens-hub.cfg.
 
-  Needs a GPU and screen (tier 3 for the full layout; tier 2 works) and a network card. With an OC Glasses
-  Glasses Terminal attached, it also draws a small HUD in the glasses linked to it.
+  Needs a GPU and screen (tier 3 for the full layout; tier 2 works) and a network card. With OC Glasses
+  Glasses Terminals attached, it also draws a small HUD in the glasses linked to each: one terminal per
+  player for HUDs of their own (tap HUD on the dashboard; saved in lens-hud.cfg next to the config).
   Usage: lens-hub [path]    (default /home/lens-hub.cfg; optional - see docs/hub.md)
   Tap an alert to acknowledge it; QUIT or Ctrl+C to stop. The work is in /home/lib/lens/hub/.
 ]]
@@ -27,9 +28,11 @@ if not cfg then error(path .. ": " .. tostring(err), 0) end
 if not component.isAvailable("modem") then error("lens-hub needs a network card (wireless, or wired to the agents)", 0) end
 local gpu = component.gpu
 local w, h = gpu.maxResolution()
-local glasses = component.isAvailable("glasses") and component.glasses or nil
-local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, glasses = glasses,
-  beep = computer.beep })
+local terminals = {}
+for address in component.list("glasses", true) do terminals[address] = component.proxy(address) end
+local hudPath = (path:match("^(.*)/[^/]*$") or "/home") .. "/lens-hud.cfg"
+local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, terminals = terminals,
+  hudPath = hudPath, beep = computer.beep })
 if not app then error(path .. ": " .. tostring(why), 0) end
 
 local function main()
@@ -44,10 +47,10 @@ local function main()
       app:onModem(ev[3], ev[4], ev[6], now)
     elseif ev[1] == "glasses_on" then
       -- glasses_on: terminal, player, width, height (the wearer's GUI size)
-      app:onGlasses(ev[4], ev[5], now)
+      app:onGlasses(ev[2], ev[3], ev[4], ev[5], now)
     elseif ev[1] == "touch" then
       -- touch: screenAddress, x, y, button, player
-      app:onTouch(math.floor(ev[3]), math.floor(ev[4]), now)
+      app:onTouch(math.floor(ev[3]), math.floor(ev[4]), now, ev[6])
     elseif ev[1] == "interrupted" then
       app.running = false
     end

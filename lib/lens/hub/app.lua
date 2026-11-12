@@ -1,13 +1,17 @@
 --[[ lens.hub.app: the hub program's state and reactions, without the event loop (src/lens-hub.lua has that).
 
-  local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, glasses?, beep?, boot? })
-    glasses: a Glasses Terminal; the HUD draws there each tick unless cfg.hud is false. A HUD failure is
-    shown on the dashboard (model.hudError) and never stops the hub.
+  local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, terminals?, hudPath?, beep?, boot? })
+    terminals: { [address] = Glasses Terminal }; each shows its wearer's HUD every tick (lens.hub.huds) unless
+    cfg.hud is false. hudPath: the players' HUD settings file. A HUD failure is shown on the dashboard
+    (model.hudError) and never stops the hub.
     cfg: lens.hub.config output. err when the hub core refuses the config (bad rules).
   app:start(now)                         open the port, broadcast hello, draw
   app:onModem(from, port, data, now)     feed a packet to the hub core, send its replies
-  app:onTouch(x, y, now)                 tap the dashboard, redraw
-  app:onGlasses(width, height, now)      a glasses_on: the wearer's GUI size, to place the HUD by its anchor
+  app:onTouch(x, y, now, player)         tap the dashboard (player: who tapped), redraw
+  app:onGlasses(address, player, width, height, now)   a glasses_on: that terminal's wearer and GUI size
+
+  The HUD editor: the dashboard's HUD button opens it for the player who tapped; only that player's taps
+  change anything, and it closes after EDIT_TIMEOUT seconds without one (model.editor while open).
   app:tick(now)                          about once a second: alerts, panel samples, beep, redraw
   app:stop()
   app.running, app.hub (lens.hub.core), app.dash (lens.hub.dashboard)
@@ -19,12 +23,13 @@
 local codec = require("lens.codec")
 local core = require("lens.hub.core")
 local dashboard = require("lens.hub.dashboard")
-local hud = require("lens.hub.hud")
+local huds = require("lens.hub.huds")
 local VERSION = require("lens.version")
 
 local app = {}
 
 local HISTORY = 120
+local EDIT_TIMEOUT = 60
 
 local function fmt(v)
   if v == nil then return "–" end
@@ -52,14 +57,53 @@ function app.new(cfg, env)
   if not hub then return nil, err end
   local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0 }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
-  if env.glasses and cfg.hud ~= false then self.hud = hud.new(env.glasses, cfg.hud) end
+  if env.terminals and next(env.terminals) and cfg.hud ~= false then
+    self.huds = huds.new(env.terminals, cfg.hud, env.hudPath)
+  end
   for i = 1, #cfg.panels do self.history[i] = {} end
   self.actions = {
     ack = function(key) self.hub.alerts:ack(key) end,
     ackAll = function() self.hub.alerts:ackAll() end,
     quit = function() self.running = false end,
+    hud = function(player) self.editing = { player = player, ["until"] = self.now + EDIT_TIMEOUT } end,
   }
+  self:editorActions()
   return self
+end
+
+-- The HUD editor's buttons. Each gets the tapping player; anyone else's taps do nothing.
+function App:editorActions()
+  local a = self.actions
+  local function mine(fn)
+    return function(player, ...)
+      local e = self.editing
+      if not e or player ~= e.player then return end
+      e["until"] = self.now + EDIT_TIMEOUT
+      local ok, err = fn(e.player, ...)
+      self.editError = (ok == false) and ("can't save: " .. tostring(err)) or nil
+    end
+  end
+  local function change(fn) return mine(function(player, ...)
+    local args = table.pack(...)
+    return self.huds:change(player, function(s) fn(s, table.unpack(args, 1, args.n)) end)
+  end) end
+  a.hudDone = mine(function() self.editing = nil end)
+  a.hudReset = mine(function(player) return self.huds:reset(player) end)
+  a.hudToggle = change(function(s, label)
+    for i, l in ipairs(s.bars) do if l == label then table.remove(s.bars, i); return end end
+    s.bars[#s.bars + 1] = label
+  end)
+  a.hudMove = change(function(s, label, dir)
+    for i, l in ipairs(s.bars) do
+      local j = i + dir
+      if l == label and s.bars[j] then s.bars[i], s.bars[j] = s.bars[j], s.bars[i]; return end
+    end
+  end)
+  a.hudAnchor = change(function(s, anchor) s.anchor = anchor end)
+  a.hudStep = change(function(s, key, dir)
+    local lim = huds.LIMITS[key]
+    s[key] = math.max(lim[1], math.min(lim[2], s[key] + dir * lim[3]))
+  end)
 end
 
 -- Panels (or HUD bars, same form) evaluated for display.
@@ -89,12 +133,30 @@ function App:panels(now) return self:evaluate(self.cfg.panels, self.history, now
 
 -- HUD calls in the last minute, from samples taken each tick.
 function App:hudRate(now)
-  if not self.hud then return nil end
+  if not self.huds then return nil end
   local s = self.hudSamples or {}
   self.hudSamples = s
-  s[#s + 1] = { now, self.hud.calls }
+  s[#s + 1] = { now, self.huds.calls }
   while #s > 1 and now - s[1][1] > 60 do table.remove(s, 1) end
-  return self.hud.calls - s[1][2]
+  return self.huds.calls - s[1][2]
+end
+
+function App:editorModel()
+  local e = self.editing
+  if not e or not self.huds then return nil end
+  local s = self.huds:settings(e.player)
+  local pos = {}
+  for i, label in ipairs(s.bars) do pos[label] = i end
+  local bars = {}
+  for _, b in ipairs(self.huds:catalog(self.cfg.panels)) do
+    bars[#bars + 1] = { label = b.label, pos = pos[b.label] }
+  end
+  table.sort(bars, function(a, b)
+    if (a.pos ~= nil) ~= (b.pos ~= nil) then return a.pos ~= nil end
+    return (a.pos or 0) < (b.pos or 0)
+  end)
+  return { player = e.player, settings = s, bars = bars, shown = #s.bars, wearing = self.huds:wearing(e.player),
+    error = self.editError, closesIn = math.max(0, math.ceil(e["until"] - self.now)) }
 end
 
 function App:model(now)
@@ -102,16 +164,17 @@ function App:model(now)
     now = now, port = self.cfg.port, node = self.cfg.node, version = VERSION, health = self.hub:health(now),
     missingConfig = self.cfg.missing, nodes = self.hub:nodes(now),
     alerts = self.hub.alerts:list(), counts = self.hub.alerts:counts(), panels = self:panels(now),
+    huds = self.huds ~= nil, editor = self:editorModel(),
   }
 end
 
 function App:redraw(now, withHud)
+  self.now = now
   local m = self:model(now)
-  if self.hud and withHud then
-    m.hudBars = self:evaluate(self.cfg.hud.bars or {}, nil, now)
-    m.screen = self.screen
-    local ok, err = pcall(self.hud.draw, self.hud, m)
-    self.hudError = not ok and tostring(err) or nil
+  if self.huds and withHud then
+    local ok, err = pcall(self.huds.draw, self.huds, m, function(bars) return self:evaluate(bars, nil, now) end,
+      self.cfg.panels)
+    self.hudError = not ok and tostring(err) or self.huds.error
     self.hudPerMinute = self:hudRate(now)
   end
   m.hudError, m.hudPerMinute = self.hudError, self.hudPerMinute
@@ -120,6 +183,7 @@ function App:redraw(now, withHud)
 end
 
 function App:start(now)
+  self.now = now
   local modem = self.env.modem
   if modem then
     modem.open(self.cfg.port)
@@ -135,19 +199,21 @@ function App:onModem(from, port, data, now)
   end
 end
 
-function App:onGlasses(w, h, now)
-  if type(w) == "number" and type(h) == "number" and w > 0 and h > 0 then
-    self.screen = { w = w, h = h }
-    if self.running then self:redraw(now, true) end
-  end
+function App:onGlasses(address, player, w, h, now)
+  if not self.huds then return end
+  self.huds:onGlasses(address, player, w, h)
+  if self.running then self:redraw(now, true) end
 end
 
-function App:onTouch(x, y, now)
-  self.dash:tap(x, y)
+function App:onTouch(x, y, now, player)
+  self.now = now
+  self.dash:tap(x, y, player)
   if self.running then self:redraw(now, true) end
 end
 
 function App:tick(now)
+  self.now = now
+  if self.editing and now >= self.editing["until"] then self.editing, self.editError = nil, nil end
   local changes = self.hub:tick(now)
   if self.cfg.beep and self.env.beep and #changes.new > 0 then
     local bad = false
@@ -169,7 +235,7 @@ function App:tick(now)
 end
 
 function App:stop()
-  if self.hud then pcall(self.hud.clear, self.hud) end
+  if self.huds then self.huds:clear() end
   if self.env.modem then self.env.modem.close(self.cfg.port) end
   self.dash:restore()
 end

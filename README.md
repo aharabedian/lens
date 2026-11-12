@@ -14,7 +14,8 @@ them, notices when one goes quiet, and shows the base at a glance.
 
 - **One dashboard for the base**: every agent's health and when it last reported, every alert in one list
   (tap to acknowledge), and panels you choose: bars, values and sparklines.
-- **AR glasses HUD** (OC Glasses): your bars and the newest alerts in a corner of your view.
+- **AR glasses HUD** (OC Glasses): your bars and the newest alerts in a corner of your view. One Glasses
+  Terminal per player gives each their own HUD, set up from the dashboard.
   ![HUD](docs/images/hud-alerts.png)
 - **Stale detection**: an agent that stops reporting (crashed, unloaded chunk, out of range) raises an alert.
 - **Queries and rules**: Prometheus-style queries (`sum(prism_machine_state{node="prism-ore", state="running"})`)

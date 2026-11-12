@@ -73,7 +73,8 @@ Values show as `4.2k`, `1.5M`, `3G`. A query with no data shows `–`.
 ## AR glasses HUD
 
 With an **OC Glasses** Glasses Terminal attached to the hub computer, `lens-hub` also draws a small block in
-the top-right of the view of everyone wearing glasses linked to that terminal: the bars you choose, then the newest
+the top-right of the view of everyone wearing glasses linked to that terminal (one terminal per player
+gives each their own HUD, [below](#a-hud-for-each-player)): the bars you choose, then the newest
 unacknowledged alerts, with a thin strip down the left in the base's overall health color.
 
 ![Quiet](images/hud-quiet.png) ![With alerts](images/hud-alerts.png)
@@ -100,3 +101,28 @@ hud = {
 | `scale` | `1` | Text and row size: 1 is about chat-text size, 2 doubles it (double `width` too) |
 | `alpha` | `0.35` | Backdrop opacity, 0 for none |
 | `colors` | `"float"` | `"float"` (0..1, what OC Glasses takes) or `"byte"` (0..255) for other glasses mods |
+
+### A HUD for each player
+
+A Glasses Terminal shows the same HUD to everyone linked to it: OC Glasses can't show a widget to just one
+player. For HUDs of their own, **each player links their glasses to their own terminal**, all attached to the
+hub computer. The hub drives every terminal and learns who wears which when they put their glasses on
+(`glasses_on`). Each terminal is placed using its own wearer's view size.
+
+**Changing your HUD:** tap **HUD** in the dashboard's header. The editor opens for whoever tapped, and only
+their taps change anything:
+
+![HUD editor](images/hud-editor.png)
+
+| | |
+|---|---|
+| Bars | Tap one to show or hide it; ▲ ▼ order the ones shown. The choices are `hud.bars` and every panel |
+| Corner | Where the block sits |
+| Size, Width, Alerts | `scale` (0.5 to 3), `width` (100 to 400 px) and how many alerts |
+| BACK TO DEFAULT | Drops your settings: you get `hud` from lens-hub.cfg again |
+| DONE | Back to the dashboard (it also closes after a minute without a tap) |
+
+Changes show in your glasses straight away and are saved in **`/home/lens-hud.cfg`** (next to lens-hub.cfg),
+one line per player. Only the hub writes it; lens-setup and lens-hub.cfg are untouched. A player with no
+settings there, or a terminal whose wearer isn't known yet, shows `hud` from lens-hub.cfg. New panels and
+queries are still added in lens-setup or lens-hub.cfg.
