@@ -9,6 +9,9 @@
   ui.restore()                 back to plain terminal colors
   Gui.C                        the color palette
   Gui.len(s), Gui.fit(s, n), Gui.rfit(s, n)   text helpers (also on ui)
+  Gui.resolution(maxW, maxH, blocksW, blocksH) -> w, h   the largest resolution with the screen's shape, so
+                               text fills a screen of blocksW x blocksH blocks (characters are twice as tall as
+                               wide; each multiblock screen loses about 1/8 block of border at each edge)
 ]]
 
 local unicode = require("unicode")
@@ -39,6 +42,14 @@ function Gui.rfit(s, n)
   local l = unicode.len(s)
   if l >= n then return unicode.sub(s, 1, n) end
   return string.rep(" ", n - l) .. s
+end
+
+function Gui.resolution(maxW, maxH, bw, bh)
+  if not (bw and bh) or bw <= 0 or bh <= 0 then return maxW, maxH end
+  local ratio = 2 * (bw - 0.25) / (bh - 0.25)
+  local w, h = math.floor(maxH * ratio + 0.5), maxH
+  if w > maxW then w, h = maxW, math.floor(maxW / ratio + 0.5) end
+  return math.max(1, math.min(maxW, w)), math.max(1, math.min(maxH, h))
 end
 
 function Gui.new(gpu, W, H)

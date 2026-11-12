@@ -2,20 +2,23 @@
   newest alerts, small, in a corner of the wearer's view.
 
   local h = require("lens.hub.hud").new(proxy, opts)    opts = cfg.hud (lens.hub.config has the defaults)
-  h:draw(model)     model: the dashboard's model plus model.hudBars (bars evaluated like panels: label, text,
-                    frac, level) and model.screen = { w, h } (the wearer's GUI size, from glasses_on; default
-                    854 x 480). Widgets are made on first use; afterwards a setter is called only when its
-                    value changed, because every call is a component call.
-  opts.anchor       "top-right" (default), "top-left", "bottom-right" or "bottom-left": the corner the block
-                    sits in; opts.x and opts.y are the margins from that corner, in GUI pixels
+  h:draw(model)     model: the dashboard's model plus model.screen = { w, h } (the wearer's GUI size, from
+                    glasses_on; default 854 x 480) and model.hudBlocks = { { anchor, x, y, width, items }... },
+                    items evaluated: { kind = "bar" | "text", label, text, frac, level } | { kind = "alerts",
+                    count } | { kind = "gap" }. Without hudBlocks: one block placed as opts.blocks[1], with
+                    model.hudBars then the alerts. Widgets are made on first use; afterwards a setter is called
+                    only when its value changed, because every call is a component call.
+  opts              scale, alpha, colors (lens.hub.config's hud)
+  hud.place(block, w, h, screen) -> x, y   a block's top left: its anchor (one of nine) plus x, y (right and
+                    down positive), kept on screen
   h:clear()         remove every widget it made
   h.calls           component calls made so far (shown on the dashboard, to see what the HUD costs)
   hud.rgb(hex, units) -> r, g, b   0xRRGGBB as "float" (0..1, OC Glasses) or "byte" (0..255)
 
-  Layout, top to bottom, with a thin strip down the left in the overall health's color:
-    one row per bar: label, bar (fill colored by its level), value
-    the newest unacknowledged alerts: a colored "!" and the text; "+N more" when there are more
-    "LENS OK" only when there are no bars and no alerts, so the strip isn't alone
+  Each block, top to bottom, with a faint backdrop and a thin strip down the left in the overall health's color:
+    bar: label, bar (fill colored by its level), value        text: label, then the value at the right, colored
+    alerts: the newest unacknowledged ones, a colored "!" and the text, then "+N more"; gap: half a row
+    "LENS OK" only when a block has nothing to show, so the strip isn't alone
   Measured in game: positions are GUI pixels from the top left; Rect2D setSize takes the height first; text is
   about 5.2 px a character per unit of setScale (and starts at scale 2 unless set, so the HUD always sets it).
 ]]
@@ -27,7 +30,7 @@ local hud = {}
 -- Palette: quiet unless something needs attention.
 hud.COLORS = {
   text = 0xeef1f4, dim = 0xb4bec8, track = 0x262d36, fill = 0x4fb8a8, backdrop = 0x0d1117,
-  ok = 0x4fb8a8, warn = 0xf0b03c, bad = 0xe5534b, stale = 0x8a939c,
+  ok = 0x4fb8a8, good = 0x5cc87a, warn = 0xf0b03c, bad = 0xe5534b, stale = 0x8a939c,
 }
 local P = hud.COLORS
 local CHAR, LINE = 5.2, 11          -- px per character and per row at scale 1
@@ -99,29 +102,50 @@ end
 
 hud.SCREEN = { w = 854, h = 480 }    -- until a glasses_on says otherwise (2560 x 1440 at GUI scale 3)
 
--- Rows the block will have, to place it from a bottom corner before drawing.
-local function countRows(m, limit)
-  local unacked = 0
-  for _, a in ipairs(m.alerts or {}) do if not a.acked then unacked = unacked + 1 end end
-  local rows = #(m.hudBars or {}) + math.min(limit, unacked) + (unacked > limit and 1 or 0)
-  return math.max(rows, 1)
+-- Where a block of w x h goes for its anchor and offset, kept on screen.
+function hud.place(b, w, h, screen)
+  local a = b.anchor or "top-right"
+  local x = a:find("left", 1, true) and 0 or a:find("right", 1, true) and (screen.w - w) or (screen.w - w) / 2
+  local y = a:find("^top") and 0 or a:find("^bottom") and (screen.h - h) or (screen.h - h) / 2
+  x, y = x + (b.x or 0), y + (b.y or 0)
+  x = math.max(0, math.min(screen.w - w, x))
+  y = math.max(0, math.min(screen.h - h, y))
+  return math.floor(x), math.floor(y)
 end
 
-function Hud:draw(m)
+local function unackedOf(m)
+  local out = {}
+  for _, a in ipairs(m.alerts or {}) do if not a.acked then out[#out + 1] = a end end
+  return out
+end
+
+-- The rows an element takes (alerts: those shown, then "+N more").
+local function rowsOf(item, unacked)
+  if item.kind == "alerts" then
+    local limit = item.count or 3
+    if limit <= 0 then return 0 end
+    return math.min(limit, #unacked) + (#unacked > limit and 1 or 0)
+  elseif item.kind == "gap" then
+    return 0.5
+  end
+  return 1
+end
+
+function Hud:block(i, b, m, unacked, used)
   local o = self.opts
   local scale = o.scale or 1
-  local width = o.width or 160
+  local width = b.width or 160
   local line, char = math.ceil(LINE * scale), CHAR * scale
   local screen = m.screen or hud.SCREEN
-  local anchor = o.anchor or "top-right"
-  local x0 = anchor:find("right", 1, true) and (screen.w - (o.x or 4) - width) or (o.x or 4)
-  local y0 = o.y or 4
-  if anchor:find("bottom", 1, true) then y0 = screen.h - y0 - (countRows(m, o.alerts or 3) * line + 2) end
-  x0, y0 = math.max(0, math.floor(x0)), math.max(0, math.floor(y0))
-  local used = { bg = true, strip = true }
-  local function mark(key) used[key] = true end
+  local rows = 0
+  for _, item in ipairs(b.items) do rows = rows + rowsOf(item, unacked) end
+  local empty = rows == 0
+  if empty then rows = 1 end
+  local x0, y0 = hud.place(b, width, math.floor(rows * line + 2), screen)
+  local p = "k" .. i .. ":"
+  local function mark(key) used[p .. key] = true; return p .. key end
   -- Made before any row, so they're drawn under the rows; sized once the rows are known.
-  local bg, strip = self:slot("bg", "rect"), self:slot("strip", "rect")
+  local bg, strip = self:slot(mark("bg"), "rect"), self:slot(mark("strip"), "rect")
 
   local tx = x0 + 6                              -- text starts right of the strip
   local inner = width - 8
@@ -130,38 +154,45 @@ function Hud:draw(m)
   local labelW, valueW = math.ceil(labelChars * char) + 3, math.ceil(valueChars * char)
   local barX, barW = tx + labelW, inner - labelW - valueW - 4
   local barH = math.max(3, math.floor(line * 0.5))
+  local right = x0 + width - 2
 
-  local rows = 0
-  for i, b in ipairs(m.hudBars or {}) do
-    local k = "b" .. i
-    self:text(k .. "l", tx, y, cut(b.label, labelChars), P.dim); mark(k .. "l")
-    local barY = y + math.floor((line - 2 - barH) / 2)
-    self:rect(k .. "t", barX, barY, barW, barH, P.track, 0.85); mark(k .. "t")
-    local level = b.level and P[b.level] or P.fill
-    if b.frac and b.frac > 0 then
-      self:rect(k .. "f", barX, barY, barW * math.min(1, b.frac), barH, level, 1); mark(k .. "f")
+  for e, item in ipairs(b.items) do
+    local k = "e" .. e
+    if item.kind == "bar" then
+      self:text(mark(k .. "l"), tx, y, cut(item.label, labelChars), P.dim)
+      local barY = y + math.floor((line - 2 - barH) / 2)
+      self:rect(mark(k .. "t"), barX, barY, barW, barH, P.track, 0.85)
+      local color = item.level and P[item.level] or P.fill
+      if item.frac and item.frac > 0 then
+        self:rect(mark(k .. "f"), barX, barY, barW * math.min(1, item.frac), barH, color, 1)
+      end
+      self:text(mark(k .. "v"), right - valueW, y, cut(item.text or "-", valueChars), item.level and P[item.level] or P.text)
+      y = y + line
+    elseif item.kind == "text" then
+      local value = cut(item.text or "-", math.max(4, math.floor(inner / char) - 4))
+      local vw = math.ceil(unicode.len(value) * char)
+      self:text(mark(k .. "v"), right - vw, y, value, item.level and P[item.level] or P.text)
+      local room = math.floor((right - vw - tx - char) / char)
+      if room >= 2 then self:text(mark(k .. "l"), tx, y, cut(item.label, room), P.dim) end
+      y = y + line
+    elseif item.kind == "alerts" then
+      local limit = item.count or 3
+      for a = 1, math.min(limit, #unacked) do
+        local al = unacked[a]
+        self:text(mark(k .. "a" .. a .. "i"), tx, y, "!", al.level == "bad" and P.bad or P.warn)
+        self:text(mark(k .. "a" .. a), tx + math.ceil(2 * char), y, cut(al.text, math.floor((inner - 2 * char) / char)), P.text)
+        y = y + line
+      end
+      if limit > 0 and #unacked > limit then
+        self:text(mark(k .. "more"), tx, y, ("+%d more"):format(#unacked - limit), P.dim)
+        y = y + line
+      end
+    elseif item.kind == "gap" then
+      y = y + math.floor(line / 2)
     end
-    self:text(k .. "v", x0 + width - 2 - valueW, y, cut(b.text or "-", valueChars),
-      b.level and P[b.level] or P.text); mark(k .. "v")
-    y, rows = y + line, rows + 1
   end
-
-  local unacked = {}
-  for _, a in ipairs(m.alerts or {}) do if not a.acked then unacked[#unacked + 1] = a end end
-  local limit = o.alerts or 3
-  for i = 1, math.min(limit, #unacked) do
-    local a = unacked[i]
-    self:text("a" .. i .. "i", tx, y, "!", a.level == "bad" and P.bad or P.warn); mark("a" .. i .. "i")
-    self:text("a" .. i, tx + math.ceil(2 * char), y, cut(a.text, math.floor((inner - 2 * char) / char)), P.text)
-    mark("a" .. i)
-    y, rows = y + line, rows + 1
-  end
-  if #unacked > limit then
-    self:text("more", tx, y, ("+%d more"):format(#unacked - limit), P.dim); mark("more")
-    y, rows = y + line, rows + 1
-  end
-  if rows == 0 then
-    self:text("ok", tx, y, "LENS " .. ((m.health or "ok"):upper()), P.dim); mark("ok")
+  if empty then
+    self:text(mark("ok"), tx, y, "LENS " .. ((m.health or "ok"):upper()), P.dim)
     y = y + line
   end
 
@@ -174,7 +205,25 @@ function Hud:draw(m)
   self:set(strip, "setSize", height, 2)
   self:paint(strip, P[m.health] or P.stale, 1)
   self:set(strip, "setVisible", true)
+end
 
+function Hud:draw(m)
+  local o = self.opts
+  local blocks = m.hudBlocks
+  if not blocks then
+    -- One block from the opts' first block (or the old opts), with m.hudBars then the alerts.
+    local first = (o.blocks and o.blocks[1]) or {}
+    local items = {}
+    for _, bar in ipairs(m.hudBars or {}) do
+      local it = setmetatable({ kind = "bar" }, { __index = bar })
+      items[#items + 1] = it
+    end
+    items[#items + 1] = { kind = "alerts", count = o.alerts or 3 }
+    blocks = { { anchor = first.anchor or o.anchor, x = first.x, y = first.y, width = first.width or o.width, items = items } }
+  end
+  local unacked = unackedOf(m)
+  local used = {}
+  for i, b in ipairs(blocks) do self:block(i, b, m, unacked, used) end
   for _, key in ipairs(self.order) do
     if not used[key] then self:set(self.slots[key], "setVisible", false) end
   end

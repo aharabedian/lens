@@ -15,8 +15,9 @@ is its interface; this page is the map.
 | `lens.hub.alerts` | hub | One list of every active alert: dedupe by `node/id`, since, acks, ordering |
 | `lens.hub.config` | hub | `/home/lens-hub.cfg`: defaults and checks, with readable errors ([hub.md](hub.md)) |
 | `lens.hub.dashboard` | hub | The screen: builds a frame of rows from a model, sends the GPU only the segments that changed, touch targets |
-| `lens.hub.huds` | hub | One `lens.hub.hud` per Glasses Terminal, with its wearer's settings (`/home/lens-hud.cfg`, written only here) over `hud` from the config; the HUD editor's changes |
-| `lens.hub.hud` | hub | The AR glasses HUD: `hud.bars` and the newest alerts as widgets on a Glasses Terminal; made once, setters called only on change, calls counted |
+| `lens.hub.format` | hub | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD. Pure |
+| `lens.hub.huds` | hub | One `lens.hub.hud` per Glasses Terminal, with its wearer's blocks (`/home/lens-hud.cfg`, written only here) or `hud` from the config; elements name views by label; the HUD editor's changes |
+| `lens.hub.hud` | hub | Draws HUD blocks (bar, text, alerts, gap elements, placed from nine anchors) as widgets on one Glasses Terminal; made once, setters called only on change, calls counted |
 | `lens.hub.app` | hub | The program's state: hub core + panels (values, history) + dashboard; reacts to packets, touches and ticks |
 | `lens.setup.hub` | lens-setup | The steps: hub, agents and their standard panels, HUD, start on boot; review and save |
 | `lens.setup.input`, `lens.setup.render` | lens-setup | Questions on the terminal; `lens-hub.cfg` as commented Lua |
@@ -65,6 +66,9 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | Widget objects are tables of methods. All: `getID`, `set/getColor`, `set/getAlpha`, `setVisible`/`isVisible`. Text2D: `set/getPosition`, `Scale`, `Rotation`, `Text`. Rect2D: `set/getPosition`, `Size`. Quad2D, Triangle2D: `setVertex`, `getVertexCount`. Dot2D: `Position`, `Scale`. ItemIcon: `Position`, `Scale`, `Rotation`, `Item`. `removeObject(getID())` removes one | **Seen in game** (`lens-discover --widgets`, 2026-11-12) |
 | Widgets have no per-player methods (Text2D: get/set Alpha, Color, Position, Rotation, Scale, Text, Visible, getID; Rect2D: Alpha, Color, Position, Size, Visible, getID; Quad: Alpha, Color, Vertex, VertexCount, Visible, getID): a terminal shows the same HUD to everyone linked to it | **Seen in game** (`lens-discover --widgets`, 2026-11-12) |
 | `getBindPlayers()` returns the linked players' names (the hub accepts a name, a list of names, or a list of tables with `name`; it uses it only at start, when it names exactly one player) | Assumed: the return shape hasn't been seen |
+| `screen.getAspectRatio()` returns the multiblock screen's size in blocks; text is drawn as large as fits while keeping the resolution's shape, characters are twice as tall as wide, and a multiblock screen loses about 1/8 block of border at each edge (`resolution = "fit"`: 73 × 50 on 3 × 4) | **Reported working** (2026-11-12): a 3 × 4 screen is filled. The 1/8-block border is still our estimate; `{ width, height }` overrides |
+| OpenOS's font has ↖ ↗ ↘ ↙ ◀ ▶ (the HUD editor's anchor grid and nudges) | **Seen in game** (2026-11-12) |
+| Per-player HUDs on their own terminals; a wearer's HUD shows straight away after the hub restarts | **Reported working** (2026-11-12). Which of getBindPlayers or glasses_on did it isn't known |
 | A `glasses_on` arrives for a player already wearing glasses when the hub starts | Assumed not: getBindPlayers covers it |
 | Events (the hub uses `glasses_on`'s size to place the HUD by its anchor): `glasses_on(terminal, player, width, height)` (854x457 here, briefly 854x480), `glasses_off(terminal, player)`; clicking with glasses on sends nothing | **Seen in game** (`lens-discover --events`, 2026-11-12) |
 | Colors 0..1 (`setColor(255, 0, 0)` clamps to the same red as `(1, 0, 0)`) | **Seen in game** (`--glasses-test`, 2026-11-12) |

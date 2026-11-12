@@ -23,6 +23,8 @@
 local codec = require("lens.codec")
 local core = require("lens.hub.core")
 local dashboard = require("lens.hub.dashboard")
+local config = require("lens.hub.config")
+local format = require("lens.hub.format")
 local huds = require("lens.hub.huds")
 local VERSION = require("lens.version")
 
@@ -30,23 +32,6 @@ local app = {}
 
 local HISTORY = 120
 local EDIT_TIMEOUT = 60
-
-local function fmt(v)
-  if v == nil then return "–" end
-  local a = math.abs(v)
-  for _, u in ipairs({ { 1e12, "T" }, { 1e9, "G" }, { 1e6, "M" }, { 1e3, "k" } }) do
-    if a >= u[1] then return (("%.1f"):format(v / u[1]):gsub("%.0$", "")) .. u[2] end
-  end
-  if v == math.floor(v) then return tostring(math.floor(v)) end
-  return (("%.2f"):format(v):gsub("0+$", ""):gsub("%.$", ""))
-end
-
-local function level(p, v)
-  if v == nil then return nil end
-  if (p.badAbove and v >= p.badAbove) or (p.badBelow and v <= p.badBelow) then return "bad" end
-  if (p.warnAbove and v >= p.warnAbove) or (p.warnBelow and v <= p.warnBelow) then return "warn" end
-  return nil
-end
 
 local App = {}
 App.__index = App
@@ -65,13 +50,16 @@ function app.new(cfg, env)
     ack = function(key) self.hub.alerts:ack(key) end,
     ackAll = function() self.hub.alerts:ackAll() end,
     quit = function() self.running = false end,
-    hud = function(player) self.editing = { player = player, ["until"] = self.now + EDIT_TIMEOUT } end,
+    hud = function(player) self.editing = { player = player, ["until"] = self.now + EDIT_TIMEOUT, block = 1, step = 8 } end,
   }
   self:editorActions()
   return self
 end
 
--- The HUD editor's buttons. Each gets the tapping player; anyone else's taps do nothing.
+-- The HUD editor's buttons. Each gets the tapping player; anyone else's taps do nothing. Changes go to the
+-- block being edited (editing.block).
+local STEPS = { 1, 8, 32 }
+
 function App:editorActions()
   local a = self.actions
   local function mine(fn)
@@ -83,48 +71,78 @@ function App:editorActions()
       self.editError = (ok == false) and ("can't save: " .. tostring(err)) or nil
     end
   end
+  local function clamp(v, lim) return math.max(lim[1], math.min(lim[2], v)) end
+  -- fn(settings, block, ...) edits the player's settings; the block is the one being edited.
   local function change(fn) return mine(function(player, ...)
     local args = table.pack(...)
-    return self.huds:change(player, function(s) fn(s, table.unpack(args, 1, args.n)) end)
+    return self.huds:change(player, function(s)
+      local i = math.min(self.editing.block, #s.blocks)
+      self.editing.block = i
+      fn(s, s.blocks[i], table.unpack(args, 1, args.n))
+    end)
   end) end
   a.hudDone = mine(function() self.editing = nil end)
-  a.hudReset = mine(function(player) return self.huds:reset(player) end)
-  a.hudToggle = change(function(s, label)
-    for i, l in ipairs(s.bars) do if l == label then table.remove(s.bars, i); return end end
-    s.bars[#s.bars + 1] = label
+  a.hudReset = mine(function(player) self.editing.block = 1; return self.huds:reset(player) end)
+  a.hudBlock = mine(function(_, i) self.editing.block = i end)
+  a.hudStepSize = mine(function()
+    local e = self.editing
+    for i, v in ipairs(STEPS) do if v == e.step then e.step = STEPS[i % #STEPS + 1]; return end end
+    e.step = STEPS[1]
   end)
-  a.hudMove = change(function(s, label, dir)
-    for i, l in ipairs(s.bars) do
-      local j = i + dir
-      if l == label and s.bars[j] then s.bars[i], s.bars[j] = s.bars[j], s.bars[i]; return end
+  a.hudBlockAdd = change(function(s)
+    if #s.blocks >= huds.LIMITS.blocks[2] then return end
+    local x, y = config.offset("top-left")
+    s.blocks[#s.blocks + 1] = { anchor = "top-left", x = x, y = y, width = 160, elements = {} }
+    self.editing.block = #s.blocks
+  end)
+  a.hudBlockRemove = change(function(s)
+    if #s.blocks <= 1 then return end
+    table.remove(s.blocks, self.editing.block)
+    self.editing.block = math.max(1, self.editing.block - 1)
+  end)
+  a.hudToggle = change(function(_, b, label)
+    for i, el in ipairs(b.elements) do if el.view == label then table.remove(b.elements, i); return end end
+    b.elements[#b.elements + 1] = { kind = "bar", view = label }
+  end)
+  a.hudKind = change(function(_, b, i)
+    local el = b.elements[i]
+    if el and (el.kind == "bar" or el.kind == "text") then el.kind = el.kind == "bar" and "text" or "bar" end
+  end)
+  a.hudMove = change(function(_, b, i, dir)
+    local j = i + dir
+    if b.elements[i] and b.elements[j] then b.elements[i], b.elements[j] = b.elements[j], b.elements[i] end
+  end)
+  a.hudAlerts = change(function(_, b, dir)
+    for i, el in ipairs(b.elements) do
+      if el.kind == "alerts" then
+        el.count = clamp(el.count + dir, huds.LIMITS.count)
+        if el.count == 0 then table.remove(b.elements, i) end
+        return
+      end
     end
+    if dir > 0 then b.elements[#b.elements + 1] = { kind = "alerts", count = 1 } end
   end)
-  a.hudAnchor = change(function(s, anchor) s.anchor = anchor end)
-  a.hudStep = change(function(s, key, dir)
-    local lim = huds.LIMITS[key]
-    s[key] = math.max(lim[1], math.min(lim[2], s[key] + dir * lim[3]))
+  a.hudGap = change(function(_, b) b.elements[#b.elements + 1] = { kind = "gap" } end)
+  a.hudRemove = change(function(_, b, i) table.remove(b.elements, i) end)
+  a.hudAnchor = change(function(_, b, anchor)
+    b.anchor = anchor
+    b.x, b.y = config.offset(anchor)
   end)
+  a.hudNudge = change(function(_, b, dx, dy)
+    b.x, b.y = b.x + dx * self.editing.step, b.y + dy * self.editing.step
+  end)
+  a.hudWidth = change(function(_, b, dir) b.width = clamp(b.width + dir * huds.LIMITS.width[3], huds.LIMITS.width) end)
+  a.hudScale = change(function(s, _, dir) s.scale = clamp(s.scale + dir * huds.LIMITS.scale[3], huds.LIMITS.scale) end)
 end
 
--- Panels (or HUD bars, same form) evaluated for display.
+-- Views (panels, HUD bars and texts) evaluated for display (lens.hub.format).
 function App:evaluate(list, history, now)
   local out = {}
   for i, p in ipairs(list) do
     local v = self.hub:query(p.value, now)
-    local unit = p.unit and (" " .. p.unit) or ""
-    local text, frac
-    if p.of then
-      local total = self.hub:query(p.of, now)
-      text = fmt(v) .. "/" .. fmt(total) .. unit
-      frac = (v and total and total > 0) and v / total or nil
-    elseif p.percent then
-      text = v and (math.floor(v * 100 + 0.5) .. "%") or "–"
-      frac = v
-    else
-      text = fmt(v) .. (v and unit or "")
-      frac = (v and p.max) and v / p.max or nil
-    end
-    out[i] = { label = p.label, text = text, frac = frac, level = level(p, v), history = history and history[i], value = v }
+    local total = p.of and self.hub:query(p.of, now) or nil
+    local text, frac, level = format.view(p, v, total)
+    out[i] = { label = p.label, text = text, frac = frac, level = level, history = history and history[i], value = v }
   end
   return out
 end
@@ -145,18 +163,20 @@ function App:editorModel()
   local e = self.editing
   if not e or not self.huds then return nil end
   local s = self.huds:settings(e.player)
-  local pos = {}
-  for i, label in ipairs(s.bars) do pos[label] = i end
-  local bars = {}
-  for _, b in ipairs(self.huds:catalog(self.cfg.panels)) do
-    bars[#bars + 1] = { label = b.label, pos = pos[b.label] }
+  e.block = math.min(e.block, #s.blocks)
+  local b = s.blocks[e.block]
+  local rows, used = {}, {}
+  for i, el in ipairs(b.elements) do
+    rows[#rows + 1] = { index = i, kind = el.kind, label = el.view, count = el.count }
+    if el.view then used[el.view] = true end
   end
-  table.sort(bars, function(a, b)
-    if (a.pos ~= nil) ~= (b.pos ~= nil) then return a.pos ~= nil end
-    return (a.pos or 0) < (b.pos or 0)
-  end)
-  return { player = e.player, settings = s, bars = bars, shown = #s.bars, wearing = self.huds:wearing(e.player),
-    error = self.editError, closesIn = math.max(0, math.ceil(e["until"] - self.now)) }
+  local hidden = {}
+  for _, v in ipairs(self.huds:catalog(self.cfg.panels)) do
+    if not used[v.label] then hidden[#hidden + 1] = v.label end
+  end
+  return { player = e.player, own = s.own, scale = s.scale, blocks = #s.blocks, block = e.block,
+    anchor = b.anchor, x = b.x, y = b.y, width = b.width, rows = rows, hidden = hidden, step = e.step,
+    wearing = self.huds:wearing(e.player), error = self.editError, closesIn = math.max(0, math.ceil(e["until"] - self.now)) }
 end
 
 function App:model(now)

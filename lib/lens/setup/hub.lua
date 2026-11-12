@@ -127,6 +127,10 @@ local function hudStep(c, env, found)
   if not input.yes("  show a HUD in glasses linked to this terminal?", c.hud ~= false) then c.hud = false; return end
   if c.hud == false or c.hud == nil then c.hud = {} end
   local h = c.hud
+  if h.blocks then
+    print("  hud uses blocks: change it in lens-hub.cfg, or each player on the dashboard (tap HUD)")
+    return
+  end
   local current = 1
   for i, corner in ipairs(CORNERS) do if corner == (h.anchor or "top-right") then current = i end end
   h.anchor = CORNERS[input.choose({ "top right", "top left", "bottom right", "bottom left" }, current)]
