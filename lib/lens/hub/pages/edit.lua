@@ -1,6 +1,6 @@
 --[[ lens.hub.pages.edit: the EDIT page (lens.hub.editors.edit): the dashboard's panels and the view library.
 
-  edit.draw(f, e, actions)   e: { player, panels = { panel... } (evaluated, in order), library = { { label,
+  edit.draw(f, e, actions)   e: { player, panels = { panel... } (evaluated, in order; hidden ones say so), library = { { label,
                              source }... } (views not on the dashboard), canUndo, error, closesIn }
 
   Two columns at 100 columns or more, else the library below the panels.
@@ -22,7 +22,8 @@ local function onDashboard(f, e, actions, x, width, last)
   for i, p in ipairs(e.panels) do
     if y > last then break end
     f:text(x, y, Gui.fit(p.label, labelW), C.text)
-    f:text(x + labelW + 1, y, Gui.rfit(p.text or "–", 10), frame.levelColor(p.level, C.text))
+    local text = p.hidden and "hidden" or p.text or "–"
+    f:text(x + labelW + 1, y, Gui.rfit(text, 10), p.hidden and C.dim or frame.levelColor(p.level, C.text))
     local bx = x + width - 19
     local label = p.label
     f:button(bx, y, "EDIT", function(pl) actions.editView(pl, label) end)

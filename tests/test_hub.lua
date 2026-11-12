@@ -330,4 +330,106 @@ do
   check(select(1, Gui.resolution(80, 25, nil, nil)) == 80, "unknown shape: the largest")
 end
 
+---------------------------------------------------------------- several values, state dots, when
+do
+  local machines = function(name)
+    if name == "m" then
+      return { { value = 1, labels = { node = "a", machine = "mac1", state = "running" } },
+               { value = 0, labels = { node = "a", machine = "mac1", state = "down" } },
+               { value = 1, labels = { node = "a", machine = "mac2", state = "down" } },
+               { value = 1, labels = { node = "a", machine = "mac3", state = "idle" } },
+               { value = 1, labels = { node = "b", machine = "mac0", state = "warming" } } }
+    end
+    if name == "up" then return { { value = 1, labels = { node = "a", lsc = "Main" } }, { value = 0, labels = { node = "a", lsc = "Spare" } } } end
+    return {}
+  end
+  local sel = query.select('m{node="a"}')
+  check(sel and #sel(machines) == 4, "query.select: a selector's series themselves")
+  check(select(2, query.select("sum(m)")) ~= nil, "query.select takes only a selector")
+  local dots = format.dots(sel(machines))
+  check(#dots == 3 and dots[1].name == "mac1" and dots[1].level == "good" and dots[2].level == "bad"
+    and dots[3].level == "off", "dots: one per machine; by default running good, down bad, idle off")
+  local mine = format.dots(sel(machines), "machine", { running = "good", idle = "warn", down = "off" })
+  check(mine[1].level == "good" and mine[2].level == "off" and mine[3].level == "warn", "states: your own map of state to color")
+  check(format.dots(query.select("m")(machines))[1].level == "warn", "an unknown state: warn")
+  local ups = format.dots(machines("up"), "lsc")
+  check(ups[1].name == "Main" and ups[1].level == "good" and ups[2].level == "bad", "no state label: above 0 good, else bad; by any label")
+  check(format.template({ text = "{stored} / {cap} EU" }, { stored = 10773450724, cap = 11340000000 }) == "10.8G / 11.3G EU",
+    "a template: each value formatted")
+  check(format.template({ text = "{a} in, {b} out", format = "signed" }, { a = 2400, b = -1100 }) == "+2.4k in, -1.1k out",
+    "with the view's format")
+  check(format.template({ text = "{value} of {of}", format = "percent" }, { value = 0.5, of = 1 }) == "50% of 100%",
+    "{value} and {of}")
+  check(format.template({ text = "{x}", values = { x = "q" } }, {}) == "–", "a value with no data: –")
+  local text, _, lv = format.view({ text = "{s}/{c}", values = { s = "1", c = "2" }, value = "v", badBelow = 5 }, 3, nil, { s = 5, c = 9 })
+  check(text == "5/9" and lv == "bad", "format.view: the template's text, the value's level")
+
+  local function err(t) local c, e = config.check(t); return c == nil and e or "" end
+  check(config.check({ panels = { { label = "LSC", text = "{s} / {c}", values = { s = "a", c = "b" } } } }),
+    "a view with text and values needs no value")
+  check(config.check({ panels = { { label = "Ore", dots = 'prism_machine_state{node="x"}', by = "machine" } } }), "nor with dots")
+  check(err({ panels = { { label = "x" } } }):find("needs a value", 1, true), "but with none of them, it's refused")
+  check(err({ panels = { { label = "x", text = "{nope}" } } }):find("uses {nope}", 1, true), "a template's names must be in values")
+  check(err({ panels = { { label = "x", text = "{a}", values = { a = "sum(" } } } }):find("values.a:", 1, true), "values are checked")
+  check(err({ panels = { { label = "x", dots = "sum(x)" } } }):find("dots take a selector", 1, true), "dots take a selector")
+  check(err({ panels = { { label = "x", value = "1", when = "x >" } } }):find("when:", 1, true), "when is checked")
+
+  local d = viewdraft.draft({ label = "LSC", text = "{s} / {c} EU", values = { s = "sum(lumen_stored_eu)", c = "sum(lumen_capacity_eu)" } })
+  check(d.fields.values == "c=sum(lumen_capacity_eu); s=sum(lumen_stored_eu)", "values typed as one line, name=query; ...")
+  local v = viewdraft.view(d)
+  check(v and v.values.s == "sum(lumen_stored_eu)" and v.values.c == "sum(lumen_capacity_eu)" and v.value == nil,
+    "and read back")
+  d.fields.values = "s sum(x)"
+  check(select(2, viewdraft.view(d)):find("name=value", 1, true), "a malformed values line says how to write it")
+end
+
+---------------------------------------------------------------- status rules
+do
+  local function err(t) local c, e = config.check(t); return c == nil and e or "" end
+  check(format.expand("$value > 5 and $value < 9", "sum(x)") == "(sum(x)) > 5 and (sum(x)) < 9", "$value: the view's value query")
+  local view = { label = "Ore", value = "sum(b)", status = {
+    { "bad", "sum(down) > 0" }, { "warn", "$value > 50000" }, { "good", "sum(running) > 0" } } }
+  check(config.check({ panels = { view } }), "status: a list of { level, query }")
+  check(err({ panels = { { label = "x", value = "1", status = { { "purple", "1" } } } } }):find('starts with "good"', 1, true),
+    "a rule's level is good, warn, bad or off")
+  check(err({ panels = { { label = "x", status = { { "bad", "$value > 1" } } } } }):find("uses $value", 1, true),
+    "$value needs the view to have a value")
+  check(err({ panels = { { label = "x", value = "1", status = { { "bad", "x >" } } } } }):find("status rule 1", 1, true),
+    "a rule's query is checked")
+  check(err({ panels = { { label = "x", value = "1", color = "status" } } }):find("needs status rules", 1, true),
+    'color = "status" needs rules')
+  check(err({ panels = { { label = "x", dots = "m", states = { running = "green" } } } }):find("states:", 1, true),
+    "states map to the four levels")
+  local App = require("lens.hub.app")
+  local data = {}
+  local function run(text)
+    local f = query.compile(text)
+    return f(function(name) return data[name] or {} end)
+  end
+  local function at(down, backlog, running)
+    data = { down = { { value = down, labels = {} } }, b = { { value = backlog, labels = {} } },
+      running = { { value = running, labels = {} } } }
+    return App.evaluateWith(view, run, function() return {} end)
+  end
+  check(at(1, 60000, 3).status == "bad", "the first true rule wins: down")
+  check(at(0, 60000, 3).status == "warn", "then overflow ($value > 50000)")
+  check(at(0, 4200, 3).status == "good", "then running")
+  local idle = at(0, 4200, 0)
+  check(idle.status == "off" and idle.level == nil and idle.text == "4.2k", "none true: off; the value keeps its own color")
+  view.color = "status"
+  check(at(0, 60000, 3).level == "warn", 'color = "status": the value takes the status color')
+  view.color = nil
+
+  local d = viewdraft.draft(view)
+  check(d.fields.status == "bad: sum(down) > 0; warn: $value > 50000; good: sum(running) > 0",
+    "status typed as one line, in order")
+  local back = viewdraft.view(d)
+  check(back and back.status[2][1] == "warn" and back.status[2][2] == "$value > 50000", "and read back in order")
+  d.fields.status = "bad sum(x)"
+  check(select(2, viewdraft.view(d)):find("level: query", 1, true), "a malformed status line says how to write it")
+  d.fields.status, d.fields.states = "", "running=good; idle=off"
+  back = viewdraft.view(d)
+  check(back and back.states.running == "good" and back.states.idle == "off", "dot states typed as state=level")
+end
+
 H.done()

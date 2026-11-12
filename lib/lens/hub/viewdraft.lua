@@ -1,7 +1,9 @@
 --[[ lens.hub.viewdraft: a view being edited on the screen: its fields as text, the field being typed into,
   keys and pastes, and turning it back into a view. Pure.
 
-  viewdraft.FIELDS               { { key, name, kind = "text" | "number" | "choice", choices? }... } in screen order
+  viewdraft.FIELDS               { { key, name, kind, choices? }... } in screen order. kind: "text", "number",
+                                 "choice", or a table typed on one line: "values" (name=query; name=query),
+                                 "states" (running=good; idle=off), "status" (bad: query; good: query)
   viewdraft.draft(view?) -> d    d.fields = { [key] = text }, d.focus = the field typed into ("label" first)
   viewdraft.key(d, char, code)   a key_down: printable characters type; Backspace deletes; Enter and Tab go to the
                                  next text field
@@ -25,20 +27,72 @@ viewdraft.FIELDS = {
   { key = "value", name = "Query", kind = "text" },
   { key = "format", name = "Format", kind = "choice", choices = format.FORMATS },
   { key = "unit", name = "Unit", kind = "text" },
+  { key = "text", name = "Text", kind = "text" },
+  { key = "values", name = "Values", kind = "values" },
   { key = "max", name = "Bar max", kind = "number" },
   { key = "of", name = "Bar of", kind = "text" },
+  { key = "dots", name = "Dots", kind = "text" },
+  { key = "by", name = "Dots by", kind = "text" },
+  { key = "states", name = "Dot states", kind = "states" },
+  { key = "status", name = "Status", kind = "status" },
   { key = "color", name = "Color", kind = "choice", choices = format.COLORS },
   { key = "warnAbove", name = "Warn above", kind = "number" },
   { key = "badAbove", name = "Bad above", kind = "number" },
   { key = "warnBelow", name = "Warn below", kind = "number" },
   { key = "badBelow", name = "Bad below", kind = "number" },
+  { key = "when", name = "Show when", kind = "text" },
 }
 
 local BY = {}
 for _, f in ipairs(viewdraft.FIELDS) do BY[f.key] = f end
 
-local function text(v)
+-- values as one line: "a=query; b=query" (names sorted), and back.
+local function valuesText(t)
+  local names = {}
+  for k in pairs(t) do names[#names + 1] = k end
+  table.sort(names)
+  local parts = {}
+  for _, k in ipairs(names) do parts[#parts + 1] = k .. "=" .. t[k] end
+  return table.concat(parts, "; ")
+end
+
+local function parseValues(s, what)
+  local out = {}
+  for part in (s .. ";"):gmatch("(.-);") do
+    part = part:match("^%s*(.-)%s*$")
+    if part ~= "" then
+      local name, q = part:match("^([%w_]+)%s*=%s*(.+)$")
+      if not name then return nil, ("%s: write name=value; name=value (got %q)"):format(what or "Values", part) end
+      out[name] = q
+    end
+  end
+  return next(out) and out or nil
+end
+
+-- status rules as one line: "bad: query; warn: $value > 5", in order, and back.
+local function statusText(rules)
+  local parts = {}
+  for _, r in ipairs(rules) do parts[#parts + 1] = r[1] .. ": " .. r[2] end
+  return table.concat(parts, "; ")
+end
+
+local function parseStatus(s)
+  local out = {}
+  for part in (s .. ";"):gmatch("(.-);") do
+    part = part:match("^%s*(.-)%s*$")
+    if part ~= "" then
+      local lv, q = part:match("^(%a+)%s*:%s*(.+)$")
+      if not lv then return nil, ("Status: write level: query; level: query (got %q)"):format(part) end
+      out[#out + 1] = { lv, q }
+    end
+  end
+  return #out > 0 and out or nil
+end
+
+local function text(v, kind)
   if v == nil then return "" end
+  if kind == "status" then return statusText(v) end
+  if type(v) == "table" then return valuesText(v) end
   if math.type(v) == "float" and v == math.floor(v) and math.abs(v) < 2 ^ 53 then return tostring(math.floor(v)) end
   return tostring(v)
 end
@@ -50,7 +104,7 @@ function viewdraft.draft(view)
     if f.kind == "choice" then
       d.fields[f.key] = view[f.key] or f.choices[1]
     else
-      d.fields[f.key] = text(view[f.key])
+      d.fields[f.key] = text(view[f.key], f.kind)
     end
   end
   return d
@@ -108,6 +162,14 @@ function viewdraft.view(d)
           local n = tonumber(s)
           if not n then return nil, f.name .. " must be a number" end
           v[f.key] = n
+        elseif f.kind == "values" or f.kind == "states" then
+          local t, err = parseValues(s, f.name)
+          if err then return nil, err end
+          v[f.key] = t
+        elseif f.kind == "status" then
+          local t, err = parseStatus(s)
+          if err then return nil, err end
+          v[f.key] = t
         else
           v[f.key] = s
         end

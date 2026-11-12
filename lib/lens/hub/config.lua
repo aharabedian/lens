@@ -5,9 +5,8 @@
                                err is readable ("panel 2 (Ore): expected ) at 14"). cfg.nonCritical becomes a set.
   check(cfg) -> cfg | nil, err   the same checks on a table (load uses it)
 
-  A panel (a view, lens.hub.format): { label, value = query, of = query?, max = number?, unit = string?,
-             format = "auto" | "percent" | "duration" | "signed", color = "thresholds" | "sign" | "none",
-             warnAbove?, badAbove?, warnBelow?, badBelow? }   (percent = true is the same as format = "percent")
+  A panel (a view, lens.hub.format, which has every key): label, value (or text or dots), of, max, unit, format,
+             color, thresholds, text and values, status, dots, by and states, when. (percent = true is format = "percent")
   resolution: "fit" (fill the screen's shape), "max" (the GPU's largest) or { width, height }
   hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off. After check, hud.blocks
        is always there: { { anchor, x, y, width, elements = { element... } }... } where an element is a view
@@ -48,18 +47,65 @@ config.HUD_DEFAULTS = {
 local THRESHOLDS = { "warnAbove", "badAbove", "warnBelow", "badBelow" }
 
 local FORMAT, COLOR = {}, {}
-for _, f in ipairs(require("lens.hub.format").FORMATS) do FORMAT[f] = true end
-for _, f in ipairs(require("lens.hub.format").COLORS) do COLOR[f] = true end
+local format = require("lens.hub.format")
+for _, f in ipairs(format.FORMATS) do FORMAT[f] = true end
+for _, f in ipairs(format.COLORS) do COLOR[f] = true end
 
 local function checkPanel(i, p)
   local where = "panel " .. i
   if type(p) ~= "table" then return where .. ": must be a table" end
   if type(p.label) ~= "string" or p.label == "" then return where .. ": needs a label" end
   where = ("panel %d (%s)"):format(i, p.label)
-  for _, k in ipairs({ "value", "of" }) do
-    if p[k] ~= nil or k == "value" then
+  if p.value == nil and p.text == nil and p.dots == nil and p.status == nil then
+    return where .. ": needs a value (or text, status, or dots)"
+  end
+  for _, k in ipairs({ "value", "of", "when" }) do
+    if p[k] ~= nil then
       local q, err = query.compile(p[k])
       if not q then return where .. ": " .. k .. ": " .. tostring(err) end
+    end
+  end
+  if p.text ~= nil and type(p.text) ~= "string" then return where .. ": text must be text, with {name}s" end
+  if p.values ~= nil then
+    if type(p.values) ~= "table" then return where .. ": values must be { name = query, ... }" end
+    for name, q in pairs(p.values) do
+      if type(name) ~= "string" or not name:find("^[%w_]+$") then return where .. ": values: bad name " .. tostring(name) end
+      local ok, err = query.compile(q)
+      if not ok then return where .. ": values." .. name .. ": " .. tostring(err) end
+    end
+  end
+  if p.text then
+    for name in p.text:gmatch("{([%w_]+)}") do
+      if name ~= "value" and name ~= "of" and not (p.values or {})[name] then
+        return where .. ": text uses {" .. name .. "}, which isn't in values"
+      end
+    end
+  end
+  if p.dots ~= nil then
+    local s, err = query.select(p.dots)
+    if not s then return where .. ": dots: " .. tostring(err) .. " (dots take a selector: name{label=\"x\"})" end
+  end
+  if p.by ~= nil and (type(p.by) ~= "string" or not p.by:find("^[%a_][%w_]*$")) then
+    return where .. ": by must be a label name"
+  end
+  local LEVEL = { good = true, warn = true, bad = true, off = true }
+  if p.states ~= nil then
+    if type(p.states) ~= "table" then return where .. ': states must be { running = "good", ... }' end
+    for k, v in pairs(p.states) do
+      if type(k) ~= "string" or not LEVEL[v] then
+        return where .. ': states: each is state = "good" | "warn" | "bad" | "off"'
+      end
+    end
+  end
+  if p.status ~= nil then
+    if type(p.status) ~= "table" then return where .. ': status must be a list of { level, query }' end
+    for n, r in ipairs(p.status) do
+      local w = ("%s: status rule %d"):format(where, n)
+      if type(r) ~= "table" or not LEVEL[r[1]] then return w .. ': starts with "good", "warn", "bad" or "off"' end
+      if type(r[2]) ~= "string" then return w .. ": needs a query" end
+      if r[2]:find("%$value") and not p.value then return w .. ": uses $value, but the view has no value" end
+      local ok, err = query.compile(format.expand(r[2], p.value))
+      if not ok then return w .. ": " .. tostring(err) end
     end
   end
   if p.max ~= nil and (type(p.max) ~= "number" or p.max <= 0) then return where .. ": max must be a number above 0" end
@@ -72,7 +118,8 @@ local function checkPanel(i, p)
   if p.format ~= nil and not FORMAT[p.format] then
     return where .. ': format must be "auto", "percent", "duration" or "signed"'
   end
-  if p.color ~= nil and not COLOR[p.color] then return where .. ': color must be "thresholds", "sign" or "none"' end
+  if p.color ~= nil and not COLOR[p.color] then return where .. ': color must be "thresholds", "sign", "status" or "none"' end
+  if p.color == "status" and not p.status then return where .. ': color = "status" needs status rules' end
 end
 
 -- A view (a panel, or a HUD bar or text) on its own -> err | nil. Fills format from percent, like check.

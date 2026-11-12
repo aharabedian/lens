@@ -36,6 +36,7 @@ docs-images: screens
 	cp build/screens/dash-editor.png docs/images/dash-editor.png
 	cp build/screens/view-editor.png docs/images/view-editor.png
 	cp build/screens/data.png docs/images/data.png
+	cp build/screens/elements.png docs/images/elements.png
 	cp build/screens/dashboard-portrait.png docs/images/dashboard-portrait.png
 
 clean:

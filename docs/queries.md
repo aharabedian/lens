@@ -16,7 +16,7 @@ power_fill_ratio < 0.2 and sum(prism_backlog_items) > 0        a rule: 1 when tr
 |---|---|
 | `name{label="v", ...}` | The series of a metric whose labels match. Operators: `=`, `!=`, `=~` and `!~` (Lua patterns, unanchored: use `^` and `$`). A missing label matches as `""` |
 | `node` label | Every series has one, added by the hub: `node="prism-ore"` |
-| A selector on its own | The **sum** of its series |
+| A selector on its own | The **sum** of its series (a view's `dots` takes a selector alone and shows each series) |
 | `sum`, `max`, `min`, `avg` | Over the matching series; nothing when no series match |
 | `count` | **How many series** match, whatever their values. To count machines in a state, `sum` their 0/1 state series |
 | `rate` | Summed per-second rates of matching counters |

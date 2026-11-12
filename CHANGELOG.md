@@ -5,6 +5,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Status dots** (`status`): rules in order, `{ level, query }`, the first true one colors the dot (none: gray).
+  `$value` is the view's value; `color = "status"` colors the value too. Levels: good, warn, bad, off.
+- **Dots per item** (`dots`, `by`, `states`): a dot per machine (or any label), its color from a map of state to
+  level. In the HUD a view's value sits beside its dots.
+- **Several values in one line** (`text`, `values`): `"{stored} / {cap} EU"`, each value formatted.
+- **`when`**: a panel or HUD element shows only while its query is true.
+- The view editor has fields for all of these (Status, Dot states and Values typed on one line), with the preview showing dots and templates; it fits tier 2.
+
 ### Fixed
 - The HUD editor drew neither its position controls nor its footer when a block's list ran past the bottom of
   the screen.
