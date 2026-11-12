@@ -63,7 +63,7 @@ are kept, and only new agents are offered. Anything else (rules, thresholds, `no
 lens-update                   the latest release (the default)
 lens-update main              follow the main branch (newest, may be unfinished)
 lens-update latest            back to following releases
-lens-update v0.2.0            a release, and stay on it
+lens-update v0.3.0            a release, and stay on it
 lens-update OWNER/REPO [REF]  a fork
 ```
 

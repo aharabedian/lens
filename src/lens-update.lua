@@ -8,7 +8,7 @@
     lens-update                  update from the saved source (default: latest release of aharabedian/lens)
     lens-update latest           follow releases
     lens-update main             follow the main branch (newest, may be unfinished)
-    lens-update v0.2.0           install that release and stay on it
+    lens-update v0.3.0           install that release and stay on it
     lens-update OWNER/REPO [REF] use a fork: its latest release, or a branch/tag
   The choice is saved for next time. A repo with no releases yet installs from main.
 
@@ -23,7 +23,7 @@ local component  = require("component")
 local filesystem = require("filesystem")
 local serialization = require("serialization")
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 local PREFIX   = os.getenv("LENS_PREFIX") or ""   -- lets the test suite install into a temp dir
 local HOME     = PREFIX .. "/home"
@@ -35,7 +35,7 @@ usage: lens-update [OWNER/REPO] [latest | BRANCH | TAG]
   lens-update                  update from the saved source (first time: latest release of ]] .. DEFAULT_REPO .. [[)
   lens-update latest           follow releases (the default)
   lens-update main             follow the main branch (newest, may be unfinished)
-  lens-update v0.2.0           install that release and stay on it
+  lens-update v0.3.0           install that release and stay on it
   lens-update OWNER/REPO [REF] use a fork: its latest release, or a branch/tag
 The choice is saved for next time.]]
 
