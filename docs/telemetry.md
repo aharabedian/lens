@@ -11,14 +11,19 @@ Each push carries three things:
 
 Agents never depend on the hub: if the hub is down, agents keep working and their pushes are simply not heard.
 
+**LENS observes; it doesn't control.** Messages only flow from agents to the hub (apart from `hello`). There
+are no commands back to agents: to stop a system, go to it. Its own UI (like PRISM's control screen) is
+where control lives.
+
 ## Transport
 
 | | |
 |---|---|
-| Medium | Wireless (or wired) network card, `modem.broadcast` on `lensPort` (default **4243**, beside PRISM's 4242) |
+| Medium | Wireless or wired network card, `modem.broadcast` on `lensPort` (default **4243**). Bases in several dimensions reach the hub through linked cards; the protocol is the same on every medium |
+| Isolation | LENS is separate from each agent's own network: its own port and its own `token`, never PRISM's. An agent program that speaks both keeps them apart |
 | Encoding | One OpenOS `serialization.serialize`d table per packet |
 | Size | Packets are limited to about 8 KB (`modem.maxPacketSize()`). Each serialized message must stay **≤ 7 KB**, leaving headroom for the modem's own overhead |
-| Auth | If `token` is configured, every message carries it, and the hub and agents drop messages without the same token |
+| Auth | If a LENS `token` is configured, every message carries it, and the hub and agents drop messages without the same token |
 | Clocks | No shared clock. Times are **durations** (seconds), measured by the sender with `computer.uptime()`; the hub timestamps what it receives |
 
 ## Envelope
@@ -52,7 +57,7 @@ On `hello`, an agent waits a random 0–2 s (so many agents don't answer at once
 | Field | Type | Meaning |
 |---|---|---|
 | `dseq` | integer | Descriptor version. Increases whenever `metrics` changes during this boot |
-| `metrics` | `{ [name] = { type, help, unit? } }` | Every metric the node may send. `type` is `gauge` or `counter`; `help` is one short line; `unit` is display text (`EU/t`, `items`, `s`) |
+| `metrics` | `{ [name] = { type, help, unit? } }` | Every metric the node may send. `type` is `gauge` or `counter`; `help` is one short line; `unit` is display text (`EU/t`, `items`, `mB`, `s`) |
 
 If the descriptors don't fit in one packet, they're split into parts exactly like a snapshot (`sid`, `part`, `parts`).
 
@@ -93,7 +98,7 @@ than sending `nil`, `NaN` or infinity.
 | Rule | Example |
 |---|---|
 | Lowercase `[a-z][a-z0-9_]*`, prefixed with the node's `role` | `power_eu_stored` |
-| Unit at the end of the name | `_eu`, `_eut`, `_items`, `_seconds` |
+| Unit at the end of the name: `_eu`, `_eut` (EU/t), `_items`, `_mb` (fluids, millibuckets), `_seconds` | `power_eu_stored`, `fluids_stored_mb` |
 | `_ratio` for fractions 0..1 | `power_fill_ratio` |
 | `_total` for counters | `prism_items_routed_total` |
 | Flags read as yes/no questions | `power_backup_enabled` |
@@ -193,11 +198,3 @@ With its `describe`:
   },
 }
 ```
-
-## Still open
-
-| Question | Leaning |
-|---|---|
-| Can agents and the hub share PRISM's port and token? | Separate port (4243), shared token |
-| Bases spread over several dimensions | Linked cards or relays to the hub; the protocol doesn't change |
-| Hub → agent commands | A later `command` kind, forwarded to the owning agent; agents stay in charge |

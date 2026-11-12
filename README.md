@@ -22,7 +22,9 @@ opposite: it gathers status from every system in the base into one place.
 5. PRISM exports its backlog and machine states. **First milestone: the hub shows them on a screen.**
 6. AR glasses HUD.
 7. Power agent.
-8. History graphs, sending commands through the hub.
+8. History graphs.
+
+LENS observes; it doesn't control. Each system's own UI (like PRISM's control screen) is where control lives.
 
 ## Development
 

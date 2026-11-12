@@ -26,6 +26,8 @@ luacheck .                        # lint
   never block without yielding; wireless packets are ~8 KB; GPU and glasses calls are rationed, so update
   only what changed.
 - **Agents never depend on the hub.** The hub observes; agents keep working without it.
+- **Observability, not control.** No commands from the hub back to agents (decided: scope creep, the player
+  walks over). LENS has its own port and token, isolated from each agent's own network.
 - **Telemetry changes add fields rather than renaming them.**
 - **Keep logic pure where it can be** (metrics, codec, query, store, alerts) and unit-test it.
 - A new file in `src/` or `lib/` goes in `manifest.lua` (a test checks).
