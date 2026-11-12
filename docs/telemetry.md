@@ -49,8 +49,8 @@ Every message has these fields. Receivers ignore fields they don't know.
 | `describe` | agent → broadcast | Agent start, in reply to `hello`, and whenever a metric is added | `dseq`, `metrics` |
 | `snapshot` | agent → broadcast | Every `interval` seconds; also early, at most once a second, when health or the set of alerts changes; in reply to `hello` | below |
 
-On `hello`, an agent waits a random 0–2 s (so many agents don't answer at once), then sends `describe` and a
-`snapshot`.
+On `hello`, an agent answers at once with `describe` and a `snapshot`. OpenComputers networks don't lose
+packets to collisions, so many agents answering together is fine.
 
 ### `describe`
 
