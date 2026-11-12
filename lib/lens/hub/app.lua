@@ -16,9 +16,11 @@
   app:onGlasses(address, player, width, height, now)   a glasses_on: that terminal's wearer and GUI size
   app:stop()
   app:panels(now) -> the dashboard's panels, evaluated (with history)
-  app:evaluate(views, history?, now) -> { { label, text, frac, level, history, value, dots?, hidden? }... }
-                                         hidden: the view's `when` is false now; dots: lens.hub.format.dots
-  App.evaluateWith(view, query, select)  the same for one view, with your own query(text) and select(text)
+  app:evaluate(views, history?, now) -> { { label, text, frac, level, history, value, status?, dots?, hidden? }... }
+                                         status: the first true status rule's level ("off": none);
+                                         dots: lens.hub.format.dots; hidden: the view's `when` is false now
+  app.evaluateWith(view, query, select)  the same for one view, with your own query(text) and select(text) (also
+                                         on the module: require("lens.hub.app").evaluateWith)
   app.running, app.hub (lens.hub.core), app.board, app.huds (or nil), app.dash (lens.hub.dashboard), app.now
 
   Editors (lens.hub.editors.<kind>: hud, edit, view, data; their interface is in editors/hud.lua). One is open
@@ -149,15 +151,25 @@ function App.evaluateWith(p, query, select)
     values = {}
     for name, q in pairs(p.values) do values[name] = query(q) end
   end
-  local text, frac, level = format.view(p, v, total, values)
-  local out = { label = p.label, text = text, frac = frac, level = level, value = v }
-  if p.dots then out.dots = format.dots(select(p.dots), p.by, p.idle) end
+  local status
+  if p.status then
+    status = "off"
+    for _, rule in ipairs(p.status) do
+      local w = query(format.expand(rule[2], p.value))
+      if w ~= nil and w ~= 0 then status = rule[1]; break end
+    end
+  end
+  local text, frac, level = format.view(p, v, total, values, status)
+  local out = { label = p.label, text = text, frac = frac, level = level, value = v, status = status }
+  if p.dots then out.dots = format.dots(select(p.dots), p.by, p.states) end
   if p.when then
     local w = query(p.when)
     out.hidden = not (w ~= nil and w ~= 0)
   end
   return out
 end
+
+app.evaluateWith = App.evaluateWith
 
 function App:evaluate(list, history, now)
   local query = function(text) return (self.hub:query(text, now)) end

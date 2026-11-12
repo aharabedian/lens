@@ -32,7 +32,7 @@ local hud = {}
 -- Palette: quiet unless something needs attention.
 hud.COLORS = {
   text = 0xeef1f4, dim = 0xb4bec8, track = 0x262d36, fill = 0x4fb8a8, backdrop = 0x0d1117,
-  ok = 0x4fb8a8, good = 0x5cc87a, warn = 0xf0b03c, bad = 0xe5534b, stale = 0x8a939c,
+  ok = 0x4fb8a8, good = 0x5cc87a, warn = 0xf0b03c, bad = 0xe5534b, stale = 0x8a939c, off = 0x8a939c,
 }
 local P = hud.COLORS
 local CHAR, LINE = 5.2, 11          -- px per character and per row at scale 1
