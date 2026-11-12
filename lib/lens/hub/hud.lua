@@ -8,8 +8,8 @@
   hud.rgb(hex, units) -> r, g, b   0xRRGGBB in the terminal's color units: "float" (0..1) or "byte" (0..255)
 
   Rows: health ("LENS OK  1 bad  2 warn"), one per panel (label, bar, value), then the newest unacknowledged
-  alerts. Unused rows are hidden, not removed. Sizes assume Minecraft's font: about 6 px per character and
-  10 px per line at scale 1.
+  alerts. Unused rows are hidden, not removed. Measured in game: positions are GUI pixels from the top left,
+  text is about 10 px a character and 14 px a line, and Rect2D's setSize takes the height first.
 ]]
 
 local Gui = require("lens.gui")
@@ -18,7 +18,7 @@ local hud = {}
 
 local C = Gui.C
 local HEALTH = { ok = C.good, warn = C.warn, bad = C.bad }
-local CHAR, LINE = 6, 10
+local CHAR, LINE, LABEL, VALUE = 10, 14, 7, 7      -- px per character and line; label and value widths
 
 function hud.rgb(hex, units)
   local r, g, b = (hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff
@@ -77,7 +77,7 @@ end
 function Hud:rect(key, x, y, w, h, hex, alpha)
   local s = self:slot(key, "rect")
   set(s, "setPosition", x, y)
-  set(s, "setSize", math.max(1, math.floor(w + 0.5)), h)
+  set(s, "setSize", h, math.max(1, math.floor(w + 0.5)))    -- height first (seen in game)
   self:color(s, hex)
   if alpha then self:alpha(s, alpha) end
   set(s, "setVisible", true)
@@ -109,7 +109,7 @@ end
 function Hud:draw(m)
   local o = self.opts
   local scale = o.scale or 1
-  local x0, y0, width = o.x or 4, o.y or 4, o.width or 150
+  local x0, y0, width = o.x or 4, o.y or 4, o.width or 260
   local line, char = LINE * scale, CHAR * scale
   local used = { bg = true }
   local function mark(key) used[key] = true end
@@ -124,19 +124,19 @@ function Hud:draw(m)
   self:text("head", x0 + 3, y, cut(head, width // char), HEALTH[m.health] or C.dim); mark("head")
   y = y + line
 
-  local labelW, valueW = 8 * char, 8 * char
+  local labelW, valueW = LABEL * char, VALUE * char
   local barX, barW = x0 + 3 + labelW, width - 6 - labelW - valueW - 4
   for i, p in ipairs(pickPanels(m, o.panels, o.maxPanels or 6)) do
     local k = "p" .. i
-    self:text(k .. "l", x0 + 3, y, cut(p.label, 8), C.dim); mark(k .. "l")
+    self:text(k .. "l", x0 + 3, y, cut(p.label, LABEL), C.dim); mark(k .. "l")
     local barColor = p.level == "bad" and C.bad or p.level == "warn" and C.warn or C.info
     if p.frac and barW > 4 then
       local frac = math.max(0, math.min(1, p.frac))
-      self:rect(k .. "b", barX, y, barW, line - 2, C.line, 0.8); mark(k .. "b")
-      if frac > 0 then self:rect(k .. "f", barX, y, barW * frac, line - 2, barColor, 1); mark(k .. "f") end
+      self:rect(k .. "b", barX, y + 1, barW, line - 4, C.line, 0.8); mark(k .. "b")
+      if frac > 0 then self:rect(k .. "f", barX, y + 1, barW * frac, line - 4, barColor, 1); mark(k .. "f") end
     end
     local valueColor = p.level == "bad" and C.bad or p.level == "warn" and C.warn or C.text
-    self:text(k .. "v", x0 + width - 3 - valueW, y, cut(p.text or "-", 8), valueColor); mark(k .. "v")
+    self:text(k .. "v", x0 + width - 3 - valueW, y, cut(p.text or "-", VALUE), valueColor); mark(k .. "v")
     y = y + line
   end
 
@@ -153,7 +153,7 @@ function Hud:draw(m)
   end
 
   set(bg, "setPosition", x0, y0)
-  set(bg, "setSize", width, y - y0 + 2)
+  set(bg, "setSize", y - y0 + 2, width)
   self:color(bg, C.bg)
   self:alpha(bg, o.alpha or 0.6)
   set(bg, "setVisible", true)

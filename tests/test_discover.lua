@@ -108,10 +108,11 @@ local G = require("glasses").new()
 M.components["gl000000-0000"].proxy = G.proxy
 M.setTime(0)
 ok, out = run("--glasses-test", "10")
-local boxA, boxB = G.widgets[0], G.widgets[2]
-check(ok and boxA.kind == "rect" and boxA.color[1] == 1 and boxB.color[1] == 255 and boxA.w == 60,
-  "--glasses-test draws box A in 0..1 red and box B in 0..255 red")
-check(out:find("Which box is red, A (colors 0..1) or B (colors 0..255)?", 1, true) and M.time >= 10,
+local bar, half, double = G.widgets[0], G.widgets[2], G.widgets[3]
+check(ok and bar.kind == "rect" and bar.w == 80 and bar.h == 10 and bar.color[2] == 1,
+  "--glasses-test draws a green bar, 80 wide and 10 tall with the height given first")
+check(half.scale == 0.5 and half.text == "Scale 0.5" and double.scale == 2, "and text at scales 0.5 and 2")
+check(out:find("Is the green bar wide and short", 1, true) and M.time >= 10,
   "says what to look for, and keeps the pattern up for the given time")
 check(#G.live() == 0 and out:find("pattern removed", 1, true), "then removes it")
 

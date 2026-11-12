@@ -16,9 +16,9 @@
   discover.event(ev) -> line   one pulled event as text, for --events
 
   discover.glassesTest(proxy) -> ids[], lines[]
-    Draws a calibration pattern on a Glasses Terminal, to settle the units its setters take:
-      box A setColor(1, 0, 0), box B setColor(255, 0, 0)   whichever is red: hud.colors "float" or "byte"
-      a text at scale 2; a "+" at (427, 228), the middle of the 854x457 glasses_on reported
+    Draws a calibration pattern on a Glasses Terminal, for what the first one (2026-11-12) left open:
+      a green bar setSize(10, 80): wide and short if setSize takes the height first, as it seemed
+      "Scale 1", "Scale 0.5", "Scale 2", with setScale called before setText this time
     Returns the widget ids (to removeObject later) and what to look for.
 ]]
 
@@ -155,29 +155,20 @@ end
 function discover.glassesTest(proxy)
   local ids = {}
   local function keep(w) ids[#ids + 1] = w.getID(); return w end
-  local function rect(x, y, w, h, r, g, b)
-    local o = keep(proxy.addRect())
-    o.setPosition(x, y); o.setSize(w, h); o.setColor(r, g, b)
-    return o
-  end
-  local function text(x, y, s, scale)
+  local bar = keep(proxy.addRect())
+  bar.setPosition(10, 10); bar.setSize(10, 80); bar.setColor(0, 1, 0)
+  local function text(y, s, scale)
     local o = keep(proxy.addTextLabel())
-    o.setPosition(x, y); o.setText(s)
     if scale then o.setScale(scale) end
-    return o
+    o.setPosition(10, y); o.setColor(1, 1, 1); o.setText(s)
   end
-  rect(10, 10, 60, 14, 1, 0, 0)
-  text(14, 13, "A")
-  rect(80, 10, 60, 14, 255, 0, 0)
-  text(84, 13, "B")
-  text(10, 30, "LENS test: which box is red, A or B?")
-  text(10, 44, "Scale 2", 2)
-  text(424, 224, "+ middle?")
+  text(26, "Scale 1 - LENS test 2")
+  text(44, "Scale 0.5", 0.5)
+  text(56, "Scale 2", 2)
   return ids, {
     "Look through the glasses:",
-    "  1. Which box is red, A (colors 0..1) or B (colors 0..255)? The other is black or white.",
-    "  2. Is 'Scale 2' twice the size of the other text?",
-    "  3. Is '+ middle?' near the middle of your view? (positions in the 854x457 glasses_on reported)",
+    "  1. Is the green bar wide and short (80 x 10), or tall and thin?",
+    "  2. Are 'Scale 0.5' and 'Scale 2' half and twice the size of 'Scale 1'?",
   }
 end
 

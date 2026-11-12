@@ -21,7 +21,7 @@ config.DEFAULTS = {
 }
 
 config.HUD_DEFAULTS = {
-  x = 4, y = 4, width = 150, scale = 1, alerts = 3, maxPanels = 6, alpha = 0.6, colors = "float", panels = nil,
+  x = 4, y = 4, width = 260, scale = 1, alerts = 3, maxPanels = 6, alpha = 0.6, colors = "float", panels = nil,
 }
 
 local THRESHOLDS = { "warnAbove", "badAbove", "warnBelow", "badBelow" }

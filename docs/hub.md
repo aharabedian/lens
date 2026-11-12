@@ -114,11 +114,11 @@ unloads), the dashboard keeps running and shows `HUD: <error>` in its footer.
 
 | `hud` key | Default | Meaning |
 |---|---|---|
-| `x`, `y` | `4`, `4` | Top-left corner, in the glasses' screen space |
-| `width` | `150` | Width of the block |
-| `scale` | `1` | Text and row size |
+| `x`, `y` | `4`, `4` | Top-left corner, in GUI pixels (one is 3 screen pixels at GUI scale 3) |
+| `width` | `260` | Width of the block, in GUI pixels. Text takes about 10 per character |
+| `scale` | `1` | Text and row size. Not yet confirmed to work in game: leave at 1 |
 | `panels` | all, up to `maxPanels` | Panel labels to show, in order: `panels = { "Ore backlog" }` |
 | `maxPanels` | `6` | Panels shown when `panels` isn't set |
 | `alerts` | `3` | Unacknowledged alerts shown |
 | `alpha` | `0.6` | Backdrop opacity |
-| `colors` | `"float"` | The units the terminal takes colors and alpha in: `"float"` (0..1) or `"byte"` (0..255). If the HUD shows black or white blocks instead of colors, switch it. `lens-discover --glasses-test` shows which is right |
+| `colors` | `"float"` | The units the terminal takes colors and alpha in: `"float"` (0..1, what OC Glasses takes) or `"byte"` (0..255), for other glasses mods |

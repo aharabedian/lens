@@ -2,8 +2,10 @@
   game (2026-11-12): add*() take no arguments and return a widget table whose methods are fields; every widget
   has getID, set/getColor, set/getAlpha, set/isVisible; text and items set/getPosition, Scale, Rotation;
   text set/getText; rects set/getSize; quads and triangles setVertex / getVertexCount.
-  Argument units (colors 0..1 or 0..255, positions in the 854x457 space glasses_on reported) are NOT known:
-  this mock just records what it's given.
+  Units seen in game (lens-discover --glasses-test, 2026-11-12): colors 0..1 (above 1 clamps); positions in
+  GUI pixels from the top left; Rect2D setSize(a, b) makes it b wide and a tall (height first), so the mock
+  stores w = b, h = a. Text is about 10 px a character and 14 px a line at scale 1; whether setScale changes
+  that isn't known, so the mock just records it.
 
   local G = require("glasses").new()
   G.proxy                          the component (add to M.components with type "glasses")
@@ -45,8 +47,8 @@ function glasses.new()
         w.setText = function(t) count(); s.text = t end
         w.getText = function() count(); return s.text end
       elseif k == "size" then
-        w.setSize = function(x, y) count(); s.w, s.h = x, y end
-        w.getSize = function() count(); return s.w, s.h end
+        w.setSize = function(a, b) count(); s.h, s.w = a, b end        -- height first, as in game
+        w.getSize = function() count(); return s.h, s.w end
       end
     end
     return w
