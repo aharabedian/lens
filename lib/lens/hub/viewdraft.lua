@@ -1,8 +1,9 @@
 --[[ lens.hub.viewdraft: a view being edited on the screen: its fields as text, the field being typed into,
   keys and pastes, and turning it back into a view. Pure.
 
-  viewdraft.FIELDS               { { key, name, kind = "text" | "number" | "values" | "choice", choices? }... } in
-                                 screen order; "values" is typed as "name=query; name=query"
+  viewdraft.FIELDS               { { key, name, kind, choices? }... } in screen order. kind: "text", "number",
+                                 "choice", or a table typed on one line: "values" (name=query; name=query),
+                                 "states" (running=good; idle=off), "status" (bad: query; good: query)
   viewdraft.draft(view?) -> d    d.fields = { [key] = text }, d.focus = the field typed into ("label" first)
   viewdraft.key(d, char, code)   a key_down: printable characters type; Backspace deletes; Enter and Tab go to the
                                  next text field
@@ -32,7 +33,8 @@ viewdraft.FIELDS = {
   { key = "of", name = "Bar of", kind = "text" },
   { key = "dots", name = "Dots", kind = "text" },
   { key = "by", name = "Dots by", kind = "text" },
-  { key = "idle", name = "Idle dots", kind = "choice", choices = { "dim", "warn" } },
+  { key = "states", name = "Dot states", kind = "states" },
+  { key = "status", name = "Status", kind = "status" },
   { key = "color", name = "Color", kind = "choice", choices = format.COLORS },
   { key = "warnAbove", name = "Warn above", kind = "number" },
   { key = "badAbove", name = "Bad above", kind = "number" },
@@ -54,21 +56,42 @@ local function valuesText(t)
   return table.concat(parts, "; ")
 end
 
-local function parseValues(s)
+local function parseValues(s, what)
   local out = {}
   for part in (s .. ";"):gmatch("(.-);") do
     part = part:match("^%s*(.-)%s*$")
     if part ~= "" then
       local name, q = part:match("^([%w_]+)%s*=%s*(.+)$")
-      if not name then return nil, ("Values: write name=query; name=query (got %q)"):format(part) end
+      if not name then return nil, ("%s: write name=value; name=value (got %q)"):format(what or "Values", part) end
       out[name] = q
     end
   end
   return next(out) and out or nil
 end
 
-local function text(v)
+-- status rules as one line: "bad: query; warn: $value > 5", in order, and back.
+local function statusText(rules)
+  local parts = {}
+  for _, r in ipairs(rules) do parts[#parts + 1] = r[1] .. ": " .. r[2] end
+  return table.concat(parts, "; ")
+end
+
+local function parseStatus(s)
+  local out = {}
+  for part in (s .. ";"):gmatch("(.-);") do
+    part = part:match("^%s*(.-)%s*$")
+    if part ~= "" then
+      local lv, q = part:match("^(%a+)%s*:%s*(.+)$")
+      if not lv then return nil, ("Status: write level: query; level: query (got %q)"):format(part) end
+      out[#out + 1] = { lv, q }
+    end
+  end
+  return #out > 0 and out or nil
+end
+
+local function text(v, kind)
   if v == nil then return "" end
+  if kind == "status" then return statusText(v) end
   if type(v) == "table" then return valuesText(v) end
   if math.type(v) == "float" and v == math.floor(v) and math.abs(v) < 2 ^ 53 then return tostring(math.floor(v)) end
   return tostring(v)
@@ -81,7 +104,7 @@ function viewdraft.draft(view)
     if f.kind == "choice" then
       d.fields[f.key] = view[f.key] or f.choices[1]
     else
-      d.fields[f.key] = text(view[f.key])
+      d.fields[f.key] = text(view[f.key], f.kind)
     end
   end
   return d
@@ -134,8 +157,12 @@ function viewdraft.view(d)
           local n = tonumber(s)
           if not n then return nil, f.name .. " must be a number" end
           v[f.key] = n
-        elseif f.kind == "values" then
-          local t, err = parseValues(s)
+        elseif f.kind == "values" or f.kind == "states" then
+          local t, err = parseValues(s, f.name)
+          if err then return nil, err end
+          v[f.key] = t
+        elseif f.kind == "status" then
+          local t, err = parseStatus(s)
           if err then return nil, err end
           v[f.key] = t
         else

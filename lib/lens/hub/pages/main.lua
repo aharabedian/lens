@@ -141,8 +141,13 @@ end
 
 -- One panel: label and value, then state dots, a bar when it has a fraction, or a rule; a sparkline when tall.
 local function panel(f, p, x, y, width, tall)
-  local text = (p.text ~= "–" or not p.dots) and p.text or ""
-  f:text(x, y, Gui.fit(p.label, width - Gui.len(text) - 1), C.dim)
+  local text = (p.text ~= "–" or not (p.dots or p.status)) and p.text or ""
+  local lx = x
+  if p.status then                                  -- the status dot leads the label
+    f:text(x, y, "●", frame.levelColor(p.status, C.dim))
+    lx = x + 2
+  end
+  f:text(lx, y, Gui.fit(p.label, width - Gui.len(text) - 1 - (lx - x)), C.dim)
   f:text(x + width - Gui.len(text), y, text, frame.levelColor(p.level, C.text))
   if p.dots then
     f:dots(x, y + 1, width, p.dots)

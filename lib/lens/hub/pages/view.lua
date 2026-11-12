@@ -41,11 +41,13 @@ local function preview(f, pv, y, nx, fx, fw)
     return
   end
   local color = frame.levelColor(pv.level, C.text)
-  local text = (pv.dots and pv.text == "–") and "" or pv.text or "–"   -- dots alone: no "–" before them
+  local text = ((pv.dots or pv.status) and pv.text == "–") and "" or pv.text or "–"   -- dots alone: no "–"
   f:text(fx, y, Gui.fit(text, 16), color)
   if pv.hidden then f:text(fx + 17, y, "(hidden now: Show when is false)", C.dim); return end
-  if pv.dots then
-    f:dots(fx + 18, y, math.max(0, fw - 18), pv.dots)
+  if pv.dots or pv.status then
+    local dots = pv.dots or {}
+    if pv.status then dots = { { level = pv.status }, table.unpack(dots) } end
+    f:dots(fx + 18, y, math.max(0, fw - 18), dots)
   elseif pv.frac then
     local bw = math.max(0, fw - 18)
     local filled = math.floor(math.max(0, math.min(1, pv.frac)) * bw + 0.5)

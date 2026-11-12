@@ -17,7 +17,7 @@
   f:editorFooter(e, what?)           e.error in red, or who the editor is for and when it closes (what: the
                                      verb, default "can change this")
   frame.C                            the palette (lens.gui)
-  frame.levelColor(level, default)   bad, warn and good as colors; anything else: default
+  frame.levelColor(level, default)   bad, warn, good and off as colors; anything else: default
   frame.ago(seconds) -> "45s", "12m", "2h05m"
 ]]
 
@@ -32,6 +32,7 @@ function frame.levelColor(level, default)
   if level == "bad" then return C.bad end
   if level == "warn" then return C.warn end
   if level == "good" then return C.good end
+  if level == "off" then return C.dim end
   return default
 end
 

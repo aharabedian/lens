@@ -348,7 +348,9 @@ do
   check(select(2, query.select("sum(m)")) ~= nil, "query.select takes only a selector")
   local dots = format.dots(sel(machines))
   check(#dots == 3 and dots[1].name == "mac1" and dots[1].level == "good" and dots[2].level == "bad"
-    and dots[3].level == nil, "dots: one per machine; running good, down bad, idle dim")
+    and dots[3].level == "off", "dots: one per machine; by default running good, down bad, idle off")
+  local mine = format.dots(sel(machines), "machine", { running = "good", idle = "warn", down = "off" })
+  check(mine[1].level == "good" and mine[2].level == "off" and mine[3].level == "warn", "states: your own map of state to color")
   check(format.dots(query.select("m")(machines))[1].level == "warn", "an unknown state: warn")
   local ups = format.dots(machines("up"), "lsc")
   check(ups[1].name == "Main" and ups[1].level == "good" and ups[2].level == "bad", "no state label: above 0 good, else bad; by any label")
@@ -378,7 +380,7 @@ do
   check(v and v.values.s == "sum(lumen_stored_eu)" and v.values.c == "sum(lumen_capacity_eu)" and v.value == nil,
     "and read back")
   d.fields.values = "s sum(x)"
-  check(select(2, viewdraft.view(d)):find("name=query", 1, true), "a malformed values line says how to write it")
+  check(select(2, viewdraft.view(d)):find("name=value", 1, true), "a malformed values line says how to write it")
 end
 
 ---------------------------------------------------------------- alert history
@@ -398,31 +400,53 @@ do
   check(#h == 3 and h[1].id == "y5" and h[3].id == "y3", "newest first, at most `keep`")
 end
 
----------------------------------------------------------------- one dot for a group
+---------------------------------------------------------------- status rules
 do
-  local function line(states)
-    local out = {}
-    for i, st in ipairs(states) do
-      local all = { running = true, idle = true, down = true, [st] = true }
-      for s in pairs(all) do
-        out[#out + 1] = { value = s == st and 1 or 0, labels = { node = "a", process = "ore", machine = "m" .. i, state = s } }
-      end
-    end
-    return out
+  local function err(t) local c, e = config.check(t); return c == nil and e or "" end
+  check(format.expand("$value > 5 and $value < 9", "sum(x)") == "(sum(x)) > 5 and (sum(x)) < 9", "$value: the view's value query")
+  local view = { label = "Ore", value = "sum(b)", status = {
+    { "bad", "sum(down) > 0" }, { "warn", "$value > 50000" }, { "good", "sum(running) > 0" } } }
+  check(config.check({ panels = { view } }), "status: a list of { level, query }")
+  check(err({ panels = { { label = "x", value = "1", status = { { "purple", "1" } } } } }):find('starts with "good"', 1, true),
+    "a rule's level is good, warn, bad or off")
+  check(err({ panels = { { label = "x", status = { { "bad", "$value > 1" } } } } }):find("uses $value", 1, true),
+    "$value needs the view to have a value")
+  check(err({ panels = { { label = "x", value = "1", status = { { "bad", "x >" } } } } }):find("status rule 1", 1, true),
+    "a rule's query is checked")
+  check(err({ panels = { { label = "x", value = "1", color = "status" } } }):find("needs status rules", 1, true),
+    'color = "status" needs rules')
+  check(err({ panels = { { label = "x", dots = "m", states = { running = "green" } } } }):find("states:", 1, true),
+    "states map to the four levels")
+  local App = require("lens.hub.app")
+  local data = {}
+  local function run(text)
+    local f = query.compile(text)
+    return f(function(name) return data[name] or {} end)
   end
-  local function one(states, idle) local d = format.dots(line(states), "process", idle); return #d, d[1].level end
-  local n, lv = one({ "running", "idle", "down" })
-  check(n == 1 and lv == "bad", "by process: one dot; any machine down makes it red")
-  check(select(2, one({ "idle", "running", "idle" })) == "good", "else any running: green")
-  check(select(2, one({ "idle", "idle" })) == nil, "all idle: dim")
-  check(select(2, one({ "idle", "idle" }, "warn")) == "warn" and select(2, one({ "running", "idle" }, "warn")) == "good",
-    'idle = "warn": all idle is yellow; a running machine still makes it green')
-  check(select(2, one({ "idle", "warming" })) == "warn", "an unknown state counts as warn, above idle")
-  local ups = format.dots({ { value = 1, labels = { lsc = "A", site = "x" } }, { value = 0, labels = { lsc = "B", site = "x" } } }, "site")
-  check(#ups == 1 and ups[1].level == "bad", "without states: one at 0 makes the group red")
-  check(config.check({ panels = { { label = "x", dots = "m", idle = "warn" } } })
-    and select(2, config.check({ panels = { { label = "x", dots = "m", idle = "yellow" } } })):find('idle must be', 1, true),
-    "idle is checked")
+  local function at(down, backlog, running)
+    data = { down = { { value = down, labels = {} } }, b = { { value = backlog, labels = {} } },
+      running = { { value = running, labels = {} } } }
+    return App.evaluateWith(view, run, function() return {} end)
+  end
+  check(at(1, 60000, 3).status == "bad", "the first true rule wins: down")
+  check(at(0, 60000, 3).status == "warn", "then overflow ($value > 50000)")
+  check(at(0, 4200, 3).status == "good", "then running")
+  local idle = at(0, 4200, 0)
+  check(idle.status == "off" and idle.level == nil and idle.text == "4.2k", "none true: off; the value keeps its own color")
+  view.color = "status"
+  check(at(0, 60000, 3).level == "warn", 'color = "status": the value takes the status color')
+  view.color = nil
+
+  local d = viewdraft.draft(view)
+  check(d.fields.status == "bad: sum(down) > 0; warn: $value > 50000; good: sum(running) > 0",
+    "status typed as one line, in order")
+  local back = viewdraft.view(d)
+  check(back and back.status[2][1] == "warn" and back.status[2][2] == "$value > 50000", "and read back in order")
+  d.fields.status = "bad sum(x)"
+  check(select(2, viewdraft.view(d)):find("level: query", 1, true), "a malformed status line says how to write it")
+  d.fields.status, d.fields.states = "", "running=good; idle=off"
+  back = viewdraft.view(d)
+  check(back and back.states.running == "good" and back.states.idle == "off", "dot states typed as state=level")
 end
 
 H.done()
