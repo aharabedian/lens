@@ -3,5 +3,10 @@
 -- Programs go to bin/, modules to lib/ at the same path.
 return {
   { "lib/lens/codec.lua", "lib/lens/codec.lua" },
+  { "lib/lens/hub/alerts.lua", "lib/lens/hub/alerts.lua" },
+  { "lib/lens/hub/core.lua", "lib/lens/hub/core.lua" },
+  { "lib/lens/hub/query.lua", "lib/lens/hub/query.lua" },
+  { "lib/lens/hub/rules.lua", "lib/lens/hub/rules.lua" },
+  { "lib/lens/hub/store.lua", "lib/lens/hub/store.lua" },
   { "lib/lens/metrics.lua", "lib/lens/metrics.lua" },
 }

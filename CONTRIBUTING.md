@@ -29,5 +29,6 @@
 | You changed | Update |
 |---|---|
 | Telemetry messages, metric rules | `docs/telemetry.md` |
+| The query language | `docs/queries.md` and the header of `lib/lens/hub/query.lua` |
 | Behavior, modules, verified game APIs | `docs/architecture.md` |
 | Anything a player would notice | `CHANGELOG.md` (Unreleased) |
