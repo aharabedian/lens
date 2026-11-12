@@ -7,7 +7,7 @@
   M.onPull(n)            called on every event.pullMultiple; return an event table to deliver it, or nil
                          to let time pass: pullMultiple(timeout) with no event moves M.time by `timeout`
   M.modem                the modem component.modem returns (set it to a mocks/net.lua endpoint)
-  M.components[addr] = { type, methods = { [name] = doc string } }
+  M.components[addr] = { type, methods = { [name] = doc string }, proxy? }
                          components for component.list / type / methods / doc / proxy (lens-discover)
   M.resize(w, h)         a blank w x h screen (160x50 = tier 3, 80x25 = tier 2)
   M.row(y), M.find(text, minY, minX), M.dump(path)   read what the GPU drew
@@ -68,16 +68,18 @@ M.computer = {
 }
 function M.setTime(t) M.time = t end
 
+local function pull(timeout)
+  M.pulls = M.pulls + 1
+  if M.onPull then
+    local ev = M.onPull(M.pulls)
+    if ev then return table.unpack(ev, 1, ev.n or #ev) end
+  end
+  M.time = M.time + (timeout or 0)
+  return nil
+end
 local event = {
-  pullMultiple = function(timeout)
-    M.pulls = M.pulls + 1
-    if M.onPull then
-      local ev = M.onPull(M.pulls)
-      if ev then return table.unpack(ev, 1, ev.n or #ev) end
-    end
-    M.time = M.time + (timeout or 0)
-    return nil
-  end,
+  pullMultiple = function(timeout) return pull(timeout) end,
+  pull = function(timeout) return pull(timeout) end,
 }
 
 ---------------------------------------------------------------- GPU + screen
@@ -176,6 +178,7 @@ local component = {
     for name in pairs(c.methods or {}) do out[name] = true end
     return out
   end,
+  proxy = function(addr) local c = M.components[addr]; return c and c.proxy end,
   doc = function(addr, method)
     local c = M.components[addr]
     return c and c.methods and c.methods[method] or nil

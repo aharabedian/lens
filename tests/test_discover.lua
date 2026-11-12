@@ -53,4 +53,54 @@ ok, out, file = run("glass")
 check(ok and file:find("== glasses", 1, true) and not file:find("== gt_machine", 1, true)
   and out:find("gt_machine", 1, true), "a filter details only matching types, but still lists everything")
 
+---------------------------------------------------------------- --widgets
+-- The Glasses Terminal's add*() methods return objects whose methods we don't know yet. Model both kinds:
+-- a Text2D that can be listed with pairs, and a Rect2D that only answers by name (like a userdata).
+local objects, nextId = 0, 0
+local function newWidget(fields)
+  objects = objects + 1
+  nextId = nextId + 1
+  local id = nextId
+  fields.getID = function() return id end
+  return fields
+end
+local glasses = {
+  getObjectCount = function() return objects end,
+  removeObject = function() objects = objects - 1; return true end,
+  removeAll = function() objects = 0 end,
+  addTextLabel = function() return newWidget({ setText = function() end, addColor = function() end }) end,
+  addRect = function()
+    objects = objects + 1
+    local known = { setSize = function() end, addTranslation = function() end }
+    return setmetatable({}, { __index = function(_, k) return known[k] end })
+  end,
+  addQuad = function() error("not today") end,
+}
+M.components["gl000000-0000"].proxy = glasses
+ok, out, file = run("--widgets")
+check(ok and file:find("== addTextLabel() -> table\n    addColor  function\n    getID  function\n    setText  function", 1, true),
+  "--widgets lists what a widget object offers")
+check(file:find("    id 1, removed: true", 1, true), "a widget that tells its id is removed with removeObject")
+check(file:find("== addRect() -> table", 1, true) and file:find("    setSize  function (found by name)", 1, true)
+  and file:find("    addTranslation  function (found by name)", 1, true), "an object that can't be listed is tried by name")
+check(file:find("== addQuad() failed: ", 1, true), "a widget that can't be made is reported")
+check(file:find("removed the test widgets with removeAll() (there were none before)", 1, true) and objects == 0,
+  "widgets without an id are cleared with removeAll when the HUD was empty")
+check(out:find("setText", 1, true), "the widget report is printed too")
+
+objects = 3
+ok, _, file = run("--widgets")
+check(ok and file:find("left 1 test widget(s): there were 3 before", 1, true) and objects == 4,
+  "with other widgets present, removeAll isn't used")
+
+---------------------------------------------------------------- --events
+M.setTime(0)
+local evs = { { "glasses_on", "gl000000-0000", "Aaron", n = 3 }, { "interact_overlay", "gl000000-0000", "Aaron", 12.5, 3, n = 5 } }
+M.onPull = function(n) return evs[n] end
+ok, out, file = run("--events", "5")
+M.onPull = nil
+check(ok and file:find('"glasses_on"  "gl000000-0000"  "Aaron"', 1, true)
+  and file:find('"interact_overlay"  "gl000000-0000"  "Aaron"  12.5  3', 1, true), "--events records every event")
+check(M.time >= 5 and out:find("printing every event for 5 s", 1, true), "for the given number of seconds")
+
 H.done()

@@ -63,6 +63,7 @@ The tests run against the mocks. This table says which of their behaviors we've 
 
 | Assumption | Status |
 |---|---|
+| OC Glasses' Glasses Terminal is component `glasses` with: `addTextLabel`, `addRect`, `addQuad`, `addDot`, `addTriangle`, `addItem` (2D), `addCube3D`, `addDot3D`, `addFloatingText`, `addLine3D`, `addQuad3D`, `addTriangle3D` (3D), each taking no arguments and returning a widget object (`Text2D`, `Rect2D`...); `getBindPlayers`, `getObjectCount`, `newUniqueKey`, `removeAll`, `removeObject(id)`, `sendChatAs`, `sendMessageTo` | **Seen in game** (`lens-discover`, 2026-11-12). The widget objects' own methods: not yet (`lens-discover --widgets`) |
 | `math.random(m, n)` doesn't return an integer (the mock gives floats) | **Seen in game**: PRISM crashed on it. Use `codec.newBoot()` |
 | `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified**; a one-router base's snapshots arrived fine (2026-11-12), but splitting into parts hasn't been exercised in game |
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |

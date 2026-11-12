@@ -11,4 +11,5 @@
   and panels with bars and sparklines from `/home/lens-hub.cfg` (optional; docs/hub.md). Tier 2 and 3 screens.
 - **`lens-update`**: installs and updates LENS from GitHub.
 - **`lens-discover [type] [--all]`**: lists the computer's components with every method and its docs, into
-  `/home/lens-discover.txt`, to build agents and the HUD against a mod's real API.
+  `/home/lens-discover.txt`, to build agents and the HUD against a mod's real API. `--widgets` lists what
+  the Glasses Terminal's widget objects offer; `--events N` prints every event for N seconds.

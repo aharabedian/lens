@@ -5,6 +5,15 @@
     component: OpenOS `component` (list, methods, doc)
     opts.filter: only types containing this text; opts.all: include the basics (gpu, screen, filesystem...)
     lines: the full report (every component, methods sorted, with docs); summary: one line per component
+
+  discover.widgets(proxy) -> lines[]
+    For a component whose add*() methods return objects (OC Glasses' Glasses Terminal): creates one of each
+    2D widget, lists what the object offers, and removes it again. An object that can't be listed (pairs
+    gives nothing) is tried against GUESSES: the names found are reported as "(found by name)".
+    Widgets are removed with removeObject(id) when the object tells its id, else with removeAll() when
+    there were no widgets before; otherwise the report says how many it left.
+
+  discover.event(ev) -> line   one pulled event as text, for --events
 ]]
 
 local discover = {}
@@ -13,6 +22,18 @@ local discover = {}
 discover.BASICS = {
   computer = true, eeprom = true, filesystem = true, gpu = true, internet = true, keyboard = true,
   modem = true, screen = true,
+}
+
+discover.WIDGETS = { "addTextLabel", "addRect", "addQuad", "addDot", "addTriangle", "addItem" }
+
+-- Method names widget libraries commonly use, tried when an object can't be listed.
+discover.GUESSES = {
+  "getID", "getId", "id", "remove", "setText", "getText", "setColor", "getColor", "setAlpha", "setPosition",
+  "getPosition", "setSize", "getSize", "setScale", "setVisible", "isVisible", "setVertex", "setItem",
+  "setFontSize", "setShadow", "setAlignment", "addColor", "addTranslation", "addScale", "addRotation",
+  "addAutoTranslation", "removeModifier", "getModifiers", "setCondition", "setEasing", "setHorizontalAlign",
+  "setVerticalAlign", "setCulling", "setLookingAt", "setViewDistance", "setFaceWidgetToPlayer", "setFont",
+  "setAntialias", "setWidth", "setHeight", "updateModifier",
 }
 
 function discover.report(component, opts)
@@ -45,6 +66,90 @@ function discover.report(component, opts)
     end
   end
   return lines, summary
+end
+
+local function describeValue(v)
+  local t = type(v)
+  if t == "string" then return ("%q"):format(v) end
+  if t == "table" or t == "function" or t == "userdata" then return t end
+  return tostring(v)
+end
+
+-- What an object offers: listed fields, or the guessed names it answers to.
+local function inspect(obj)
+  local out, listed = {}, false
+  local ok = pcall(function()
+    for k, v in pairs(obj) do
+      listed = true
+      out[#out + 1] = ("    %s  %s"):format(tostring(k), describeValue(v))
+    end
+  end)
+  table.sort(out)
+  if not ok or not listed then
+    local mt = getmetatable(obj)
+    if type(mt) == "table" then
+      local keys = {}
+      for k in pairs(mt) do keys[#keys + 1] = tostring(k) end
+      table.sort(keys)
+      out[#out + 1] = "    (metatable: " .. table.concat(keys, ", ") .. ")"
+    end
+    for _, name in ipairs(discover.GUESSES) do
+      local got, v = pcall(function() return obj[name] end)
+      if got and v ~= nil then out[#out + 1] = ("    %s  %s (found by name)"):format(name, describeValue(v)) end
+    end
+  end
+  return out
+end
+
+local function idOf(obj)
+  for _, name in ipairs({ "getID", "getId" }) do
+    local ok, id = pcall(function() return obj[name]() end)
+    if ok and id ~= nil then return id end
+  end
+  local ok, id = pcall(function() return obj.id end)
+  if ok and type(id) == "number" then return id end
+end
+
+function discover.widgets(proxy)
+  local lines = {}
+  local okCount, before = pcall(proxy.getObjectCount)
+  before = okCount and before or nil
+  local leftover = 0
+  for _, add in ipairs(discover.WIDGETS) do
+    if proxy[add] then
+      local ok, obj = pcall(proxy[add])
+      if not ok then
+        lines[#lines + 1] = ("== %s() failed: %s"):format(add, tostring(obj))
+      else
+        lines[#lines + 1] = ("== %s() -> %s"):format(add, type(obj))
+        for _, l in ipairs(inspect(obj)) do lines[#lines + 1] = l end
+        local id = idOf(obj)
+        if id ~= nil and proxy.removeObject then
+          local removed = pcall(proxy.removeObject, id)
+          lines[#lines + 1] = ("    id %s, removed: %s"):format(tostring(id), tostring(removed))
+        else
+          leftover = leftover + 1
+        end
+      end
+      lines[#lines + 1] = ""
+    end
+  end
+  if leftover > 0 then
+    if before == 0 and proxy.removeAll then
+      pcall(proxy.removeAll)
+      lines[#lines + 1] = "removed the test widgets with removeAll() (there were none before)"
+    else
+      lines[#lines + 1] = ("left %d test widget(s): there were %s before, so removeAll() wasn't used")
+        :format(leftover, tostring(before))
+    end
+  end
+  return lines
+end
+
+function discover.event(ev)
+  local parts = {}
+  for i = 1, ev.n or #ev do parts[#parts + 1] = describeValue(ev[i]) end
+  return table.concat(parts, "  ")
 end
 
 return discover
