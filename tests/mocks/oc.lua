@@ -50,6 +50,15 @@ M.serialization = {
   end,
 }
 
+---------------------------------------------------------------- math.random
+-- In game, math.random(1, 0x7fffffff) gave PRISM a number that wasn't an integer (math.type ~= "integer",
+-- 2026-11-12). Mirror that: every result is a float, whole-valued for (m) and (m, n).
+local realRandom = math.random
+math.random = function(m, n) -- luacheck: ignore 122
+  if m == nil then return realRandom() end
+  return realRandom(m, n or m) + 0.0
+end
+
 ---------------------------------------------------------------- computer, event
 M.computer = {
   uptime = function() return M.time end,

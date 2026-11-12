@@ -283,4 +283,21 @@ do
   check(raises(function() enc:snapshot(huge) end, "larger than a packet"), "one sample bigger than a packet is an error")
 end
 
+---------------------------------------------------------------- codec: numbers from OpenComputers
+do
+  local b = codec.newBoot()
+  check(math.type(b) == "integer" and b >= 1 and b <= 0x7fffffff,
+    "newBoot gives an integer even though math.random(m, n) doesn't in OpenComputers")
+  check(math.type(math.random(1, 10)) == "float", "(the mock's math.random(m, n) is a float, like the game's)")
+  local enc = codec.encoder{ node = "n", role = "prism", boot = 1234.0 }
+  local msg = codec.decode(enc:hello()[1])
+  check(msg and math.type(msg.boot) == "integer" and msg.boot == 1234, "a whole-number float boot is taken as an integer")
+  check(raises(function() codec.encoder{ node = "n", role = "prism", boot = 1.5 } end, "whole-number boot"),
+    "a boot that isn't a whole number is refused")
+  local floaty = codec.decode(ser.serialize({ proto = "lens/1", kind = "snapshot", node = "a", boot = 7.0, seq = 3.0,
+    sid = 2.0, part = 2.0, parts = 2.0, samples = {} }))
+  check(floaty and math.type(floaty.boot) == "integer" and math.type(floaty.seq) == "integer"
+    and math.type(floaty.part) == "integer" and floaty.sid == 2, "decode turns whole-number floats in the envelope into integers")
+end
+
 H.done()

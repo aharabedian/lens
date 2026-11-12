@@ -25,7 +25,7 @@ An agent's loop, in short:
 
 ```lua
 local m   = metrics.new{ role = "power", clock = computer.uptime }
-local enc = codec.encoder{ node = cfg.node, role = "power", boot = math.random(1, 2^31 - 1), interval = 10, token = cfg.token }
+local enc = codec.encoder{ node = cfg.node, role = "power", boot = codec.newBoot(), interval = 10, token = cfg.token }
 -- once, and on hello:   for _, p in ipairs(enc:describe(m:describe())) do modem.broadcast(port, p) end
 -- every interval:       m:beginCycle(); <set gauges, add counters, raise alerts>;
 --                       for _, p in ipairs(enc:snapshot(m:snapshot())) do modem.broadcast(port, p) end
@@ -60,6 +60,7 @@ The tests run against the mocks. This table says which of their behaviors we've 
 
 | Assumption | Status |
 |---|---|
+| `math.random(m, n)` doesn't return an integer (the mock gives floats) | **Seen in game**: PRISM crashed on it. Use `codec.newBoot()` |
 | `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified** |
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |
 | A packet's size is the sum of its values: string length (min 1), number 8, boolean/nil 4; over the limit raises `packet too big`; at most 8 values | **Unverified** |

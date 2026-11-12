@@ -13,6 +13,7 @@
   Beeps once when a new bad alert appears (cfg.beep). Panel history keeps one value every cfg.sample seconds.
 ]]
 
+local codec = require("lens.codec")
 local core = require("lens.hub.core")
 local dashboard = require("lens.hub.dashboard")
 
@@ -42,7 +43,7 @@ local App = {}
 App.__index = App
 
 function app.new(cfg, env)
-  local hub, err = core.new{ node = cfg.node, boot = env.boot or math.random(1, 0x7fffffff), token = cfg.token,
+  local hub, err = core.new{ node = cfg.node, boot = env.boot or codec.newBoot(), token = cfg.token,
     staleAfter = cfg.staleAfter, nonCritical = cfg.nonCritical, rules = cfg.rules }
   if not hub then return nil, err end
   local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0 }, App)
