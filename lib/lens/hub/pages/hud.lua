@@ -1,7 +1,8 @@
 --[[ lens.hub.pages.hud: the HUD editor (lens.hub.editors.hud): one player's blocks, a block's elements, where it
   sits.
 
-  hud.draw(f, e, actions)   e: the editor's model: { player, own, scale, blocks = n, block = i (being edited),
+  hud.draw(f, e, actions)   e: the editor's model: { player, presets = { name... }, preset = the active one,
+                            renaming = text | nil, keyboard, own, scale, blocks = n, block = i (being edited),
                             anchor, x, y, width, step, rows = { { index, kind, label?, count? }... } (the block's
                             elements), hidden = { label... } (views that could be added), wearing = n, error,
                             closesIn }
@@ -16,6 +17,29 @@ local C = frame.C
 local ARROWS = { ["top-left"] = "↖", top = "↑", ["top-right"] = "↗", left = "←", center = "•", right = "→",
   ["bottom-left"] = "↙", bottom = "↓", ["bottom-right"] = "↘" }
 local GRID = { "top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right" }
+
+-- Tabs for the player's HUDs (presets), + to copy the active one, RENAME (typed), DELETE.
+local function presets(f, e, actions)
+  f:text(2, 2, "HUDS", C.accent)
+  local items = {}
+  for _, name in ipairs(e.presets) do
+    local n = name
+    if e.renaming and n == e.preset then
+      items[#items + 1] = { e.renaming .. "▏", nil, C.sel }
+    else
+      items[#items + 1] = { n, function(p) actions.hudPreset(p, n) end, n == e.preset and C.btnOn or C.btn }
+    end
+  end
+  if e.renaming then
+    items[#items + 1] = { "OK", actions.hudRenameOk, C.btnOn }
+    items[#items + 1] = { "CANCEL", actions.hudRenameCancel, C.line }
+  else
+    if #e.presets < 8 then items[#items + 1] = { "+", actions.hudPresetAdd } end
+    if e.keyboard then items[#items + 1] = { "RENAME", actions.hudRename, C.line } end
+    if #e.presets > 1 then items[#items + 1] = { "DELETE", actions.hudPresetDelete, C.line } end
+  end
+  f:chips(9, 2, f.w - 10, items)
+end
 
 -- Tabs for the blocks, + to add one, REMOVE for the one being edited.
 local function blocks(f, e, actions)
@@ -109,6 +133,7 @@ end
 
 function hud.draw(f, e, actions)
   f:editorHeader("HUD for " .. tostring(e.player or "?"), { { "DONE", actions.hudDone } })
+  presets(f, e, actions)
   blocks(f, e, actions)
   local lw = math.min(46, f.w - 36)
   elements(f, e, actions, 2, lw)

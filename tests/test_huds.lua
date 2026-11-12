@@ -10,6 +10,7 @@ local hud = require("lens.hub.hud")
 local huds = require("lens.hub.huds")
 local config = require("lens.hub.config")
 local files = require("lens.files")
+local viewdraftKeys = require("lens.hub.viewdraft").KEYS
 local glassesMock = require("glasses")
 local P = hud.COLORS
 
@@ -100,6 +101,43 @@ local hs2 = huds.new({ ["gl-d"] = D.proxy, ["gl-e"] = E.proxy }, cfg.hud)
 hs2:draw(MODEL, evaluate, cfg.panels)
 check(hs2.error and hs2.error:find("terminal unloaded", 1, true) and E.find("vOre"), "a broken terminal doesn't stop the others")
 
+---------------------------------------------------------------- presets
+do
+  local G1 = terminal("Aaron")
+  local st2 = store()
+  local hp = huds.new({ ["gl-p"] = G1.proxy }, cfg.hud, st2)
+  local names, active = hp:presets("Aaron")
+  check(#names == 1 and names[1] == "main" and active == "main", "everyone starts with one HUD, main")
+  hp:change("Aaron", function(x) x.blocks[1].elements = { { kind = "bar", view = "Power" } } end)
+  local name = hp:addPreset("Aaron")
+  names, active = hp:presets("Aaron")
+  check(name == "HUD 2" and #names == 2 and active == "HUD 2" and hp:settings("Aaron").blocks[1].elements[1].view == "Power",
+    "+ copies the active HUD and switches to it")
+  hp:change("Aaron", function(x) x.blocks[1].elements = { { kind = "text", view = "Smelt" } } end)
+  check(hp:renamePreset("Aaron", "HUD 2", "mining") and select(2, hp:presets("Aaron")) == "mining", "rename")
+  check(select(2, hp:renamePreset("Aaron", "mining", "main")):find("already", 1, true)
+    and select(2, hp:renamePreset("Aaron", "mining", "   ")):find("needs a name", 1, true)
+    and select(2, hp:renamePreset("Aaron", "mining", string.rep("x", 17))):find("at most 16", 1, true),
+    "names: unique, not empty, at most 16 characters")
+  hp:draw(MODEL, evaluate, cfg.panels)
+  check(G1.find("vSmelt") and not G1.find("Power"), "the terminal shows the active HUD")
+  check(hp:usePreset("Aaron", "main"), "switch")
+  hp:draw(MODEL, evaluate, cfg.panels)
+  check(G1.find("Power") and not G1.find("vSmelt"), "and it shows the other one")
+  local saved = st2.data.Aaron
+  check(saved.active == "main" and saved.presets[1].name == "main" and saved.presets[2].name == "mining"
+    and saved.presets[2].blocks[1].elements[1].view == "Smelt", "the store has every HUD and which is active")
+  check(hp:deletePreset("Aaron", "main") and select(2, hp:presets("Aaron")) == "mining", "delete: the next one is active")
+  check(select(2, hp:deletePreset("Aaron", "mining")) == "the last HUD stays", "the last HUD stays")
+  hp:reset("Aaron")
+  check(not hp:settings("Aaron").own and hp:settings("Aaron").preset == "mining", "back to default: this HUD only")
+  for _ = 1, 10 do hp:addPreset("Aaron") end
+  check(#hp:presets("Aaron") == 8, "at most 8 HUDs")
+  local old = huds.new({}, cfg.hud, store({ Bob = { scale = 2, blocks = { { anchor = "top", elements = {} } } } }))
+  names = old:presets("Bob")
+  check(#names == 1 and names[1] == "main" and old:settings("Bob").scale == 2, "a stored HUD from 0.2.0 becomes main")
+end
+
 ---------------------------------------------------------------- the editor, in lens-hub
 local POWER = R.agent{ node = "power-room", role = "lumen", setup = function(m)
   m:gauge("lumen_fill_ratio", "f"):set(0.95)
@@ -181,11 +219,52 @@ check(seen.closed, "DONE goes back to the dashboard")
 check(seen.aaron, "another player opens their own editor")
 check(seen.timeout, "the editor closes after a minute without a tap")
 local saved = files.loadTable(dir .. "/lens-board.cfg") or {}
-local bob = saved.huds and saved.huds.Bob
+local bob = saved.huds and saved.huds.Bob and saved.huds.Bob.presets[1]
 local blk = bob and bob.blocks[1]
-check(bob and bob.scale == 1 and blk.anchor == "top-left" and blk.x == 12 and blk.y == 36 and blk.width == 160
+check(bob and bob.name == "main" and saved.huds.Bob.active == "main" and bob.scale == 1
+  and blk.anchor == "top-left" and blk.x == 12 and blk.y == 36 and blk.width == 160
   and blk.elements[#blk.elements].kind == "text" and blk.elements[#blk.elements].view == "Net 5m" and not saved.huds.Aaron,
   "Bob's settings are saved in lens-board.cfg next to the config; Aaron has none")
+
+-- Presets in the editor: + (named as you type), switch, delete; the glasses follow.
+M.setTime(0)
+M.resize(160, 50)
+local GP = terminal("Aaron")
+local flow = {}
+local pstep = 0
+local pErr
+ok, pErr = R.run{ cfg = HUB_CFG, dir = "presets", agents = { POWER }, keyboard = true, terminals = { ["gl-a"] = GP },
+  script = function(t)
+    if t < 3 then return nil end
+    pstep = pstep + 1
+    if pstep == 1 then return R.tap(" HUD ", "Aaron", 1) end
+    if pstep == 2 then
+      flow.tabs = M.find("HUDS", 1) and M.find(" main ", 1) and M.find("RENAME", 1)
+      return R.tap(" + ", "Aaron", 2)
+    end
+    if pstep == 3 then
+      flow.adding = M.find("HUD 2▏", 1) and M.find(" OK ", 1)
+      local back = viewdraftKeys.back
+      for _ = 1, 5 do R.queue(R.key(back, "Aaron")) end
+      R.queue(R.keys("mining", "Aaron"))            -- R.keys returns several events: keep it last in a call
+      R.queue(R.key(viewdraftKeys.enter, "Aaron"))
+      return nil
+    end
+    if pstep == 4 then
+      flow.named = M.find(" mining ", 1) and not M.find("▏", 1, 9)
+      return R.tap("[ ] Power", "Aaron", 5)                  -- only in "mining"
+    end
+    if pstep == 5 then flow.mining = GP.find("Power") ~= nil; return R.tap(" main ", "Aaron", 1) end
+    if pstep == 6 then flow.main = not GP.find("Power") and M.find("[ ] Power", 5); return R.tap(" mining ", "Aaron", 1) end
+    if pstep == 7 then H.screen("hud-presets"); return R.tap("DELETE", "Aaron", 1) end
+    if pstep == 8 then flow.deleted = not M.find(" mining ", 1) and M.find(" main ", 1) and not GP.find("Power") end
+    return "stop"
+  end }
+check(ok, "presets run: " .. tostring(pErr))
+check(flow.tabs, "the HUD editor shows the player's HUDs")
+check(flow.adding and flow.named, "+ makes a copy and asks for its name; typing and Enter name it")
+check(flow.mining and flow.main, "each HUD keeps its own elements; tapping a tab switches, the glasses follow")
+check(flow.deleted, "DELETE removes the active HUD and shows the next")
 
 -- A long list of views: the block's list is cut with "+N more", and the position controls still show.
 M.setTime(0)

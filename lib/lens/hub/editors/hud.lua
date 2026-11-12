@@ -8,14 +8,19 @@
     E.model(app, e, now) -> t  what its page draws, from e (app.editing); app adds kind, player, error, closesIn
     E.key(app, e, char, code), E.paste(app, e, text)   optional: keys and pastes while it's open
 
-  State (app.editing): { kind = "hud", player, block = the block being edited, step = nudge px (1, 8, 32) }
+  State (app.editing): { kind = "hud", player, block = the block being edited, step = nudge px (1, 8, 32),
+                         renaming = text | nil (the active preset's new name, being typed) }
   Actions: hud(player) opens it; hudDone, hudReset, hudBlock(i), hudBlockAdd, hudBlockRemove, hudToggle(label),
   hudKind(i), hudMove(i, -1 | 1), hudAlerts(-1 | 1), hudGap, hudRemove(i), hudAnchor(anchor), hudNudge(dx, dy),
-  hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1). Changes are saved at once (huds:change).
+  hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1); presets: hudPreset(name), hudPresetAdd, hudPresetDelete,
+  hudRename (start typing a new name), hudRenameOk, hudRenameCancel. Keys and pastes type the name; Enter is OK.
+  Changes are saved at once (huds:change).
 ]]
 
+local unicode = require("unicode")
 local config = require("lens.hub.config")
 local huds = require("lens.hub.huds")
+local viewdraft = require("lens.hub.viewdraft")
 
 local E = {}
 
@@ -88,6 +93,53 @@ function E.actions(app, a, mine)
   end)
   a.hudWidth = change(function(_, b, dir) b.width = clamp(b.width + dir * huds.LIMITS.width[3], huds.LIMITS.width) end)
   a.hudScale = change(function(s, _, dir) s.scale = clamp(s.scale + dir * huds.LIMITS.scale[3], huds.LIMITS.scale) end)
+
+  -- Presets: each switch starts at the first block.
+  local function fresh() app.editing.block, app.editing.renaming = 1, nil end
+  a.hudPreset = mine(function(player, name) fresh(); return app.huds:usePreset(player, name) end)
+  a.hudPresetAdd = mine(function(player)
+    fresh()
+    local name, err = app.huds:addPreset(player)
+    if not name then return nil, err end
+    app.editing.renaming = name
+    return true
+  end)
+  a.hudPresetDelete = mine(function(player)
+    local _, active = app.huds:presets(player)
+    fresh()
+    return app.huds:deletePreset(player, active)
+  end)
+  a.hudRename = mine(function(player)
+    local _, active = app.huds:presets(player)
+    app.editing.renaming = active
+  end)
+  a.hudRenameCancel = mine(function() app.editing.renaming = nil end)
+  a.hudRenameOk = mine(function(player) return E.rename(app, app.editing, player) end)
+end
+
+function E.rename(app, e, player)
+  local _, active = app.huds:presets(player)
+  local ok, err = app.huds:renamePreset(player, active, e.renaming)
+  if ok then e.renaming = nil end
+  return ok, err
+end
+
+function E.key(app, e, char, code)
+  if not e.renaming then return end
+  if code == viewdraft.KEYS.enter then
+    local ok, err = E.rename(app, e, e.player)
+    if not ok then app.editError = err end
+  elseif code == viewdraft.KEYS.back then
+    e.renaming = unicode.len(e.renaming) > 0 and unicode.sub(e.renaming, 1, -2) or ""
+  elseif type(char) == "number" and char >= 32 and char ~= 127 and unicode.len(e.renaming) < huds.NAME_LENGTH then
+    e.renaming = e.renaming .. unicode.char(math.floor(char))
+  end
+end
+
+function E.paste(_, e, text)
+  if e.renaming and type(text) == "string" then
+    e.renaming = unicode.sub(e.renaming .. text:gsub("[\r\n\t]+", " "), 1, huds.NAME_LENGTH)
+  end
 end
 
 function E.model(app, e)
@@ -103,8 +155,10 @@ function E.model(app, e)
   for _, v in ipairs(app.huds:catalog(app.board:views())) do
     if not used[v.label] then hidden[#hidden + 1] = v.label end
   end
+  local presets, active = app.huds:presets(e.player)
   return { own = s.own, scale = s.scale, blocks = #s.blocks, block = e.block, anchor = b.anchor, x = b.x, y = b.y,
-    width = b.width, rows = rows, hidden = hidden, step = e.step, wearing = app.huds:wearing(e.player) }
+    width = b.width, rows = rows, hidden = hidden, step = e.step, wearing = app.huds:wearing(e.player),
+    presets = presets, preset = active, renaming = e.renaming, keyboard = app.env.keyboard ~= false }
 end
 
 return E
