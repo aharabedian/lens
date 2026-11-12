@@ -20,6 +20,7 @@ local codec = require("lens.codec")
 local core = require("lens.hub.core")
 local dashboard = require("lens.hub.dashboard")
 local hud = require("lens.hub.hud")
+local VERSION = require("lens.version")
 
 local app = {}
 
@@ -34,7 +35,6 @@ local function fmt(v)
   if v == math.floor(v) then return tostring(math.floor(v)) end
   return (("%.2f"):format(v):gsub("0+$", ""):gsub("%.$", ""))
 end
-app.fmt = fmt
 
 local function level(p, v)
   if v == nil then return nil end
@@ -99,7 +99,7 @@ end
 
 function App:model(now)
   return {
-    now = now, port = self.cfg.port, node = self.cfg.node, health = self.hub:health(now),
+    now = now, port = self.cfg.port, node = self.cfg.node, version = VERSION, health = self.hub:health(now),
     missingConfig = self.cfg.missing, nodes = self.hub:nodes(now),
     alerts = self.hub.alerts:list(), counts = self.hub.alerts:counts(), panels = self:panels(now),
   }

@@ -20,6 +20,8 @@
   about 5.2 px a character per unit of setScale (and starts at scale 2 unless set, so the HUD always sets it).
 ]]
 
+local unicode = require("unicode")
+
 local hud = {}
 
 -- Palette: quiet unless something needs attention.
@@ -91,14 +93,8 @@ end
 
 local function cut(text, chars)
   text = tostring(text or "")
-  if (utf8.len(text) or #text) <= chars then return text end
-  local n, out = 0, {}
-  for _, c in utf8.codes(text) do
-    n = n + 1
-    if n >= chars then break end
-    out[#out + 1] = utf8.char(c)
-  end
-  return table.concat(out) .. "…"
+  if unicode.len(text) <= chars then return text end
+  return unicode.sub(text, 1, chars - 1) .. "…"
 end
 
 hud.SCREEN = { w = 854, h = 480 }    -- until a glasses_on says otherwise (2560 x 1440 at GUI scale 3)

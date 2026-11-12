@@ -1,17 +1,25 @@
 # Changelog
 
-## Unreleased
+All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
+versions follow [Semantic Versioning](https://semver.org/).
 
-- Repository scaffold: test runner, lint, CI.
-- Telemetry protocol `lens/1` specified (docs/telemetry.md).
-- `lens.metrics` and `lens.codec`: the registry every agent fills, and lens/1 messages split into packets and joined back.
-- Hub core (`lens.hub.*`): nodes and their series, counter rates, stale nodes, the query language
-  (docs/queries.md), alert rules, and one alert list with acknowledgements.
-- **`lens-hub`**: the hub program and its dashboard: overall health, nodes, alerts (tap to acknowledge),
-  and panels with bars and sparklines from `/home/lens-hub.cfg` (optional; docs/hub.md). Tier 2 and 3 screens.
-- **`lens-update`**: installs and updates LENS from GitHub.
-- **AR glasses HUD**: with an OC Glasses Glasses Terminal on the hub computer, `lens-hub` draws health, panel
-  bars and the newest unacknowledged alerts in the glasses (`hud` in lens-hub.cfg; docs/hub.md).
-- **`lens-discover [type] [--all]`**: lists the computer's components with every method and its docs, into
-  `/home/lens-discover.txt`, to build agents and the HUD against a mod's real API. `--widgets` lists what
-  the Glasses Terminal's widget objects offer; `--events N` prints every event for N seconds; `--glasses-test` draws a calibration pattern.
+## [Unreleased]
+
+The first version: everything below is new.
+
+### Added
+- **`lens-hub`**, the hub and its dashboard: overall health, each agent and when it last reported, one list
+  of every alert (tap to acknowledge, ACK ALL), and configured panels with bars and sparklines. Tier 2 and
+  tier 3 screens. Agents that stop reporting raise a `stale` alert; new `BAD` alerts beep.
+- **AR glasses HUD** on an OC Glasses Glasses Terminal attached to the hub: chosen bars and the newest
+  unacknowledged alerts, with a health strip, in a corner of the view (`hud` in lens-hub.cfg). Only changed
+  values are sent; the dashboard shows the HUD's calls per minute and any HUD error.
+- **`lens-setup`**: guided setup that finds the agents on the network, offers each PRISM router's panels and
+  HUD bar, and can start the hub on boot. Keeps your edits and a `.bak`.
+- **Queries and rules** (docs/queries.md): selectors with label matchers, `sum`/`count`/`max`/`min`/`avg`/
+  `rate`, arithmetic and comparisons, for panels, bars and the hub's own alerts (`for` seconds).
+- **`lens-discover`**: lists a computer's components with every method and its docs (`--widgets`,
+  `--events`, `--glasses-test` for glasses), to build against a mod's real API.
+- **`lens-update`**: installs and updates LENS from GitHub (releases, a branch, a tag or a fork).
+- **The `lens/1` protocol** (docs/telemetry.md) and the `lens.metrics` / `lens.codec` modules agents report
+  with: health, gauges and counters with labels, alerts; snapshots split into packets that fit the network.

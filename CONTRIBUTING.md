@@ -31,6 +31,9 @@
 |---|---|
 | Telemetry messages, metric rules | `docs/telemetry.md` |
 | The query language | `docs/queries.md` and the header of `lib/lens/hub/query.lua` |
-| Hub settings, the screen | `docs/hub.md` and `config/lens-hub.example.cfg` |
-| Behavior, modules, verified game APIs | `docs/architecture.md` |
+| Hub settings, the screen, the HUD | `docs/hub.md`, `config/lens-hub.example.cfg`, and `lib/lens/setup/` if `lens-setup` should write it |
+| Install, setup steps, hardware | `docs/setup.md` |
+| A new error or something easy to get wrong | `docs/troubleshooting.md` |
+| Tests | `tests/README.md` |
+| Behavior, modules, programs, verified game APIs | `docs/architecture.md` |
 | Anything a player would notice | `CHANGELOG.md` (Unreleased) |

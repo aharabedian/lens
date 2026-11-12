@@ -62,7 +62,7 @@ ok = update()
 check(ok and has("main (no releases yet)") and installedVersion() == "0.1.0-main", "no releases yet: installs main")
 check(read(prefix .. "/home/bin/lens-hub.lua") and read(prefix .. "/home/lib/lens/hub/core.lua")
   and read(prefix .. "/home/lens-hub.example.cfg"), "programs, modules and the example config are installed")
-check(has("no /home/lens-hub.cfg yet"), "says the hub runs without a config, and how to add one")
+check(has("no /home/lens-hub.cfg yet: run lens-setup"), "points to lens-setup when there's no config")
 check(saved().repo == "aharabedian/lens" and saved().ref == "latest", "remembers to follow releases")
 
 ---------------------------------------------------------------- a release appears

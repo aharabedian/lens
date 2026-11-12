@@ -101,7 +101,7 @@ than sending `nil`, `NaN` or infinity.
 | Lowercase `[a-z][a-z0-9_]*`, prefixed with the node's `role` | `power_eu_stored` |
 | Unit at the end of the name: `_eu`, `_eut` (EU/t), `_items`, `_mb` (fluids, millibuckets), `_seconds` | `power_eu_stored`, `fluids_stored_mb` |
 | `_ratio` for fractions 0..1 | `power_fill_ratio` |
-| `_total` for counters | `prism_items_routed_total` |
+| `_total` for counters | `prism_scans_total` |
 | Flags read as yes/no questions | `power_backup_enabled` |
 
 ### Labels
@@ -168,7 +168,7 @@ while the ore line has a backlog). Those appear alongside agent alerts.
 
 ## Example
 
-PRISM running the ore line, one packet:
+PRISM running the ore line, one packet (a subset of what PRISM sends; its docs list every metric):
 
 ```lua
 { proto = "lens/1", kind = "snapshot", node = "prism-ore", role = "prism", boot = 81723, seq = 412,
@@ -181,7 +181,7 @@ PRISM running the ore line, one packet:
     { "prism_machine_state", 0, { process = "ore", machine = "mac2", state = "running" } },
     { "prism_machine_state", 0, { process = "ore", machine = "mac2", state = "idle" } },
     { "prism_machine_state", 1, { process = "ore", machine = "mac2", state = "down" } },
-    { "prism_items_routed_total", 182345 },
+    { "prism_scans_total", 3120 },
   },
   alerts = { { id = "down:mac2", level = "warn", text = "mac2 stopped with work waiting", age = 95 } },
 }
@@ -195,7 +195,7 @@ With its `describe`:
   metrics = {
     prism_backlog_items      = { type = "gauge",   help = "Items waiting per process", unit = "items" },
     prism_machine_state      = { type = "gauge",   help = "Machine state (one of running, idle, down)" },
-    prism_items_routed_total = { type = "counter", help = "Items moved to outputs", unit = "items" },
+    prism_scans_total        = { type = "counter", help = "Scans since the router started", unit = "scans" },
   },
 }
 ```

@@ -5,39 +5,13 @@ every alert, and the panels you configure. It only watches; control stays in eac
 
 ![The hub on a tier 3 screen](images/dashboard.png)
 
-## Install
-
-The hub computer needs a **GPU and screen** (tier 3 for the full layout; tier 2 works) and a **network card**
-that reaches the agents (wireless, wired, or a linked card for another dimension). Installing needs an
-**Internet Card**.
-
-```
-wget -f https://raw.githubusercontent.com/aharabedian/lens/main/src/lens-update.lua /home/lens-update.lua
-/home/lens-update
-lens-hub
-```
-
-`lens-update` installs the latest release, or `main` while there are no releases (`lens-update main` to
-follow it). The hub runs with no config: it finds agents and lists their alerts. For panels and rules, copy
-`/home/lens-hub.example.cfg` to `/home/lens-hub.cfg` and edit it.
-
-## Connecting PRISM
-
-On each PRISM router, set in `prism.cfg` (PRISM's docs: "Reporting to LENS"):
-
-```lua
-lensPort  = 4243,         -- the hub's port
-lensNode  = "prism-ore",  -- a name per router; panels select it with node="prism-ore"
-lensToken = nil,          -- the hub's token, if it has one
-```
-
-Restart `prism`. The hub lists the router within one scan.
+Install, connecting agents and the first run: [setup.md](setup.md). Problems: [troubleshooting.md](troubleshooting.md).
 
 ## The screen
 
 | Part | Shows |
 |---|---|
-| Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name and port, QUIT |
+| Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, QUIT |
 | NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported |
 | ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓, dimmed) until it clears, and comes back unacknowledged if it gets worse |
 | PANELS | Your panels: label, value, a bar for `max` / `of` / `percent`, and a sparkline of its history (tier 3) |
@@ -49,7 +23,8 @@ alert appears. It redraws only what changed (about 2 GPU calls a second when not
 
 ## `lens-hub.cfg`
 
-Every key is optional. Start from `lens-hub.example.cfg`.
+`lens-setup` writes it (and keeps your edits when you run it again); every key is optional.
+`lens-hub.example.cfg` is an annotated example.
 
 | Key | Default | Meaning |
 |---|---|---|

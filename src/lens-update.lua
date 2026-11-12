@@ -180,6 +180,6 @@ for _, d in ipairs(downloads) do
 end
 print(("done - LENS %s installed; restart lens-hub to use it"):format(installed or "?"))
 if not filesystem.exists(HOME .. "/lens-hub.cfg") then
-  print("  no /home/lens-hub.cfg yet: lens-hub runs without one; copy lens-hub.example.cfg to it for panels and rules")
+  print("  no /home/lens-hub.cfg yet: run lens-setup to make one (lens-hub also runs without it)")
 end
 if ref ~= "latest" then print(("  staying on %s; lens-update latest goes back to releases"):format(ref)) end

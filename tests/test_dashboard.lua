@@ -91,7 +91,7 @@ do
       seen.first = true
       seen.header = M.row(1)
       seen.waiting = M.find("Waiting for agents on port 4243") ~= nil
-      seen.noPanels = M.find("No panels yet: copy /home/lens-hub.example.cfg") ~= nil
+      seen.noPanels = M.find("No panels yet: run lens-setup") ~= nil
       seen.quiet = M.find("All quiet.") ~= nil
       H.screen("dashboard-empty")
       return tapText(" QUIT ")
@@ -99,8 +99,8 @@ do
     if t > 10 then return { "interrupted" } end
   end)
   check(ok, "lens-hub runs without a config file" .. (ok and "" or (": " .. tostring(err))))
-  check(seen.header:find("LENS", 1, true) and seen.header:find(" OK ", 1, true) and seen.header:find("0 nodes", 1, true),
-    "header: LENS, health OK, no nodes")
+  check(seen.header:find("LENS", 1, true) and seen.header:find(" OK ", 1, true) and seen.header:find("0 nodes", 1, true)
+    and seen.header:find("v" .. require("lens.version"), 1, true), "header: LENS, health OK, no nodes, the version")
   check(seen.waiting and seen.noPanels and seen.quiet, "an empty hub says it's waiting, how to add panels, and all quiet")
   check(M.time < 10, "QUIT stops the hub")
   local hello = codec.decode(n.sent[1].data[1])

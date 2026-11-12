@@ -3,10 +3,10 @@
   local d = require("lens.hub.dashboard").new(gpu, w, h)
   d:draw(model, actions)   build the frame and send the GPU only the rows that changed since the last draw
   d:tap(x, y) -> bool      run the touch target under (x, y)
-  d:invalidate()           forget what's on screen, so the next draw repaints every row
+  d:restore()              plain terminal colors again (on exit)
 
   model = {
-    now, port, node, health = "ok" | "warn" | "bad", missingConfig = bool,
+    now, port, node, version, health = "ok" | "warn" | "bad", missingConfig = bool,
     nodes  = store:nodes(now),
     alerts = alerts:list(), counts = alerts:counts(),
     panels = { { label, text, frac = 0..1 | nil, level = "warn" | "bad" | nil, history = { number... } } },
@@ -34,7 +34,6 @@ local function ago(s)
   if s < 3600 then return math.floor(s / 60) .. "m" end
   return ("%dh%02dm"):format(s // 3600, (s % 3600) // 60)
 end
-dashboard.ago = ago
 
 ---------------------------------------------------------------- frame building
 local Frame = {}
@@ -79,7 +78,7 @@ local function header(f, m, actions)
   local c = m.counts or { bad = 0, warn = 0 }
   local summary = ("%d node%s   alerts: %d bad, %d warn"):format(#m.nodes, #m.nodes == 1 and "" or "s", c.bad, c.warn)
   f:text(17, 1, summary, C.text, C.panel)
-  local right = ("%s · port %d"):format(m.node or "hub", m.port or 0)
+  local right = ("%s · port %d · v%s"):format(m.node or "hub", m.port or 0, m.version or "?")
   local qx = f.w - 7
   f:text(qx - Gui.len(right) - 2, 1, right, C.dim, C.panel)
   f:button(qx, 1, "QUIT", actions.quit, C.line)
@@ -198,7 +197,7 @@ local function panels(f, m, x, y, width, lastRow, tall)
   y = y + 1
   if #m.panels == 0 then
     if m.missingConfig then
-      f:text(x, y, Gui.fit("No panels yet: copy /home/lens-hub.example.cfg to /home/lens-hub.cfg and edit it.", width), C.dim)
+      f:text(x, y, Gui.fit("No panels yet: run lens-setup to add them.", width), C.dim)
     else
       f:text(x, y, Gui.fit("No panels in lens-hub.cfg.", width), C.dim)
     end
@@ -229,8 +228,6 @@ function dashboard.new(gpu, w, h)
   local ui = Gui.new(gpu, w, h)
   return setmetatable({ ui = ui, w = w, h = h, last = {}, hits = {} }, Dash)
 end
-
-function Dash:invalidate() self.last = {} end
 
 function Dash:build(m, actions)
   local f = newFrame(self.w, self.h)

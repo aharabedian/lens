@@ -1,4 +1,4 @@
---[[ lens.gui: drawing primitives, colors and touch targets for LENS screens. Adapted from PRISM's prism.gui
+--[[ lens.gui: drawing primitives and colors for LENS screens. Adapted from PRISM's prism.gui
   (same palette, so the two look like one family).
 
   Gui.new(gpu, w, h) -> ui     sets the resolution to w x h
@@ -6,9 +6,6 @@
   ui.put(x, y, s, fg?, bg?)    text; colors are only sent to the GPU when they change
   ui.fill(x, y, w, h, bg, ch?)
   ui.fg(c), ui.bg(c)
-  ui.button(x, y, label, { on?, color?, fg?, disabled?, fn? }) -> x after the button
-  ui.hit(x1, y1, x2, y2, fn)   register a touch target; ui.clearHits() before a full redraw
-  ui.tap(x, y) -> true if a target was hit (the last registered wins)
   ui.restore()                 back to plain terminal colors
   Gui.C                        the color palette
   Gui.len(s), Gui.fit(s, n), Gui.rfit(s, n)   text helpers (also on ui)
@@ -59,26 +56,6 @@ function Gui.new(gpu, W, H)
   end
   function ui.fill(x, y, w, h, b, ch)
     if w > 0 and h > 0 then ui.bg(b); gpu.fill(x, y, w, h, ch or " ") end
-  end
-
-  local hits = {}
-  function ui.clearHits() hits = {} end
-  function ui.hit(x1, y1, x2, y2, fn) hits[#hits + 1] = { x1, y1, x2, y2, fn } end
-  function ui.tap(x, y)
-    for i = #hits, 1, -1 do
-      local h = hits[i]
-      if x >= h[1] and x <= h[3] and y >= h[2] and y <= h[4] then h[5](); return true end
-    end
-    return false
-  end
-
-  function ui.button(x, y, label, o)
-    o = o or {}
-    local s = " " .. label .. " "
-    local back = o.on and C.btnOn or (o.color or C.btn)
-    ui.put(x, y, s, o.disabled and C.dim or (o.fg or C.text), back)
-    if o.fn and not o.disabled then ui.hit(x, y, x + Gui.len(s) - 1, y, o.fn) end
-    return x + Gui.len(s) + 1
   end
 
   function ui.restore()

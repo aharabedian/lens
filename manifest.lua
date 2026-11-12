@@ -4,9 +4,11 @@
 return {
   { "src/lens-discover.lua", "bin/lens-discover.lua" },
   { "src/lens-hub.lua", "bin/lens-hub.lua" },
+  { "src/lens-setup.lua", "bin/lens-setup.lua" },
   { "src/lens-update.lua", "bin/lens-update.lua" },
   { "lib/lens/codec.lua", "lib/lens/codec.lua" },
   { "lib/lens/discover.lua", "lib/lens/discover.lua" },
+  { "lib/lens/files.lua", "lib/lens/files.lua" },
   { "lib/lens/gui.lua", "lib/lens/gui.lua" },
   { "lib/lens/hub/alerts.lua", "lib/lens/hub/alerts.lua" },
   { "lib/lens/hub/app.lua", "lib/lens/hub/app.lua" },
@@ -18,6 +20,9 @@ return {
   { "lib/lens/hub/rules.lua", "lib/lens/hub/rules.lua" },
   { "lib/lens/hub/store.lua", "lib/lens/hub/store.lua" },
   { "lib/lens/metrics.lua", "lib/lens/metrics.lua" },
+  { "lib/lens/setup/hub.lua", "lib/lens/setup/hub.lua" },
+  { "lib/lens/setup/input.lua", "lib/lens/setup/input.lua" },
+  { "lib/lens/setup/render.lua", "lib/lens/setup/render.lua" },
   { "lib/lens/version.lua", "lib/lens/version.lua" },
   { "config/lens-hub.example.cfg", "lens-hub.example.cfg" },
 }

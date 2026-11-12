@@ -17,11 +17,15 @@ is its interface; this page is the map.
 | `lens.hub.dashboard` | hub | The screen: builds a frame of rows from a model, sends the GPU only the segments that changed, touch targets |
 | `lens.hub.hud` | hub | The AR glasses HUD: `hud.bars` and the newest alerts as widgets on a Glasses Terminal; made once, setters called only on change, calls counted |
 | `lens.hub.app` | hub | The program's state: hub core + panels (values, history) + dashboard; reacts to packets, touches and ticks |
+| `lens.setup.hub` | lens-setup | The steps: hub, agents and their standard panels, HUD, start on boot; review and save |
+| `lens.setup.input`, `lens.setup.render` | lens-setup | Questions on the terminal; `lens-hub.cfg` as commented Lua |
+| `lens.files` | setup | Reading files, atomic writes, `.bak` |
 | `lens.discover` | lens-discover | Components, their methods and docs as report lines (pure over OpenOS `component`) |
 | `lens.gui` | hub | GPU primitives and the palette (adapted from PRISM's) |
 | `lens.hub.core` | hub | The above together, without screens or an event loop: `receive(data, from, now)` → replies, `tick(now)` → alert changes, `query`, `health` |
 
-Dependencies point one way: programs → `hub/*` → `codec`, `gui`; `metrics` and `codec` don't know about the hub.
+Dependencies point one way: programs → `hub/*`, `setup/*` → `codec`, `gui`, `files`. `setup/*` reads the hub's
+`config` (to check what it writes) but nothing else of the hub's; `metrics` and `codec` don't know about either.
 
 An agent's loop, in short:
 
@@ -38,6 +42,7 @@ local enc = codec.encoder{ node = cfg.node, role = "power", boot = codec.newBoot
 | Program (`src/`) | Does |
 |---|---|
 | `lens-hub.lua` | The hub: the event loop around `lens.hub.app` (packets, touches, a tick a second) |
+| `lens-setup.lua` | Guided setup: writes `/home/lens-hub.cfg` (and `/home/.shrc`), finding agents with a hello (`lens.setup.*`) |
 | `lens-discover.lua` | Lists this computer's components with every method and doc string, into `/home/lens-discover.txt`: for designing against a mod's real API (`lens.discover`) |
 | `lens-update.lua` | Installs and updates from GitHub what `manifest.lua` lists. Self-contained: it installs the modules |
 
@@ -46,19 +51,8 @@ forget cached `lens.*` modules, and say "run lens-update" if they're missing.
 
 ## Tests
 
-| File | Covers |
-|---|---|
-| `test_units.lua` | `metrics` and `codec` on their own |
-| `test_hub.lua` | `store`, `query`, `rules`, `alerts` on their own |
-| `test_net.lua` | Agents and the hub over `mocks/net.lua`: discovery, parts, lost packets, staleness, restarts, tokens, rules |
-| `test_dashboard.lua` | `lens-hub` end to end on the mock screen with an agent on `mocks/net.lua`: panels, alerts and acks by touch, stale nodes, beeps, GPU calls per quiet second, tier 2, config errors |
-| `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering |
-| `test_hud.lua` | The HUD on `mocks/glasses.lua`: strip, bars, alerts, nothing overlapping, only changed setters, options, in `lens-hub` (calls per minute), a broken terminal. Previews with `make screens` (`tools/render_hud.py`) |
-| `test_update.lua` | `lens-update`: releases, main, branches, forks, keeping `lens-hub.cfg`, refusing broken downloads |
-| `test_layout.lua` | `manifest.lua` lists every file; one version |
-| `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, modem), `unicode`, `filesystem`, `internet`, and a screen tests can read |
-| `mocks/glasses.lua` | A Glasses Terminal and its widget objects, as `lens-discover` saw them; records what setters get |
-| `mocks/net.lua` | Several computers' modems in one test, with packet loss and OpenComputers' packet limits |
+The tests run every program unmodified against mocks of OpenComputers, the network and OC Glasses:
+[tests/README.md](../tests/README.md).
 
 ## What's verified in game
 

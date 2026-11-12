@@ -27,6 +27,10 @@ for src, dest in pairs(listed) do
 end
 check(placed, "programs install to /home/bin and modules to /home/lib")
 
+local utf = {}
+for _, f in ipairs(lines('cd "' .. H.ROOT .. '" && grep -rl "utf8%.\\|utf8\\." src lib 2>/dev/null')) do utf[#utf + 1] = f end
+check(#utf == 0, "src/ and lib/ use OpenOS unicode, not utf8" .. (#utf > 0 and (": " .. table.concat(utf, ", ")) or ""))
+
 local function read(path) local f = io.open(H.ROOT .. "/" .. path); if not f then return nil end; local t = f:read("*a"); f:close(); return t end
 local version = dofile(H.ROOT .. "/lib/lens/version.lua")
 check(read("src/lens-update.lua"):match('local VERSION = "([^"]*)"') == version,
