@@ -1,7 +1,8 @@
--- test_hud.lua: the AR glasses HUD on the Glasses Terminal mock (mocks/glasses.lua, from what was measured in
--- game): health strip, hud.bars, newest unacknowledged alerts, nothing overlapping, setters only on change,
--- the call count, options, lens-hub drawing it (and its calls per minute on the dashboard), clearing on QUIT,
--- and a broken terminal shown on the dashboard instead of stopping the hub. Previews: make screens.
+-- test_hud.lua: the AR glasses HUD on one Glasses Terminal mock (mocks/glasses.lua, from what was measured in
+-- game): health strip, bars, newest unacknowledged alerts, nothing overlapping, setters only on change, the call
+-- count, options, blocks from nine anchors with bar / text / gap / alerts elements, lens-hub drawing it (and its
+-- calls per minute on the dashboard), clearing on QUIT, and a broken terminal shown on the dashboard instead of
+-- stopping the hub. (A HUD per player and the HUD editor: test_huds.) Previews: make screens.
 local H = dofile((debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./") .. "helper.lua")
 local M = require("oc")
 local check = H.check
@@ -140,39 +141,60 @@ do
   check(config.check({ hud = false }).hud == false, "hud = false is allowed")
 end
 
+---------------------------------------------------------------- blocks
+-- Several blocks from their anchors, each with bar, text, gap and alerts elements.
+local function blockModel(blocks, extra)
+  local m = model({ hudBlocks = blocks, screen = { w = 800, h = 400 } })
+  for k, v in pairs(extra or {}) do m[k] = v end
+  return m
+end
+do
+  local G = glassesMock.new()
+  local h = hud.new(G.proxy, { scale = 1, alpha = 0.35 })
+  h:draw(blockModel({
+    { anchor = "top", x = 0, y = 4, width = 160, items = {
+      { kind = "bar", label = "Power", text = "95%", frac = 0.95 },
+      { kind = "text", label = "Net 5m", text = "+2.4k EU/t", level = "good" },
+      { kind = "gap" },
+      { kind = "alerts", count = 2 } } },
+    { anchor = "center", x = 0, y = 0, width = 120, items = { { kind = "text", label = "Ore", text = "1.2M" } } },
+    { anchor = "bottom-right", x = -10, y = -10, width = 100, items = {} },
+  }, { alerts = { { level = "bad", text = "Sifter down" }, { level = "warn", text = "two" }, { level = "warn", text = "three" } } }))
+  H.glasses("hud-blocks", G)
+  local live = G.live()
+  local bg1 = live[1]
+  check(bg1.x == 400 - 80 and bg1.y == 4, "top: centered across, 4 down")
+  local value, label = G.find("+2.4k EU/t"), G.find("Net 5m")
+  check(value and label and label.y == value.y and math.abs(value.x + G.textWidth(value) - (bg1.x + 158)) < 1
+    and near(value.color, P.good) and near(label.color, P.dim), "text: dim label, the value right-aligned, green for good")
+  local first = G.find("Sifter down")
+  check(first and first.y - value.y == 11 + 5 and G.find("two") and not G.find("three") and G.find("+1 more"),
+    "a gap is half a row; alerts show their count, then +N more")
+  local ore = G.find("Ore")
+  local bg2
+  for _, s in ipairs(live) do if s.kind == "rect" and s.w == 120 then bg2 = s end end
+  check(bg2 and bg2.x == 400 - 60 and math.abs((bg2.y + bg2.h / 2) - 200) <= 1 and ore.y > bg2.y,
+    "center: in the middle of the view")
+  local okText = G.find("LENS OK")
+  check(okText and okText.x > 800 - 100 - 10 and okText.y > 300, "an empty block: LENS OK, in its corner")
+  local calls = h.calls
+  h:draw(blockModel({ { anchor = "top", x = 0, y = 4, width = 160,
+    items = { { kind = "text", label = "Net 5m", text = "+2.4k EU/t" } } } }))
+  check(not G.find("Sifter down") and not G.find("LENS OK") and not G.find("Power") and h.calls > calls,
+    "blocks and elements that go away are hidden")
+  h:draw(blockModel({ { anchor = "top-left", x = -500, y = 9000, width = 160, items = {} } }))
+  local bg = G.live()[1]
+  check(bg.x == 0 and bg.y + bg.h <= 400, "a block nudged off the view stays on it")
+end
+
 ---------------------------------------------------------------- in lens-hub
-local net = require("net")
-local codec = require("lens.codec")
-local metrics = require("lens.metrics")
+local R = require("hubrun")(H)
+local PRISM = R.agent{ node = "prism-ore", role = "prism", setup = function(m)
+  m:gauge("prism_backlog_items", "b"):set(1240000)
+end }
 
 local function runHub(G, cfgText, script)
-  M.components = { ["gl000000-0000"] = { type = "glasses", proxy = G.proxy, methods = {} } }
-  local path = H.TMP .. "/hud-hub.cfg"
-  local f = assert(io.open(path, "w")); f:write(cfgText); f:close()
-  local n = net.new()
-  M.modem = n:endpoint("hub")
-  local ag = n:endpoint("prism-ore")
-  ag.open(4243)
-  local m = metrics.new{ role = "prism", clock = function() return M.time end }
-  local enc = codec.encoder{ node = "prism-ore", role = "prism", boot = 3, interval = 5 }
-  m:gauge("prism_backlog_items", "b"):set(1240000)
-  local nextPush = 0
-  M.onPull = function()
-    if M.time >= nextPush then
-      for _, p in ipairs(enc:snapshot(m:snapshot())) do ag.broadcast(4243, p) end
-      nextPush = M.time + 5
-    end
-    local ev = n.pop(M.modem)
-    if ev then return ev end
-    return script(M.time)
-  end
-  local realStderr, written = io.stderr, {}
-  io.stderr = { write = function(_, s) written[#written + 1] = s end }
-  local ok, err = pcall(H.run, "lens-hub.lua", path)
-  io.stderr = realStderr
-  M.onPull = nil
-  M.components = {}
-  return ok and #written == 0, err or table.concat(written)
+  return R.run{ cfg = cfgText, agents = { PRISM }, terminals = { ["gl000000-0000"] = G }, script = script }
 end
 
 do

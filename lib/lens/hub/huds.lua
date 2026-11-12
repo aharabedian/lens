@@ -6,7 +6,8 @@
 
   local hs = require("lens.hub.huds").new(terminals, defaults, store)
     terminals: { [address] = Glasses Terminal proxy }; defaults: cfg.hud (checked)
-    store: a lens.hub.board (players / setPlayers), or a file path of its own, or nil (memory only)
+    store: where players' settings live: { players() -> table, setPlayers(table) -> true | nil, err }, which
+    lens.hub.board is; nil keeps them in memory
   hs:onGlasses(address, player, w, h)   a glasses_on: that terminal's wearer and GUI size
   hs:draw(model, evaluate, views)       draw every terminal. evaluate(views) -> { { label, text, frac, level } }
   hs:catalog(views) -> { view... }      what a player can pick: `views` (the board's library), then views in
@@ -26,7 +27,6 @@
 ]]
 
 local hud = require("lens.hub.hud")
-local files = require("lens.files")
 local config = require("lens.hub.config")
 
 local huds = {}
@@ -91,46 +91,11 @@ local function clean(s)
   return out
 end
 
-local function lit(v)
-  if type(v) == "string" then return ("%q"):format(v) end
-  return tostring(v)
-end
-
-local function serialize(players)
-  local names = {}
-  for name in pairs(players) do names[#names + 1] = name end
-  table.sort(names)
-  local lines = { "-- lens-hud.cfg: each player's own HUD, written by lens-hub's HUD editor (tap HUD on the dashboard).",
-    "-- Players not listed get the hud in lens-hub.cfg.", "return {" }
-  for _, name in ipairs(names) do
-    local s = players[name]
-    lines[#lines + 1] = ("  [%q] = { scale = %s, blocks = {"):format(name, lit(s.scale or 1))
-    for _, b in ipairs(s.blocks) do
-      local els = {}
-      for _, el in ipairs(b.elements) do
-        local parts = { "kind = " .. lit(el.kind) }
-        if el.view then parts[#parts + 1] = "view = " .. lit(el.view) end
-        if el.count then parts[#parts + 1] = "count = " .. lit(el.count) end
-        els[#els + 1] = "{ " .. table.concat(parts, ", ") .. " }"
-      end
-      lines[#lines + 1] = ("    { anchor = %s, x = %s, y = %s, width = %s, elements = {"):format(lit(b.anchor), lit(b.x),
-        lit(b.y), lit(b.width))
-      for _, e in ipairs(els) do lines[#lines + 1] = "      " .. e .. "," end
-      lines[#lines + 1] = "    } },"
-    end
-    lines[#lines + 1] = "  } },"
-  end
-  lines[#lines + 1] = "}"
-  return table.concat(lines, "\n") .. "\n"
-end
-
 local Huds = {}
 Huds.__index = Huds
 
 function huds.new(terminals, defaults, store)
-  local path = type(store) == "string" and store or nil
-  local self = setmetatable({ defaults = defaults, path = path, store = type(store) == "table" and store or nil,
-    terms = {}, players = {}, calls = 0 }, Huds)
+  local self = setmetatable({ defaults = defaults, store = store, terms = {}, players = {}, calls = 0 }, Huds)
   local addresses = {}
   for address in pairs(terminals) do addresses[#addresses + 1] = address end
   table.sort(addresses)
@@ -139,8 +104,7 @@ function huds.new(terminals, defaults, store)
     local bound = boundPlayers(proxy)
     self.terms[#self.terms + 1] = { address = address, hud = hud.new(proxy, {}), player = #bound == 1 and bound[1] or nil }
   end
-  local saved
-  if self.store then saved = self.store:players() elseif path then saved = files.loadTable(path) end
+  local saved = store and store:players()
   if type(saved) == "table" then
     for name, s in pairs(saved) do
       if type(name) == "string" then self.players[name] = clean(s) end
@@ -202,8 +166,7 @@ end
 
 function Huds:save()
   if self.store then return self.store:setPlayers(self.players) end
-  if not self.path then return true end
-  return files.writeAtomic(self.path, serialize(self.players))
+  return true
 end
 
 function Huds:change(player, fn)

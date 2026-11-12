@@ -247,4 +247,29 @@ do
   check(not ok and tostring(err):find("needs a network card", 1, true), "no network card: a clear error")
 end
 
+---------------------------------------------------------------- the screen's shape
+-- resolution = "fit" (the default): a 3 wide, 4 tall screen gets 73 x 50, and the stacked layout uses the height.
+do
+  local R = require("hubrun")(H)
+  local POWER = R.agent{ node = "power-room", role = "lumen", setup = function(m)
+    m:gauge("lumen_fill_ratio", "f"):set(0.95)
+  end }
+  M.setTime(0)
+  M.resize(73, 50)
+  M.aspect = { 3, 4 }
+  M.oob = 0
+  local seen
+  local ok = R.run{ cfg = 'return { panels = { { label = "Power", value = "lumen_fill_ratio", format = "percent" } } }',
+    dir = "portrait", agents = { POWER }, script = function(t)
+      if t < 12 then return nil end              -- a sparkline sample with data
+      seen = M.find("PANELS", 1) and M.find("NODES", 1) and M.find("▁", 1) and M.find(" DATA ", 1) and M.find("QUIT", 1)
+      H.screen("dashboard-portrait")
+      return "stop"
+    end }
+  check(ok and M.resolution[1] == 73 and M.resolution[2] == 50, "resolution fit: 73 x 50 on a 3 x 4 screen")
+  check(seen and M.oob == 0, "tall and narrow: panels with sparklines, then nodes and alerts; the header fits")
+  M.aspect = nil
+  M.resize(160, 50)
+end
+
 H.done()

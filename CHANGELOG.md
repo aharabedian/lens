@@ -5,6 +5,16 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- The HUD editor drew neither its position controls nor its footer when a block's list ran past the bottom of
+  the screen.
+- With no panels, the dashboard said "No panels in lens-hub.cfg." It now says to tap EDIT.
+
+### Changed
+- Inside: the screen is split into one page module per screen (`hub/pages/`) and one editor module per editor
+  (`hub/editors/`), with shared drawing in `hub/frame`; `tests/test_layout.lua` checks that dependencies point
+  one way. The DATA page no longer adds every query it shows to the hub's query cache.
+
 ## [0.2.0] - 2026-11-12
 
 The dashboard and HUD, set up on the screen. Works with PRISM 1.2.0 and LUMEN; agents need no update (the

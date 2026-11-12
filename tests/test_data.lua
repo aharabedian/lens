@@ -1,100 +1,40 @@
--- test_data.lua: the DATA page: every metric (store:metrics), queries built by tapping (lens.hub.explore),
--- and turning one into a panel or a HUD element through the view editor. Previews: make screens.
+-- test_data.lua: the DATA page in lens-hub (lens.hub.editors.data, pages.data): every metric, its series,
+-- queries built by tapping, and turning one into a panel or a HUD element through the view editor; editors,
+-- paging, a narrow screen. (explore and store:metrics on their own: test_hub.) Previews: make screens.
 local H = dofile((debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./") .. "helper.lua")
 local M = require("oc")
 local check = H.check
-local explore = require("lens.hub.explore")
-local store = require("lens.hub.store")
-local query = require("lens.hub.query")
+local R = require("hubrun")(H)
 local files = require("lens.files")
 local glassesMock = require("glasses")
 
----------------------------------------------------------------- explore
-check(explore.query("lumen_net_5m_eut", {}, "sum") == "sum(lumen_net_5m_eut)", "no filters: the metric")
-local q = explore.query("m", { lsc = 'Say "hi"\\', node = "power-room" }, "max")
-check(q == 'max(m{node="power-room", lsc="Say \\"hi\\"\\\\"})', "filters sorted (node first), quotes and backslashes escaped")
-local compiled = query.compile(q)
-check(compiled and compiled(function()
-  return { { value = 7, labels = { node = "power-room", lsc = 'Say "hi"\\' } }, { value = 9, labels = { node = "x", lsc = "y" } } }
-end) == 7, "and the query reads back as the same value")
-local series = {
-  { labels = { node = "power-room", lsc = "Main" } }, { labels = { node = "power-room", lsc = "Spare" } },
-  { labels = { node = "power-base", lsc = "Main" } },
-}
-local labels = explore.labels(series, { node = "power-base" })
-check(labels[1].label == "node" and #labels[1].values == 2 and labels[1].chosen == "power-base"
-  and labels[2].label == "lsc" and #labels[2].values == 1 and labels[2].values[1] == "Main",
-  "labels: node first; choosing one narrows the others' values")
-check(explore.labelText({ lsc = "Main", node = "power-room" }) == "node=power-room lsc=Main", "label text, node first")
-check(explore.suggestLabel("lumen_net_5m_eut", { lsc = "Main", node = "x" }) == "net 5m eut · Main", "a starting label")
-
----------------------------------------------------------------- store:metrics
-local s = store.new{ staleAfter = 3 }
-s:receive({ kind = "describe", node = "a", boot = 1, metrics = { x_total = { type = "counter", help = "X done", unit = "items" } } }, 0)
-s:receive({ kind = "snapshot", node = "a", boot = 1, interval = 5, samples = { { "x_total", 3 }, { "y", 1, { k = "1" } }, { "y", 2, { k = "2" } } } }, 0)
-s:receive({ kind = "snapshot", node = "b", boot = 1, interval = 5, samples = { { "y", 5 } } }, 0)
-local ms = s:metrics(1)
-check(#ms == 2 and ms[1].name == "x_total" and ms[1].type == "counter" and ms[1].help == "X done" and ms[1].unit == "items"
-  and ms[2].name == "y" and ms[2].series == 3 and #ms[2].nodes == 2 and ms[2].type == "gauge",
-  "store:metrics: every metric, its type, help, unit, series and nodes")
-check(#s:metrics(100) == 0, "stale nodes' metrics are left out")
-
 ---------------------------------------------------------------- in lens-hub
-local net = require("net")
-local codec = require("lens.codec")
-local metrics = require("lens.metrics")
+-- A LUMEN with two LSCs, and a PRISM with a counter (and, for paging, `extra` more gauges).
+local function agents(extra)
+  local lumen = R.agent{ node = "power-room", role = "lumen", setup = function(m)
+    local net5 = m:gauge("lumen_net_5m_eut", "EU/t in minus out, averaged over 5 min", "EU/t")
+    net5:set(2370, { lsc = "Main" })
+    net5:set(-500, { lsc = "Spare" })
+    m:gauge("lumen_fill_ratio", "How full", "0..1"):set(0.95, { lsc = "Main" })
+  end }
+  local routed
+  local prism = R.agent{ node = "prism-ore", role = "prism", setup = function(m)
+    routed = m:counter("prism_items_routed_total", "Items moved to outputs", "items")
+    for n = 1, extra or 0 do m:gauge(("prism_extra_%02d"):format(n), "extra"):set(n) end
+  end, cycle = function() routed:add(50) end }
+  return { lumen, prism }
+end
 
 local function runHub(cfgText, script, opts)
   opts = opts or {}
-  M.components = { ["kb000000"] = { type = "keyboard", methods = {} } }
-  if opts.glasses then M.components["gl-a"] = { type = "glasses", proxy = opts.glasses.proxy, methods = {} } end
-  local dir = H.TMP .. "/" .. (opts.dir or "hub")
-  os.execute('rm -rf "' .. dir .. '" && mkdir -p "' .. dir .. '"')
-  local f = assert(io.open(dir .. "/lens-hub.cfg", "w")); f:write(cfgText); f:close()
-  local n = net.new()
-  M.modem = n:endpoint("hub")
-  local agents = {}
-  for _, a in ipairs({ { "power-room", "lumen" }, { "prism-ore", "prism" } }) do
-    local ep = n:endpoint(a[1])
-    ep.open(4243)
-    local m = metrics.new{ role = a[2], clock = function() return M.time end }
-    agents[#agents + 1] = { ep = ep, m = m, enc = codec.encoder{ node = a[1], role = a[2], boot = 3, interval = 5 } }
-  end
-  local lumen, prism = agents[1].m, agents[2].m
-  local net5 = lumen:gauge("lumen_net_5m_eut", "EU/t in minus out, averaged over 5 min", "EU/t")
-  net5:set(2370, { lsc = "Main" })
-  net5:set(-500, { lsc = "Spare" })
-  lumen:gauge("lumen_fill_ratio", "How full", "0..1"):set(0.95, { lsc = "Main" })
-  local routed = prism:counter("prism_items_routed_total", "Items moved to outputs", "items")
-  for i = 1, (opts.extra or 0) do prism:gauge("prism_extra_" .. string.format("%02d", i), "extra"):set(i) end
-  local nextPush = 0
-  M.onPull = function()
-    if M.time >= nextPush then
-      routed:add(50)
-      for _, a in ipairs(agents) do
-        for _, p in ipairs(a.enc:describe(a.m:describe())) do a.ep.broadcast(4243, p) end
-        for _, p in ipairs(a.enc:snapshot(a.m:snapshot())) do a.ep.broadcast(4243, p) end
-      end
-      nextPush = M.time + 5
-    end
-    local ev = n.pop(M.modem)
-    if ev then return ev end
-    return script(M.time)
-  end
-  local realStderr, written = io.stderr, {}
-  io.stderr = { write = function(_, x) written[#written + 1] = x end }
-  local fine, e = pcall(H.run, "lens-hub.lua", dir .. "/lens-hub.cfg")
-  io.stderr = realStderr
-  M.onPull = nil
-  M.components = {}
-  return fine and #written == 0, e or table.concat(written), dir
+  return R.run{ cfg = cfgText, dir = opts.dir, agents = agents(opts.extra), keyboard = true,
+    terminals = opts.glasses and { ["gl-a"] = opts.glasses } or nil, script = function(t)
+      local e = script(t)
+      if e == nil and t > 200 then return "stop" end
+      return e
+    end }
 end
-
-local function tap(what, player, minY, minX)
-  local x, y = M.find(what, minY, minX)
-  assert(x, "nothing on screen says " .. what)
-  return { "touch", "screen", x + 1, y, 0, player }
-end
+local tap = R.tap
 
 M.setTime(0)
 M.resize(160, 50)
@@ -140,7 +80,7 @@ local steps = {
     local _, y = M.find("Label", 3)
     return { "touch", "screen", 20, y, 0, "Aaron" }
   end,
-  function() return { "clipboard", "kb000000", " (HUD)", "Aaron" } end,
+  function() return R.paste(" (HUD)", "Aaron") end,
   function() return tap("SAVE", "Aaron", 1) end,
   function()
     st.hud = G.find("net 5m eut") ~= nil
@@ -160,7 +100,7 @@ local ok, err, dir = runHub("return { panels = {} }", function(t)
   if t < 6 then return nil end
   i = i + 1
   if steps[i] then return steps[i]() end
-  return { "interrupted" }
+  return "stop"
 end, { glasses = G })
 check(ok, "lens-hub runs" .. (ok and "" or (": " .. tostring(err))))
 check(st.button and st.list, "DATA lists every metric from every agent, with counters marked")
@@ -200,7 +140,7 @@ ok = runHub('return { editors = { "Aaron" } }', function(t)
     return tap("◀ METRICS", "Bob", 3)
   end
   if i == 5 then st.backList = M.find("METRICS (", 3) ~= nil end
-  return { "interrupted" }
+  return "stop"
 end, { extra = 50, dir = "narrow" })
 check(ok and st.paged and st.page2, "many metrics: pages")
 check(st.narrow and st.backList, "a narrow screen: the list, then one metric with a way back")

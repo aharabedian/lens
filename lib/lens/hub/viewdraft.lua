@@ -1,26 +1,26 @@
---[[ lens.hub.viewedit: a view being edited on the screen: its fields as text, the field being typed into,
+--[[ lens.hub.viewdraft: a view being edited on the screen: its fields as text, the field being typed into,
   keys and pastes, and turning it back into a view. Pure.
 
-  viewedit.FIELDS            { { key, name, kind = "text" | "number" | "choice", choices? }... } in screen order
-  viewedit.draft(view?) -> d     d.fields = { [key] = text }, d.focus = the field typed into ("label" first)
-  viewedit.key(d, char, code)    a key_down: printable characters type; Backspace deletes; Enter and Tab go to
-                                 the next text field (Shift+Tab: the one before is not supported)
-  viewedit.paste(d, text)        a clipboard event: appended to the focused field (line breaks become spaces)
-  viewedit.focus(d, key)         start typing into a field
-  viewedit.cycle(d, key)         a choice field: the next choice
-  viewedit.view(d) -> view | nil, err   numbers parsed, empty fields left out, checked like a panel
-  viewedit.KEYS                  the OpenComputers key codes it knows: back, enter, tab
+  viewdraft.FIELDS               { { key, name, kind = "text" | "number" | "choice", choices? }... } in screen order
+  viewdraft.draft(view?) -> d    d.fields = { [key] = text }, d.focus = the field typed into ("label" first)
+  viewdraft.key(d, char, code)   a key_down: printable characters type; Backspace deletes; Enter and Tab go to the
+                                 next text field
+  viewdraft.paste(d, text)       a clipboard event: appended to the focused field (line breaks become spaces)
+  viewdraft.focus(d, key)        start typing into a field
+  viewdraft.cycle(d, key)        a choice field: the next choice
+  viewdraft.view(d) -> view | nil, err   numbers parsed, empty fields left out, checked like a panel
+  viewdraft.KEYS                 the OpenComputers key codes it knows: back, enter, tab
 ]]
 
 local unicode = require("unicode")
 local config = require("lens.hub.config")
 local format = require("lens.hub.format")
 
-local viewedit = {}
+local viewdraft = {}
 
-viewedit.KEYS = { back = 0x0E, enter = 0x1C, tab = 0x0F }
+viewdraft.KEYS = { back = 0x0E, enter = 0x1C, tab = 0x0F }
 
-viewedit.FIELDS = {
+viewdraft.FIELDS = {
   { key = "label", name = "Label", kind = "text" },
   { key = "value", name = "Query", kind = "text" },
   { key = "format", name = "Format", kind = "choice", choices = format.FORMATS },
@@ -35,7 +35,7 @@ viewedit.FIELDS = {
 }
 
 local BY = {}
-for _, f in ipairs(viewedit.FIELDS) do BY[f.key] = f end
+for _, f in ipairs(viewdraft.FIELDS) do BY[f.key] = f end
 
 local function text(v)
   if v == nil then return "" end
@@ -43,10 +43,10 @@ local function text(v)
   return tostring(v)
 end
 
-function viewedit.draft(view)
+function viewdraft.draft(view)
   view = view or {}
   local d = { fields = {}, focus = "label" }
-  for _, f in ipairs(viewedit.FIELDS) do
+  for _, f in ipairs(viewdraft.FIELDS) do
     if f.kind == "choice" then
       d.fields[f.key] = view[f.key] or f.choices[1]
     else
@@ -56,25 +56,25 @@ function viewedit.draft(view)
   return d
 end
 
-function viewedit.focus(d, key)
+function viewdraft.focus(d, key)
   if BY[key] and BY[key].kind ~= "choice" then d.focus = key end
 end
 
 local function nextField(d)
   local seen = false
-  for _, f in ipairs(viewedit.FIELDS) do
+  for _, f in ipairs(viewdraft.FIELDS) do
     if seen and f.kind ~= "choice" then d.focus = f.key; return end
     if f.key == d.focus then seen = true end
   end
-  d.focus = viewedit.FIELDS[1].key
+  d.focus = viewdraft.FIELDS[1].key
 end
 
-function viewedit.key(d, char, code)
+function viewdraft.key(d, char, code)
   local k = d.focus
   if not k then return end
-  if code == viewedit.KEYS.enter or code == viewedit.KEYS.tab then
+  if code == viewdraft.KEYS.enter or code == viewdraft.KEYS.tab then
     nextField(d)
-  elseif code == viewedit.KEYS.back then
+  elseif code == viewdraft.KEYS.back then
     local s = d.fields[k]
     d.fields[k] = unicode.len(s) > 0 and unicode.sub(s, 1, -2) or ""
   elseif type(char) == "number" and char >= 32 and char ~= 127 then
@@ -82,11 +82,11 @@ function viewedit.key(d, char, code)
   end
 end
 
-function viewedit.paste(d, s)
+function viewdraft.paste(d, s)
   if d.focus and type(s) == "string" then d.fields[d.focus] = d.fields[d.focus] .. s:gsub("[\r\n\t]+", " ") end
 end
 
-function viewedit.cycle(d, key)
+function viewdraft.cycle(d, key)
   local f = BY[key]
   if not f or f.kind ~= "choice" then return end
   for i, c in ipairs(f.choices) do
@@ -95,9 +95,9 @@ function viewedit.cycle(d, key)
   d.fields[key] = f.choices[1]
 end
 
-function viewedit.view(d)
+function viewdraft.view(d)
   local v = {}
-  for _, f in ipairs(viewedit.FIELDS) do
+  for _, f in ipairs(viewdraft.FIELDS) do
     local s = d.fields[f.key]
     if f.kind == "choice" then
       if s ~= f.choices[1] then v[f.key] = s end      -- the first choice is the default: left out
@@ -120,4 +120,4 @@ function viewedit.view(d)
   return v
 end
 
-return viewedit
+return viewdraft

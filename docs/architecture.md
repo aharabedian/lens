@@ -5,32 +5,54 @@ is its interface; this page is the map.
 
 ## Modules
 
-| Module | Used by | Does |
-|---|---|---|
-| `lens.metrics` | agents | Registry of gauges, counters, alerts and health for one node. Produces `describe` and `snapshot` bodies. Pure |
-| `lens.codec` | agents, hub | Envelope, splitting messages into packets of at most 7 KB, decoding with token and proto checks, joining parts back together. Pure apart from OpenOS `serialization` |
-| `lens.hub.store` | hub | Per node: descriptors, the latest series, counter rates, health, staleness; every metric there is to query (DATA). Asks for a `hello` when a snapshot's descriptors are missing |
-| `lens.hub.query` | hub | The selector language ([queries.md](queries.md)), compiled to a function of a lookup |
-| `lens.hub.rules` | hub | The hub's own alerts: queries that must stay true for `for` seconds |
-| `lens.hub.alerts` | hub | One list of every active alert: dedupe by `node/id`, since, acks, ordering |
-| `lens.hub.config` | hub | `/home/lens-hub.cfg`: defaults and checks, with readable errors ([hub.md](hub.md)) |
-| `lens.hub.dashboard` | hub | The screen: builds a frame of rows from a model, sends the GPU only the segments that changed, touch targets |
-| `lens.hub.format` | hub | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD. Pure |
-| `lens.hub.board` | hub | `/home/lens-board.cfg`, written only here: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's panels, players' HUDs; undo |
-| `lens.hub.explore` | hub | The DATA page's query building: a metric, label filters, a function -> query text; label values that still match. Pure |
-| `lens.hub.viewedit` | hub | A view being edited: fields as text, keys and pastes, back to a checked view. Pure |
-| `lens.hub.huds` | hub | One `lens.hub.hud` per Glasses Terminal, with its wearer's blocks (`/home/lens-hud.cfg`, written only here) or `hud` from the config; elements name views by label; the HUD editor's changes |
-| `lens.hub.hud` | hub | Draws HUD blocks (bar, text, alerts, gap elements, placed from nine anchors) as widgets on one Glasses Terminal; made once, setters called only on change, calls counted |
-| `lens.hub.app` | hub | The program's state: hub core + panels (values, history) + dashboard; reacts to packets, touches and ticks |
-| `lens.setup.hub` | lens-setup | The steps: hub, agents and their standard panels, HUD, start on boot; review and save |
-| `lens.setup.input`, `lens.setup.render` | lens-setup | Questions on the terminal; `lens-hub.cfg` as commented Lua |
-| `lens.files` | setup | Reading files, atomic writes, `.bak` |
-| `lens.discover` | lens-discover | Components, their methods and docs as report lines (pure over OpenOS `component`) |
-| `lens.gui` | hub | GPU primitives and the palette (adapted from PRISM's) |
-| `lens.hub.core` | hub | The above together, without screens or an event loop: `receive(data, from, now)` → replies, `tick(now)` → alert changes, `query`, `health` |
+Each module's header comment is its interface; this table is the map, by layer. `tests/test_layout.lua` checks
+that every module's header names it and that dependencies only point the ways listed below.
 
-Dependencies point one way: programs → `hub/*`, `setup/*` → `codec`, `gui`, `files`. `setup/*` reads the hub's
-`config` (to check what it writes) but nothing else of the hub's; `metrics` and `codec` don't know about either.
+| Layer | Module | Does |
+|---|---|---|
+| **Protocol** (agents vendor these) | `lens.metrics` | Registry of gauges, counters, alerts and health for one node; produces `describe` and `snapshot` bodies. Pure |
+| | `lens.codec` | Envelope, splitting messages into packets of at most 7 KB, decoding with token and proto checks, joining parts. Pure apart from OpenOS `serialization` |
+| **Hub core** (pure) | `lens.hub.store` | Per node: descriptors, the latest series, counter rates, health, staleness; the list of metrics there is to query. Asks for a `hello` when a snapshot's descriptors are missing |
+| | `lens.hub.query` | The selector language ([queries.md](queries.md)), compiled to a function of a lookup |
+| | `lens.hub.rules` | The hub's own alerts: queries that must stay true for `for` seconds |
+| | `lens.hub.alerts` | One list of every active alert: dedupe by `node/id`, since, acks, ordering |
+| | `lens.hub.core` | The above together: `receive(data, from, now)` → replies, `tick(now)` → alert changes, `query`, `lookup`, `metrics`, `health` |
+| **Views** (pure) | `lens.hub.format` | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD |
+| | `lens.hub.explore` | Building a query by tapping: a metric, label filters, a function → query text |
+| | `lens.hub.viewdraft` | A view being typed: fields as text, keys and pastes, back to a checked view |
+| **Settings and state** | `lens.hub.config` | `/home/lens-hub.cfg`: defaults and checks, readable errors ([hub.md](hub.md)); views, HUD blocks |
+| | `lens.hub.board` | `/home/lens-board.cfg`: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's panels, players' HUDs; undo |
+| | `lens.hub.huds` | One `lens.hub.hud` per Glasses Terminal with its wearer's blocks (kept by the board) or the config's `hud` |
+| | `lens.hub.hud` | Draws HUD blocks (bar, text, alerts, gap; nine anchors) as widgets on one terminal; setters only on change, calls counted |
+| **Editors** | `lens.hub.editors.<kind>` | One per editor: `hud` (a player's HUD), `edit` (the dashboard's panels and the library), `view` (one view's fields), `data` (queries by tapping). Each has `actions(app, a, mine)` and `model(app, e, now)`, and `key` / `paste` if it takes typing; state and actions only, no drawing |
+| **Screen** | `lens.hub.frame` | One screenful being built (row segments, touch targets) and the widgets pages share |
+| | `lens.hub.pages.<kind>` | One per page: `main` (the dashboard) and one per editor. `draw(f, model, actions)`; drawing only |
+| | `lens.hub.dashboard` | Picks the page for the model, then sends the GPU only the rows or segments that changed; touch dispatch |
+| **Program** | `lens.hub.app` | The hub program's state: core, board, HUDs, panels and their history, the one open editor; reacts to packets, touches, keys and ticks |
+| **Setup** | `lens.setup.hub`, `.input`, `.render` | `lens-setup`'s steps, questions on the terminal, `lens-hub.cfg` as commented Lua |
+| **Shared** | `lens.gui` | GPU primitives, the palette, the resolution that fits a screen's shape |
+| | `lens.files` | Reading files, atomic writes, `.bak` |
+| | `lens.discover` | Components, their methods and docs as report lines (`lens-discover`) |
+
+**Dependencies point one way:** programs → `hub.app` → editors, `dashboard` → pages → `frame` → `gui`.
+Pages only draw (`gui`, `frame`); editors never draw; nothing but the program uses the app; `setup/*` reads
+the hub's `config` and nothing else of it; `metrics` and `codec` need nothing of LENS (agents copy them).
+
+### Files on the hub
+
+| File | Written by | Holds |
+|---|---|---|
+| `/home/lens-hub.cfg` | `lens-setup` and you | Network, panels and HUD to start from, rules, `editors` |
+| `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's panels, each player's HUD |
+| `/home/lens-hud.cfg` | (0.2.0 betas) | Players' HUDs before the board; read once into it |
+
+### Adding an editor
+
+1. `lib/lens/hub/editors/<kind>.lua`: its state, `actions` (a button in another page opens it with
+   `app:open(kind, player, state)`) and `model`.
+2. `lib/lens/hub/pages/<kind>.lua`: `draw(f, model, actions)`.
+3. Register it in `EDITORS` (`lens.hub.app`) and `PAGES` (`lens.hub.dashboard`), and add both to `manifest.lua`.
+4. A test driving it through `lens-hub` with `tests/hubrun.lua`; screenshots with `H.screen`.
 
 An agent's loop, in short:
 
@@ -46,7 +68,7 @@ local enc = codec.encoder{ node = cfg.node, role = "power", boot = codec.newBoot
 
 | Program (`src/`) | Does |
 |---|---|
-| `lens-hub.lua` | The hub: the event loop around `lens.hub.app` (packets, touches, a tick a second) |
+| `lens-hub.lua` | The hub: the event loop around `lens.hub.app` (packets, touches, keys, pastes, glasses, a tick a second); picks the resolution |
 | `lens-setup.lua` | Guided setup: writes `/home/lens-hub.cfg` (and `/home/.shrc`), finding agents with a hello (`lens.setup.*`) |
 | `lens-discover.lua` | Lists this computer's components with every method and doc string, into `/home/lens-discover.txt`: for designing against a mod's real API (`lens.discover`) |
 | `lens-update.lua` | Installs and updates from GitHub what `manifest.lua` lists. Self-contained: it installs the modules |
