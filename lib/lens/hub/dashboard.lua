@@ -11,6 +11,7 @@
     alerts = alerts:list(), counts = alerts:counts(),
     panels = { { label, text, frac = 0..1 | nil, level = "warn" | "bad" | nil, history = { number... } } },
     hudError = text | nil,   shown in the footer
+    hudPerMinute = n | nil,  HUD component calls in the last minute, shown in the footer
   }
   actions = { ack(key), ackAll(), quit() }
 
@@ -252,6 +253,10 @@ function Dash:build(m, actions)
     f:text(2, self.h, Gui.fit("HUD: " .. m.hudError, self.w - 2), C.warn)
   else
     f:text(2, self.h, Gui.fit("Tap an alert to acknowledge it.", self.w - 2), C.dim)
+  end
+  if m.hudPerMinute then
+    local s = ("HUD %d calls/min"):format(m.hudPerMinute)
+    f:text(self.w - Gui.len(s), self.h, s, C.dim)
   end
   return f
 end

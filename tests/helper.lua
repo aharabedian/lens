@@ -6,6 +6,7 @@
   H.run(file, ...)       run src/<file> with arguments
   H.exists(path)         whether a file exists
   H.screen(name)         dump the mock screen to $SCREENS/<name>.txt when SCREENS is set (make screens)
+  H.glasses(name, G)     dump a glasses mock's visible widgets to $SCREENS/<name>.hud (tools/render_hud.py)
   H.done()               print the summary line the runner looks for
   H.ROOT, H.SRC, H.TMP   repo root, src/, and a scratch directory for this test
 ]]
@@ -43,6 +44,20 @@ end
 function H.screen(screenName)
   local dir = os.getenv("SCREENS")
   if dir then require("oc").dump(dir .. "/" .. screenName .. ".txt") end
+end
+
+function H.glasses(dumpName, G)
+  local dir = os.getenv("SCREENS")
+  if not dir then return end
+  local f = assert(io.open(dir .. "/" .. dumpName .. ".hud", "w"))
+  for _, s in ipairs(G.live()) do
+    if s.visible then
+      local c = s.color or { 1, 1, 1 }
+      f:write(table.concat({ s.kind, s.x, s.y, s.w, s.h, c[1], c[2], c[3], s.alpha or 1, s.scale or 1,
+        ((s.text or ""):gsub("[\t\n]", " ")) }, "\t"), "\n")
+    end
+  end
+  f:close()
 end
 
 function H.done()

@@ -7,7 +7,8 @@
 
   A panel: { label, value = query, of = query?, max = number?, unit = string?, percent = bool?,
              warnAbove?, badAbove?, warnBelow?, badBelow? }
-  hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off
+  hud: the AR glasses HUD (HUD_DEFAULTS fill what's missing); hud = false turns it off.
+       hud.bars: bars in the same form as panels (label, value, max/of/percent, thresholds)
 ]]
 
 local query = require("lens.hub.query")
@@ -21,7 +22,7 @@ config.DEFAULTS = {
 }
 
 config.HUD_DEFAULTS = {
-  x = 4, y = 4, width = 160, scale = 1, alerts = 3, maxPanels = 6, alpha = 0.6, colors = "float", panels = nil,
+  x = 4, y = 20, width = 160, scale = 1, alerts = 3, alpha = 0.35, colors = "float", bars = {},
 }
 
 local THRESHOLDS = { "warnAbove", "badAbove", "warnBelow", "badBelow" }
@@ -76,19 +77,17 @@ function config.check(c)
     for k, v in pairs(config.HUD_DEFAULTS) do if c.hud[k] == nil then c.hud[k] = v end end
     local h = c.hud
     if h.colors ~= "float" and h.colors ~= "byte" then return nil, 'hud.colors must be "float" or "byte"' end
-    for _, k in ipairs({ "x", "y", "alerts", "maxPanels" }) do
+    for _, k in ipairs({ "x", "y", "alerts" }) do
       if type(h[k]) ~= "number" or h[k] < 0 then return nil, "hud." .. k .. " must be a number" end
     end
-    for _, k in ipairs({ "width", "scale", "alpha" }) do
+    for _, k in ipairs({ "width", "scale" }) do
       if type(h[k]) ~= "number" or h[k] <= 0 then return nil, "hud." .. k .. " must be a number above 0" end
     end
-    if h.panels ~= nil then
-      if type(h.panels) ~= "table" then return nil, "hud.panels must be a list of panel labels" end
-      local labels = {}
-      for _, p in ipairs(c.panels) do labels[p.label] = true end
-      for _, l in ipairs(h.panels) do
-        if not labels[l] then return nil, ("hud.panels: no panel labelled %q"):format(tostring(l)) end
-      end
+    if type(h.alpha) ~= "number" or h.alpha < 0 or h.alpha > 1 then return nil, "hud.alpha must be 0..1" end
+    if type(h.bars) ~= "table" then return nil, "hud.bars must be a list of bars" end
+    for i, b in ipairs(h.bars) do
+      local e = checkPanel(i, b)
+      if e then return nil, "hud." .. e:gsub("^panel", "bar") end
     end
   end
   return c

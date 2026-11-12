@@ -98,27 +98,29 @@ Values show as `4.2k`, `1.5M`, `3G`. A query with no data shows `–`.
 ## AR glasses HUD
 
 With an **OC Glasses** Glasses Terminal attached to the hub computer, `lens-hub` also draws a small block in
-the view of everyone wearing glasses linked to that terminal:
+the view of everyone wearing glasses linked to that terminal: the bars you choose, then the newest
+unacknowledged alerts, with a thin strip down the left in the base's overall health color.
 
-```
-LENS BAD  1 bad  2 warn
-Ore bac… ▕██████░░░░▏ 4.2k
-Machines ▕█████████░▏ 12/16
-! mac2: no power
-```
+![Quiet](images/hud-quiet.png) ![With alerts](images/hud-alerts.png)
 
-The health line, one row per panel (the dashboard's panels: label, bar, value), then the newest
-unacknowledged alerts. Acknowledge on the dashboard and they leave the HUD. Widgets are made once and only
-changed values are sent, so a quiet base costs the terminal nothing. If the terminal fails (say its chunk
-unloads), the dashboard keeps running and shows `HUD: <error>` in its footer.
+Acknowledge alerts on the dashboard and they leave the HUD. Widgets are made once and only changed values are
+sent; the dashboard's footer shows how many calls the HUD made in the last minute (`HUD n calls/min`; 0 when
+nothing changes). If the terminal fails, the dashboard keeps running and shows `HUD: <error>` in its footer.
+
+```lua
+hud = {
+  bars = {
+    { label = "Ore", value = 'sum(prism_backlog_items{node="prism-ore"})', max = 10000, warnAbove = 5000, badAbove = 9000 },
+  },
+},
+```
 
 | `hud` key | Default | Meaning |
 |---|---|---|
-| `x`, `y` | `4`, `4` | Top-left corner, in GUI pixels (one is 3 screen pixels at GUI scale 3) |
-| `width` | `160` | Width of the block, in GUI pixels. Text takes about 5 per character at scale 1 |
-| `scale` | `1` | Text and row size: 1 is about chat-text size, 2 doubles it (double `width` too), 0.5 halves it |
-| `panels` | all, up to `maxPanels` | Panel labels to show, in order: `panels = { "Ore backlog" }` |
-| `maxPanels` | `6` | Panels shown when `panels` isn't set |
-| `alerts` | `3` | Unacknowledged alerts shown |
-| `alpha` | `0.6` | Backdrop opacity |
-| `colors` | `"float"` | The units the terminal takes colors and alpha in: `"float"` (0..1, what OC Glasses takes) or `"byte"` (0..255), for other glasses mods |
+| `bars` | `{}` | Bars, in the same form as [panels](#panels): `label`, `value`, `max` / `of` / `percent`, thresholds. The fill turns amber or red past `warn…` / `bad…` |
+| `alerts` | `3` | Unacknowledged alerts shown, then `+N more` |
+| `x`, `y` | `4`, `20` | Top-left corner, in GUI pixels (3 screen pixels each at GUI scale 3) |
+| `width` | `160` | Width of the block, in GUI pixels; text takes about 5 per character at scale 1 |
+| `scale` | `1` | Text and row size: 1 is about chat-text size, 2 doubles it (double `width` too) |
+| `alpha` | `0.35` | Backdrop opacity, 0 for none |
+| `colors` | `"float"` | `"float"` (0..1, what OC Glasses takes) or `"byte"` (0..255) for other glasses mods |

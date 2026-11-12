@@ -22,12 +22,15 @@ screens:
 	rm -rf build/screens && mkdir -p build/screens
 	SCREENS=build/screens $(LUA) tests/run.lua
 	$(PYTHON) tools/render_screens.py build/screens build/screens
+	$(PYTHON) tools/render_hud.py build/screens build/screens
 
 # Refresh the images used in the docs
 docs-images: screens
 	mkdir -p docs/images
 	cp build/screens/dashboard-alert.png docs/images/dashboard.png
 	cp build/screens/dashboard-tier2.png docs/images/dashboard-tier2.png
+	cp build/screens/hud-quiet.png docs/images/hud-quiet.png
+	cp build/screens/hud-alerts.png docs/images/hud-alerts.png
 
 clean:
 	rm -rf build

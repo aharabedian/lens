@@ -15,7 +15,7 @@ is its interface; this page is the map.
 | `lens.hub.alerts` | hub | One list of every active alert: dedupe by `node/id`, since, acks, ordering |
 | `lens.hub.config` | hub | `/home/lens-hub.cfg`: defaults and checks, with readable errors ([hub.md](hub.md)) |
 | `lens.hub.dashboard` | hub | The screen: builds a frame of rows from a model, sends the GPU only the segments that changed, touch targets |
-| `lens.hub.hud` | hub | The AR glasses HUD: the dashboard's model as text and bar widgets on a Glasses Terminal; widgets made once, setters called only on change |
+| `lens.hub.hud` | hub | The AR glasses HUD: `hud.bars` and the newest alerts as widgets on a Glasses Terminal; made once, setters called only on change, calls counted |
 | `lens.hub.app` | hub | The program's state: hub core + panels (values, history) + dashboard; reacts to packets, touches and ticks |
 | `lens.discover` | lens-discover | Components, their methods and docs as report lines (pure over OpenOS `component`) |
 | `lens.gui` | hub | GPU primitives and the palette (adapted from PRISM's) |
@@ -53,7 +53,7 @@ forget cached `lens.*` modules, and say "run lens-update" if they're missing.
 | `test_net.lua` | Agents and the hub over `mocks/net.lua`: discovery, parts, lost packets, staleness, restarts, tokens, rules |
 | `test_dashboard.lua` | `lens-hub` end to end on the mock screen with an agent on `mocks/net.lua`: panels, alerts and acks by touch, stale nodes, beeps, GPU calls per quiet second, tier 2, config errors |
 | `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering |
-| `test_hud.lua` | The HUD on `mocks/glasses.lua`: rows, bars, alerts, only changed setters, color units, `hud.panels`, in `lens-hub`, a broken terminal |
+| `test_hud.lua` | The HUD on `mocks/glasses.lua`: strip, bars, alerts, nothing overlapping, only changed setters, options, in `lens-hub` (calls per minute), a broken terminal. Previews with `make screens` (`tools/render_hud.py`) |
 | `test_update.lua` | `lens-update`: releases, main, branches, forks, keeping `lens-hub.cfg`, refusing broken downloads |
 | `test_layout.lua` | `manifest.lua` lists every file; one version |
 | `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, modem), `unicode`, `filesystem`, `internet`, and a screen tests can read |

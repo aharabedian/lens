@@ -61,9 +61,10 @@ function app.new(cfg, env)
   return self
 end
 
-function App:panels(now)
+-- Panels (or HUD bars, same form) evaluated for display.
+function App:evaluate(list, history, now)
   local out = {}
-  for i, p in ipairs(self.cfg.panels) do
+  for i, p in ipairs(list) do
     local v = self.hub:query(p.value, now)
     local unit = p.unit and (" " .. p.unit) or ""
     local text, frac
@@ -78,9 +79,21 @@ function App:panels(now)
       text = fmt(v) .. (v and unit or "")
       frac = (v and p.max) and v / p.max or nil
     end
-    out[i] = { label = p.label, text = text, frac = frac, level = level(p, v), history = self.history[i], value = v }
+    out[i] = { label = p.label, text = text, frac = frac, level = level(p, v), history = history and history[i], value = v }
   end
   return out
+end
+
+function App:panels(now) return self:evaluate(self.cfg.panels, self.history, now) end
+
+-- HUD calls in the last minute, from samples taken each tick.
+function App:hudRate(now)
+  if not self.hud then return nil end
+  local s = self.hudSamples or {}
+  self.hudSamples = s
+  s[#s + 1] = { now, self.hud.calls }
+  while #s > 1 and now - s[1][1] > 60 do table.remove(s, 1) end
+  return self.hud.calls - s[1][2]
 end
 
 function App:model(now)
@@ -94,10 +107,12 @@ end
 function App:redraw(now, withHud)
   local m = self:model(now)
   if self.hud and withHud then
+    m.hudBars = self:evaluate(self.cfg.hud.bars or {}, nil, now)
     local ok, err = pcall(self.hud.draw, self.hud, m)
     self.hudError = not ok and tostring(err) or nil
+    self.hudPerMinute = self:hudRate(now)
   end
-  m.hudError = self.hudError
+  m.hudError, m.hudPerMinute = self.hudError, self.hudPerMinute
   self.dash:draw(m, self.actions)
   return m
 end
