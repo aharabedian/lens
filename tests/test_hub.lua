@@ -396,6 +396,8 @@ do
   end
   h = a:history()
   check(#h == 3 and h[1].id == "y5" and h[3].id == "y3", "newest first, at most `keep`")
+end
+
 ---------------------------------------------------------------- one dot for a group
 do
   local function line(states)
