@@ -127,8 +127,8 @@ local A, B, C = terminal("Aaron"), terminal({}), terminal({ "Aaron", "Bob" })
 local hs = huds.new({ ["gl-a"] = A.proxy, ["gl-b"] = B.proxy, ["gl-c"] = C.proxy }, cfg.hud, path)
 
 local cat = hs:catalog(cfg.panels)
-check(#cat == 3 and cat[1].label == "Ore" and cat[1].max == 10 and cat[2].label == "Power" and cat[3].label == "Smelt",
-  "the catalog: the default HUD's views first, then panels with other labels")
+check(#cat == 3 and cat[1].label == "Power" and cat[2].label == "Ore" and cat[2].max == nil and cat[3].label == "Smelt",
+  "the catalog: the library's views (here the panels) first, then the default HUD's with other labels")
 local s = hs:settings("Bob")
 check(not s.own and #s.blocks == 1 and s.blocks[1].anchor == "top-right" and s.blocks[1].x == -4
   and s.blocks[1].elements[1].view == "Ore" and s.blocks[1].elements[2].kind == "alerts",
@@ -303,11 +303,12 @@ check(st.block2 and st.second, "+ adds a block, edited on its own")
 check(st.closed, "DONE goes back to the dashboard")
 check(st.aaron, "another player opens their own editor")
 check(st.timeout, "the editor closes after a minute without a tap")
-local fh = io.open(hudPath); local saved = fh and fh:read("*a") or ""; if fh then fh:close() end
-check(saved:find('["Bob"] = { scale = 1, blocks = {', 1, true)
-  and saved:find('{ anchor = "top-left", x = 12, y = 36, width = 160, elements = {', 1, true)
-  and saved:find('{ kind = "text", view = "Net 5m" },', 1, true) and not saved:find("Aaron", 1, true),
-  "Bob's settings are saved in lens-hud.cfg next to the config; Aaron has none")
+local saved = require("lens.files").loadTable(hudPath:gsub("lens%-hud%.cfg$", "lens-board.cfg")) or {}
+local bob = saved.huds and saved.huds.Bob
+local blk = bob and bob.blocks[1]
+check(bob and bob.scale == 1 and blk.anchor == "top-left" and blk.x == 12 and blk.y == 36 and blk.width == 160
+  and blk.elements[#blk.elements].kind == "text" and blk.elements[#blk.elements].view == "Net 5m" and not saved.huds.Aaron,
+  "Bob's settings are saved in lens-board.cfg next to the config; Aaron has none")
 
 -- A 3 x 4 screen: the hub fits it, and the editor and dashboard fit too.
 M.setTime(0)

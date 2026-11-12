@@ -12,7 +12,13 @@
     panels = { { label, text, frac = 0..1 | nil, level = "warn" | "bad" | nil, history = { number... } } },
     hudError = text | nil,   shown in the footer
     hudPerMinute = n | nil,  HUD component calls in the last minute, shown in the footer
-    huds = bool,             Glasses Terminals attached: the header has a HUD button
+    huds = bool,             Glasses Terminals attached: the header has a HUD button (EDIT is always there)
+    notice = text | nil,     shown in the footer (who has the editor, who may edit)
+    dashEdit = nil | { player, panels = { panel... }, library = { { label, source }... }, canUndo, error,
+                       closesIn }   the EDIT page: the dashboard's panels and the views not on it
+    viewEdit = nil | { player, old = label | nil (new), source, fields = { { key, name, kind, text }... },
+                       focus = key, preview = { text, frac, level } | { error }, keyboard = bool, error,
+                       closesIn }   one view's fields
     editor = nil | { player, own, scale, blocks = n, block = i (being edited), anchor, x, y, width, step,
                      rows = { { index, kind, label?, count? }... } (the block's elements), hidden = { label... },
                      wearing = n, error = text | nil, closesIn = seconds }   the HUD editor, drawn instead
@@ -20,7 +26,9 @@
   actions = { ack(key), ackAll(), quit(), hud(player), and the editor's (each gets the tapping player first):
               hudDone, hudReset, hudBlock(i), hudBlockAdd, hudBlockRemove, hudToggle(label), hudKind(i),
               hudMove(i, -1 | 1), hudAlerts(-1 | 1), hudGap, hudRemove(i), hudAnchor(anchor), hudNudge(dx, dy),
-              hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1) }
+              hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1),
+              edit(player), dashDone, dashUndo, dashMove(i, -1 | 1), dashRemove(i), dashAdd(label), dashView(label),
+              dashNew, viewFocus(key), viewCycle(key), viewSave, viewCancel, viewDelete }
 
   Layout: 120 columns or more puts nodes and alerts on the left and panels (in two columns when there's room)
   on the right; narrower screens stack panels, nodes and alerts. Lists that don't fit end with "+N more".
@@ -96,10 +104,139 @@ local function header(f, m, actions)
     rx = qx - 6
     f:button(rx, 1, "HUD", actions.hud, C.btnOn)
   end
+  rx = rx - 7
+  f:button(rx, 1, "EDIT", actions.edit, C.btnOn)
   local room = rx - 2 - (17 + Gui.len(summary) + 2)
   if Gui.len(right) > room then right = "v" .. (m.version or "?") end   -- narrow: just the version
   if Gui.len(right) <= room then f:text(rx - Gui.len(right) - 2, 1, right, C.dim, C.panel) end
   f:button(qx, 1, "QUIT", actions.quit, C.line)
+end
+
+---------------------------------------------------------------- editors' frame
+local function editorHeader(f, title, buttons)
+  f:rowBg(1, C.panel)
+  f:text(2, 1, "LENS", C.accent, C.panel)
+  local x = f.w
+  for i = #buttons, 1, -1 do
+    local b = buttons[i]
+    x = x - Gui.len(b[1]) - 3
+    f:button(x, 1, b[1], b[2], b[3] or C.btnOn)
+  end
+  f:text(8, 1, Gui.fit(title, math.max(1, x - 10)), C.text, C.panel)
+end
+
+local function editorFooter(f, e)
+  f:rowBg(f.h, C.bg)
+  if e.error then
+    f:text(2, f.h, Gui.fit(e.error, f.w - 2), C.bad)
+  else
+    f:text(2, f.h, Gui.fit(("Only %s can change this. Closes in %ds without a tap."):format(tostring(e.player or "?"),
+      e.closesIn or 0), f.w - 2), C.dim)
+  end
+end
+
+---------------------------------------------------------------- the dashboard's EDIT page
+local function dashEditor(f, m, actions)
+  local e = m.dashEdit
+  local buttons = {}
+  if e.canUndo then buttons[#buttons + 1] = { "UNDO", actions.dashUndo, C.line } end
+  buttons[#buttons + 1] = { "DONE", actions.dashDone }
+  editorHeader(f, "Edit the dashboard", buttons)
+  local wide = f.w >= 100
+  local lw = wide and (f.w - 6) // 2 or f.w - 2
+  local lx, rx = 2, wide and (2 + lw + 3) or 2
+  local last = f.h - 2
+
+  heading(f, lx, 3, ("ON THE DASHBOARD (%d)"):format(#e.panels), lw)
+  local y = 4
+  if #e.panels == 0 then f:text(lx, y, "Nothing yet: add a view from the library.", C.dim); y = y + 1 end
+  local labelW = lw - 32
+  for i, p in ipairs(e.panels) do
+    if y > last then break end
+    local color = p.level == "bad" and C.bad or p.level == "warn" and C.warn or p.level == "good" and C.good or C.text
+    f:text(lx, y, Gui.fit(p.label, labelW), C.text)
+    f:text(lx + labelW + 1, y, Gui.rfit(p.text or "–", 10), color)
+    local bx = lx + lw - 19
+    local label = p.label
+    f:button(bx, y, "EDIT", function(pl) actions.dashView(pl, label) end)
+    if i > 1 then f:button(bx + 7, y, "▲", function(pl) actions.dashMove(pl, i, -1) end) end
+    if i < #e.panels then f:button(bx + 11, y, "▼", function(pl) actions.dashMove(pl, i, 1) end) end
+    f:button(bx + 15, y, "✕", function(pl) actions.dashRemove(pl, i) end, C.line)
+    y = y + 1
+  end
+
+  local ly = wide and 3 or y + 1
+  heading(f, rx, ly, ("LIBRARY (%d)"):format(#e.library), lw - 12)
+  f:button(rx + lw - 10, ly, "+ NEW", actions.dashNew)
+  y = ly + 1
+  if #e.library == 0 then f:text(rx, y, Gui.fit("Every view is on the dashboard.", lw), C.dim) end
+  for k, v in ipairs(e.library) do
+    if y > last then
+      f:text(rx, last + 1, ("+%d more"):format(#e.library - k + 1), C.dim)
+      break
+    end
+    local label = v.label
+    f:button(rx, y, "+", function(pl) actions.dashAdd(pl, label) end)
+    f:text(rx + 4, y, Gui.fit(label, lw - 22), C.text)
+    f:text(rx + lw - 17, y, v.source == "screen" and "" or (v.source == "edited" and "cfg*" or "cfg"), C.dim)
+    f:button(rx + lw - 7, y, "EDIT", function(pl) actions.dashView(pl, label) end)
+    y = y + 1
+  end
+  editorFooter(f, e)
+end
+
+---------------------------------------------------------------- the view editor
+local function viewEditor(f, m, actions)
+  local e = m.viewEdit
+  editorHeader(f, e.old and ("View: " .. e.old) or "New view",
+    { { "SAVE", actions.viewSave }, { "CANCEL", actions.viewCancel, C.line } })
+  local nx, fx = 2, 15
+  local fw = f.w - fx - 1
+  local y = 3
+  for _, fd in ipairs(e.fields) do
+    local key = fd.key
+    f:text(nx, y, Gui.fit(fd.name, fx - nx - 1), C.dim)
+    if fd.kind == "choice" then
+      f:button(fx, y, Gui.fit(fd.text, 10), function(pl) actions.viewCycle(pl, key) end, C.sel)
+    else
+      local focused = e.focus == key
+      local shown = fd.text .. (focused and "▏" or "")
+      if Gui.len(shown) > fw then shown = "…" .. require("unicode").sub(shown, -(fw - 1)) end
+      f:text(fx, y, Gui.fit(shown, fw), focused and C.text or C.dim, focused and C.sel or C.field)
+      f:hit(fx, y, fx + fw - 1, y, function(pl) actions.viewFocus(pl, key) end)
+    end
+    y = y + 1
+  end
+  y = y + 1
+  f:text(nx, y, "Now", C.accent)
+  local pv = e.preview or {}
+  if pv.error then
+    f:text(fx, y, Gui.fit(pv.error, fw), C.bad)
+  else
+    local color = pv.level == "bad" and C.bad or pv.level == "warn" and C.warn or pv.level == "good" and C.good or C.text
+    f:text(fx, y, Gui.fit(pv.text or "–", 16), color)
+    if pv.frac then
+      local bw = math.max(0, fw - 18)
+      local filled = math.floor(math.max(0, math.min(1, pv.frac)) * bw + 0.5)
+      if filled > 0 then f:text(fx + 18, y, string.rep(" ", filled), C.text, color == C.text and C.info or color) end
+      if filled < bw then f:text(fx + 18 + filled, y, string.rep(" ", bw - filled), C.text, C.line) end
+    end
+  end
+  y = y + 2
+  if e.keyboard then
+    f:text(nx, y, Gui.fit("Tap a field and type. Enter: the next field. Insert pastes your clipboard.", f.w - 2), C.dim)
+  else
+    f:text(nx, y, Gui.fit("No keyboard on this screen: attach one to type into the fields.", f.w - 2), C.warn)
+  end
+  y = y + 1
+  if e.source == "config" or e.source == "edited" then
+    f:text(nx, y, Gui.fit("From lens-hub.cfg: your changes are kept on the screen's side.", f.w - 2), C.dim)
+    y = y + 1
+  end
+  if e.old and e.source ~= "config" then
+    f:button(nx, y + 1, e.source == "edited" and "BACK TO lens-hub.cfg" or "DELETE VIEW", actions.viewDelete, C.line)
+  end
+  editorFooter(f, e)
 end
 
 ---------------------------------------------------------------- the HUD editor
@@ -116,10 +253,7 @@ end
 
 local function editor(f, m, actions)
   local e = m.editor
-  f:rowBg(1, C.panel)
-  f:text(2, 1, "LENS", C.accent, C.panel)
-  f:text(8, 1, Gui.fit("HUD for " .. tostring(e.player or "?"), f.w - 20), C.text, C.panel)
-  f:button(f.w - 7, 1, "DONE", actions.hudDone, C.btnOn)
+  editorHeader(f, "HUD for " .. tostring(e.player or "?"), { { "DONE", actions.hudDone } })
 
   -- Blocks: one tab each, add, remove.
   f:text(2, 3, "BLOCKS", C.accent)
@@ -207,14 +341,7 @@ local function editor(f, m, actions)
     note = { ("Showing on %d terminal%s."):format(e.wearing, e.wearing == 1 and "" or "s"), "Changes apply at once." }
   end
   for i, l in ipairs(note) do f:text(rx, 16 + i, Gui.fit(l, f.w - rx), e.wearing == 0 and C.warn or C.dim) end
-
-  f:rowBg(f.h, C.bg)
-  if e.error then
-    f:text(2, f.h, Gui.fit(e.error, f.w - 2), C.bad)
-  else
-    f:text(2, f.h, Gui.fit(("Only %s can change this. Closes in %ds without a tap."):format(tostring(e.player or "?"),
-      e.closesIn or 0), f.w - 2), C.dim)
-  end
+  editorFooter(f, e)
 end
 
 local function nodes(f, m, x, y, width, maxRows)
@@ -363,6 +490,12 @@ function Dash:build(m, actions)
   if m.editor then
     editor(f, m, actions)
     return f
+  elseif m.dashEdit then
+    dashEditor(f, m, actions)
+    return f
+  elseif m.viewEdit then
+    viewEditor(f, m, actions)
+    return f
   end
   header(f, m, actions)
   local lastRow = self.h - 1
@@ -380,7 +513,9 @@ function Dash:build(m, actions)
     alerts(f, m, actions, 2, y + 1, width, lastRow)
   end
   f:rowBg(self.h, C.bg)
-  if m.hudError then
+  if m.notice then
+    f:text(2, self.h, Gui.fit(m.notice, self.w - 2), C.warn)
+  elseif m.hudError then
     f:text(2, self.h, Gui.fit("HUD: " .. m.hudError, self.w - 2), C.warn)
   else
     f:text(2, self.h, Gui.fit("Tap an alert to acknowledge it.", self.w - 2), C.dim)

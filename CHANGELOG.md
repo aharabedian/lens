@@ -6,6 +6,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **EDIT on the dashboard:** order, add and remove panels; a **library of views** (lens-hub.cfg's, changed or
+  new ones) made and changed on the screen, typed with a keyboard, the value previewed as you type; UNDO.
+  Saved in `/home/lens-board.cfg` (only the hub writes it), with players' HUDs (an earlier `lens-hud.cfg` is
+  read in once). `editors` limits who may edit. One editor at a time, for the player who opened it.
 - **HUD blocks:** a HUD is one or more blocks, each hung from one of nine anchor points (corners, edge
   middles, center) and nudged from it, so it can sit clear of a minimap or other overlay.
 - **HUD elements:** `bar`, `text` (label and value on one line), `alerts` and `gap`. The old `hud` form (one

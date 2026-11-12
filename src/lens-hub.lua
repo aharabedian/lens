@@ -3,7 +3,9 @@
 
   Needs a GPU and screen (tier 3 for the full layout; tier 2 works) and a network card. With OC Glasses
   Glasses Terminals attached, it also draws a small HUD in the glasses linked to each: one terminal per
-  player for HUDs of their own (tap HUD on the dashboard; saved in lens-hud.cfg next to the config).
+  player for HUDs of their own (tap HUD on the dashboard). Tap EDIT to change the dashboard's panels and make
+  views (a keyboard on the screen lets you type them). What's changed on the screen is saved in
+  lens-board.cfg next to the config.
   Usage: lens-hub [path]    (default /home/lens-hub.cfg; optional - see docs/hub.md)
   Tap an alert to acknowledge it; QUIT or Ctrl+C to stop. The work is in /home/lib/lens/hub/.
 ]]
@@ -38,9 +40,10 @@ elseif type(cfg.resolution) == "table" then
 end
 local terminals = {}
 for address in component.list("glasses", true) do terminals[address] = component.proxy(address) end
-local hudPath = (path:match("^(.*)/[^/]*$") or "/home") .. "/lens-hud.cfg"
+local dir = path:match("^(.*)/[^/]*$") or "/home"
 local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, terminals = terminals,
-  hudPath = hudPath, beep = computer.beep })
+  boardPath = dir .. "/lens-board.cfg", hudPath = dir .. "/lens-hud.cfg",
+  keyboard = component.isAvailable("keyboard"), beep = computer.beep })
 if not app then error(path .. ": " .. tostring(why), 0) end
 
 local function main()
@@ -48,7 +51,7 @@ local function main()
   local nextTick = computer.uptime() + 1
   while app.running do
     local ev = table.pack(event.pullMultiple(math.max(0.05, nextTick - computer.uptime()),
-      "modem_message", "touch", "glasses_on", "interrupted"))
+      "modem_message", "touch", "key_down", "clipboard", "glasses_on", "interrupted"))
     local now = computer.uptime()
     if ev[1] == "modem_message" then
       -- modem_message: localAddress, remoteAddress, port, distance, payload
@@ -59,6 +62,12 @@ local function main()
     elseif ev[1] == "touch" then
       -- touch: screenAddress, x, y, button, player
       app:onTouch(math.floor(ev[3]), math.floor(ev[4]), now, ev[6])
+    elseif ev[1] == "key_down" then
+      -- key_down: keyboardAddress, char, code, player
+      app:onKey(ev[3], ev[4], now, ev[5])
+    elseif ev[1] == "clipboard" then
+      -- clipboard: keyboardAddress, text, player
+      app:onClipboard(ev[3], now, ev[4])
     elseif ev[1] == "interrupted" then
       app.running = false
     end

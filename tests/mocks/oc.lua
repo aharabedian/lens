@@ -208,6 +208,7 @@ end })
 ---------------------------------------------------------------- unicode, filesystem, internet
 local unicode = {
   len = function(s) return utf8.len(s) end,
+  char = function(...) return utf8.char(...) end,
   sub = function(s, i, j)
     local n = utf8.len(s)
     j = j or n

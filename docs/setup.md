@@ -6,10 +6,10 @@
 |---|---|
 | Computer case, CPU, RAM (tier 2+), hard drive with OpenOS | Lua 5.3 architecture (shift-right-click the CPU in hand to switch) |
 | **GPU and screen**, tier 3 | The full dashboard (160x50). Tier 2 (80x25) works with a stacked layout |
-| Keyboard | For `lens-setup` |
+| Keyboard | For `lens-setup`, and for typing views on the dashboard's EDIT page (attach it to the screen) |
 | **Network card** that reaches the agents | Wireless (range permitting, or through relays), wired, or a **linked card** for an agent in another dimension. The protocol is the same on every one |
 | Internet Card | For `lens-update` (optional: copy the files by hand instead) |
-| **Glasses Terminal** (OC Glasses), optional | The AR glasses HUD. Place it next to the computer (or connect it with cable) and link your glasses to it |
+| **Glasses Terminal** (OC Glasses), optional | The AR glasses HUD. Place it next to the computer (or connect it with cable) and link your glasses to it. **One per player** gives each their own HUD |
 
 LENS only listens and draws: the hub doesn't need adapters, a database or anything on your networks.
 
