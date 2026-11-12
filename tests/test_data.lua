@@ -80,7 +80,11 @@ local steps = {
     local _, y = M.find("Label", 3)
     return { "touch", "screen", 20, y, 0, "Aaron" }
   end,
-  function() return R.paste(" (HUD)", "Aaron") end,
+  function()
+    R.queue(R.key(require("lens.hub.textfield").KEYS["end"], "Aaron"))   -- the tap put the cursor mid-label
+    R.queue(R.paste(" (HUD)", "Aaron"))
+    return nil
+  end,
   function() return tap("SAVE", "Aaron", 1) end,
   function()
     st.hud = G.find("net 5m eut") ~= nil

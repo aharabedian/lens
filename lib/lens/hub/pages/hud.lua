@@ -25,7 +25,7 @@ local function presets(f, e, actions)
   for _, name in ipairs(e.presets) do
     local n = name
     if e.renaming and n == e.preset then
-      items[#items + 1] = { e.renaming .. "▏", nil, C.sel }
+      items[#items + 1] = { frame.withCursor(e.renaming, e.cursor), nil, C.sel }
     else
       items[#items + 1] = { n, function(p) actions.hudPreset(p, n) end, n == e.preset and C.btnOn or C.btn }
     end

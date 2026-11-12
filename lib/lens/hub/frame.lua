@@ -6,11 +6,16 @@
   f.w, f.h, f.rows[y] = { bg, segs = { { x, text, fg, bg }... } }, f.hits = { { x1, y1, x2, y2, fn }... }
   f:text(x, y, s, fg?, bg?)          text, cut at the right edge
   f:rowBg(y, bg)                     a row's background
-  f:hit(x1, y1, x2, y2, fn)          a touch target; fn(player) runs when it's tapped (the last one made wins)
+  f:hit(x1, y1, x2, y2, fn)          a touch target; fn(player, x, y) runs when it's tapped (the last one made wins)
   f:button(x, y, label, fn?, bg?) -> the x after it (one column of gap)
   f:heading(x, y, text, width)
   f:chips(x, y, width, { { label, fn, bg }... }) -> the row after the last   buttons, wrapping at width
   f:stepper(x, y, label, value, minus, plus)    label, -, value, +
+  f:field(x, y, width, text, cursor, focused, fn)   a text field. Focused: scrolled so the cursor shows, the
+                                     cursor as an inverted cell (cursor: characters before it). Not focused:
+                                     its start, cut with …. A tap calls fn(player, position): where in the text
+  frame.window(length, cursor, width) -> first   the first character a focused field shows (1-based)
+  frame.withCursor(text, cursor) -> text   "▏" at the cursor (nil: the end), for a chip being renamed
   f:dots(x, y, width, dots) -> columns used    state dots (lens.hub.format.dots), colored by level; "+N" when
                                              they don't all fit
   f:editorHeader(title, { { label, fn, bg? }... })   an editor's top row: LENS, title, buttons on the right
@@ -22,6 +27,7 @@
 ]]
 
 local Gui = require("lens.gui")
+local unicode = require("unicode")
 
 local frame = {}
 
@@ -87,6 +93,36 @@ function Frame:stepper(x, y, label, value, minus, plus)
   self:button(x + 9, y, "-", minus)
   self:text(x + 13, y, Gui.rfit(value, 5), C.text)
   self:button(x + 19, y, "+", plus)
+end
+
+function frame.window(length, cursor, width)
+  cursor = cursor or length
+  if length + 1 <= width then return 1 end
+  return math.max(1, math.min(cursor + 2 - width, length + 2 - width))   -- keep the cursor's cell in view
+end
+
+function frame.withCursor(text, cursor)
+  cursor = cursor or Gui.len(text)
+  return unicode.sub(text, 1, cursor) .. "▏" .. unicode.sub(text, cursor + 1)
+end
+
+function Frame:field(x, y, width, text, cursor, focused, fn)
+  local n = Gui.len(text)
+  local first = 1
+  if focused then
+    cursor = math.max(0, math.min(cursor or n, n))
+    first = frame.window(n, cursor, width)
+    self:text(x, y, Gui.fit(unicode.sub(text, first, first + width - 1), width), C.text, C.sel)
+    local under = unicode.sub(text, cursor + 1, cursor + 1)
+    self:text(x + cursor - first + 1, y, under == "" and " " or under, C.sel, C.text)
+  else
+    self:text(x, y, Gui.fit(text, width), C.dim, C.field)
+  end
+  if fn then
+    self:hit(x, y, x + width - 1, y, function(player, tx)
+      fn(player, math.max(0, math.min(n, first - 1 + (tx or x) - x)))
+    end)
+  end
 end
 
 function Frame:dots(x, y, width, dots)

@@ -35,6 +35,7 @@ docs-images: screens
 	cp build/screens/hud-blocks.png docs/images/hud-blocks.png
 	cp build/screens/dash-editor.png docs/images/dash-editor.png
 	cp build/screens/view-editor.png docs/images/view-editor.png
+	cp build/screens/view-editor-rules.png docs/images/view-editor-rules.png
 	cp build/screens/data.png docs/images/data.png
 	cp build/screens/elements.png docs/images/elements.png
 	cp build/screens/pages.png docs/images/pages.png

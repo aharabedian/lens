@@ -12,7 +12,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   level. In the HUD a view's value sits beside its dots.
 - **Several values in one line** (`text`, `values`): `"{stored} / {cap} EU"`, each value formatted.
 - **`when`**: a panel or HUD element shows only while its query is true.
-- The view editor has fields for all of these (Status, Dot states and Values typed on one line), with the preview showing dots and templates; it fits tier 2.
+- The view editor has fields for all of these, with the preview showing dots and templates; it fits tier 2.
+  Status rules and dot states are rows: a color chip to tap (good, warn, bad, off), a query or name, ▲ ▼ ✕.
+- **A cursor in every text field:** tap to place it, ← → Home End to move it, Backspace and Delete, typing and
+  pasting at the cursor; ↑ ↓ move between fields. Long fields scroll to keep it in view.
 - **Dashboard pages:** up to 8 named pages of panels, with tabs under the header; made, renamed and deleted on
   the EDIT page. A 0.2.0 board's panels become the page `Main`.
 - **Alert log** (LOG): alerts happening now, and the last 100 that ended with when and how long they lasted.

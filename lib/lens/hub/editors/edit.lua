@@ -52,6 +52,7 @@ function E.actions(app, a, mine)
     if not i then return nil, err end
     app.editing.page = i
     app.editing.renaming = app.board:pages()[i].name
+    app.editing.cursor = nil
     return true
   end)
   a.editPageDelete = mine(function()
@@ -59,7 +60,9 @@ function E.actions(app, a, mine)
     if ok then app.editing.page = math.max(1, app.editing.page - 1) end
     return ok, err
   end)
-  a.editPageRename = mine(function() app.editing.renaming = app.board:pages()[app.editing.page].name end)
+  a.editPageRename = mine(function()
+    app.editing.renaming, app.editing.cursor = app.board:pages()[app.editing.page].name, nil
+  end)
   a.editPageRenameCancel = mine(function() app.editing.renaming = nil end)
   a.editPageRenameOk = mine(function() return E.rename(app, app.editing) end)
 end
@@ -72,8 +75,8 @@ end
 
 function E.key(app, e, char, code)
   if not e.renaming then return end
-  local text, action = textfield.key(e.renaming, char, code, board.NAME_LENGTH)
-  e.renaming = text
+  local text, cursor, action = textfield.key(e.renaming, e.cursor, char, code, board.NAME_LENGTH)
+  e.renaming, e.cursor = text, cursor
   if action == "enter" then
     local ok, err = E.rename(app, e)
     if not ok then app.editError = err end
@@ -81,7 +84,7 @@ function E.key(app, e, char, code)
 end
 
 function E.paste(_, e, text)
-  if e.renaming then e.renaming = textfield.paste(e.renaming, text, board.NAME_LENGTH) end
+  if e.renaming then e.renaming, e.cursor = textfield.paste(e.renaming, e.cursor, text, board.NAME_LENGTH) end
 end
 
 function E.model(app, e, now)
@@ -96,7 +99,7 @@ function E.model(app, e, now)
   local names = {}
   for _, pg in ipairs(pages) do names[#names + 1] = pg.name end
   return { panels = panels, library = library, canUndo = app.board.canUndo, pages = names, page = e.page,
-    renaming = e.renaming, keyboard = app.env.keyboard ~= false }
+    renaming = e.renaming, cursor = e.cursor, keyboard = app.env.keyboard ~= false }
 end
 
 return E

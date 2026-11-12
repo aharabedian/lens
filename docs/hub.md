@@ -140,12 +140,15 @@ Tap **EDIT** to change the dashboard and the **library** of views. Everything yo
 
 ![The view editor](images/view-editor.png)
 
-Tap a field and type: **a keyboard attached to the hub's screen** is needed for that (Enter goes to the next
-field, Insert pastes your clipboard). Some fields are typed on one line: **Values** `s=sum(lumen_stored_eu); c=sum(lumen_capacity_eu)`,
-**Dot states** `running=good; idle=off; down=bad`, **Status** `bad: sum(down) > 0; warn: $value > 50000; good: sum(running) > 0`
-(in order). Format and Color cycle when tapped. SAVE checks the view like lens-hub.cfg
-would and says what's wrong. A new view goes on the dashboard, and every view is offered in each player's HUD
-editor.
+Tap a field and type: **a keyboard attached to the hub's screen** is needed for that. The cursor goes where
+you tap; ← → move it, Home and End jump, Backspace and Delete erase either side, Enter (or ↓) goes to the next
+field and ↑ back, Insert pastes your clipboard. **Values** is typed on one line: `s=sum(lumen_stored_eu); c=sum(lumen_capacity_eu)`.
+
+**Status** and **Dot states** are rows. **+ RULE** adds a rule: tap its color to cycle good, warn, bad, off, type
+its query, order with ▲ ▼, remove with ✕ (the first true rule wins). **+ STATE** adds a state: its name, then
+its color.
+
+![Status rules in the view editor](images/view-editor-rules.png)
 
 - Views from lens-hub.cfg can be changed here (your version is kept in lens-board.cfg; **BACK TO lens-hub.cfg**
   drops it) but keep their label and can't be deleted.
