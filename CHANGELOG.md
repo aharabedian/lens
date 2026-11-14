@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **The SPECTRA logo** in pixel art for a moment while `lens-hub` starts, with LENS's name and version.
+
+### Changed
+- **Colors** follow the SPECTRA logo: LENS blue (`#5EB4FF`) as the accent on the dashboard, and in the HUD
+  for bars and OK; the logo's ink, background and green, yellow and red for status.
+
 ## [0.3.0] - 2026-11-12
 
 Status you define, pages, presets, a log, and editing that's comfortable on the screen. Works with PRISM 1.2.0

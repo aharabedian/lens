@@ -23,6 +23,7 @@ local term      = require("term")
 local config    = require("lens.hub.config")
 local App       = require("lens.hub.app")
 local Gui       = require("lens.gui")
+local splash    = require("lens.splash")
 
 local path = ({ ... })[1] or "/home/lens-hub.cfg"
 local cfg, err = config.load(path)
@@ -45,6 +46,8 @@ local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem
   boardPath = dir .. "/lens-board.cfg",
   keyboard = component.isAvailable("keyboard"), beep = computer.beep })
 if not app then error(path .. ": " .. tostring(why), 0) end
+splash.show(gpu, w, h, "LENS", require("lens.version"), Gui.C.accent)
+os.sleep(splash.SECONDS)   -- yields: OpenOS keeps running while the logo shows
 
 local function main()
   app:start(computer.uptime())

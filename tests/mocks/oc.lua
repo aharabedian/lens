@@ -14,6 +14,7 @@
                          last gpu.setResolution
   M.row(y), M.find(text, minY, minX), M.dump(path)   read what the GPU drew
   M.fgAt(x, y), M.bgAt(x, y)
+  M.slept                seconds waited in os.sleep (which OpenOS adds; time passes)
   M.gpuCalls             set + fill calls so far
   M.beeps, M.cleared
   M.web[url] = text      served by internet.request (missing -> 404, { status = N } -> HTTP N)
@@ -69,6 +70,13 @@ M.computer = {
   beep = function() M.beeps = M.beeps + 1 end,
 }
 function M.setTime(t) M.time = t end
+
+-- OpenOS adds os.sleep (plain Lua has none): it waits, yielding, so time passes. M.slept adds it up.
+M.slept = 0
+os.sleep = function(seconds) -- luacheck: ignore 142
+  M.slept = M.slept + (seconds or 0)
+  M.time = M.time + (seconds or 0)
+end
 
 local function pull(timeout)
   M.pulls = M.pulls + 1

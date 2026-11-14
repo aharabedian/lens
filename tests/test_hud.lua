@@ -142,7 +142,7 @@ end
 do
   local G = glassesMock.new()
   newHud(G.proxy, opts({ colors = "byte" })):draw(model())
-  check(G.live()[2].color[1] == 0x4f and G.live()[1].alpha == 89, 'colors = "byte": 0..255 colors and alpha')
+  check(G.live()[2].color[1] == require("lens.hub.hud").COLORS.ok >> 16 and G.live()[1].alpha == 89, 'colors = "byte": 0..255 colors and alpha')
 
   G = glassesMock.new()
   newHud(G.proxy, opts({ x = 100, y = 50, scale = 2, width = 320 })):draw(model())

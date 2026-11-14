@@ -28,10 +28,11 @@ local unicode = require("unicode")
 
 local hud = {}
 
--- Palette: quiet unless something needs attention.
+-- Palette: quiet unless something needs attention. The SPECTRA logo's colors: LENS blue for bars and OK,
+-- its green, yellow and red for levels, its ink and background.
 hud.COLORS = {
-  text = 0xeef1f4, dim = 0xb4bec8, track = 0x262d36, fill = 0x4fb8a8, backdrop = 0x0d1117,
-  ok = 0x4fb8a8, good = 0x5cc87a, warn = 0xf0b03c, bad = 0xe5534b, stale = 0x8a939c, off = 0x8a939c,
+  text = 0xe6eaee, dim = 0xb4bec8, track = 0x262d36, fill = 0x5eb4ff, backdrop = 0x0b0e11,
+  ok = 0x5eb4ff, good = 0x4fd17a, warn = 0xffd24d, bad = 0xff5c5c, stale = 0x8a939c, off = 0x8a939c,
 }
 local P = hud.COLORS
 local CHAR, LINE = 5.2, 11          -- px per character and per row at scale 1

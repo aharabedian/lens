@@ -69,8 +69,9 @@ local ok, err = R.run{ cfg = CFG, agents = agents(), keyboard = true, terminals 
     local dx, dy = lx, ly + 1
     local dots = {}
     for x = dx, dx + 6, 2 do dots[#dots + 1] = M.fgAt(x, dy) end
-    seen.dots = M.row(dy):sub(1):find("●", 1, true) and dots[1] == 0x4cd17a and dots[2] == 0x4cd17a and dots[3] == 0x4cd17a
-      and dots[4] == 0x7d8a96
+    local C = require("lens.gui").C
+    seen.dots = M.row(dy):sub(1):find("●", 1, true) and dots[1] == C.good and dots[2] == C.good and dots[3] == C.good
+      and dots[4] == C.dim
     seen.template = M.find("10.8G / 11.3G EU", 3) ~= nil
     seen.hiddenDash = not M.find("Draining", 3)
     seen.hudDots, seen.hudHidden = 0, not G.find("Net")
@@ -96,7 +97,7 @@ local ok, err = R.run{ cfg = CFG, agents = agents(), keyboard = true, terminals 
   if t >= 26 and not seen.after then
     seen.after = true
     local dx, dy = M.find("Ore line", 3)
-    seen.down = M.fgAt(dx + 4, dy + 1) == 0xff5c5c
+    seen.down = M.fgAt(dx + 4, dy + 1) == require("lens.gui").C.bad
     local _, ry = M.find("Draining", 3)
     seen.shown = ry and M.find("-1.1k EU/t", ry)
     local net = G.find("-1.1k")
