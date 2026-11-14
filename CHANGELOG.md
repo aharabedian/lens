@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-13
+
 ### Added
 - **The SPECTRA logo** in pixel art for a moment while `lens-hub` starts, with LENS's name and version.
 
