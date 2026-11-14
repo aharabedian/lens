@@ -38,6 +38,7 @@ return {
   { "lib/lens/hub/rules.lua", "lib/lens/hub/rules.lua" },
   { "lib/lens/hub/store.lua", "lib/lens/hub/store.lua" },
   { "lib/lens/metrics.lua", "lib/lens/metrics.lua" },
+  { "lib/lens/splash.lua", "lib/lens/splash.lua" },
   { "lib/lens/setup/hub.lua", "lib/lens/setup/hub.lua" },
   { "lib/lens/setup/input.lua", "lib/lens/setup/input.lua" },
   { "lib/lens/setup/render.lua", "lib/lens/setup/render.lua" },

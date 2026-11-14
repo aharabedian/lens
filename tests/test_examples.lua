@@ -60,7 +60,7 @@ local ok, err = R.run{ cfg = CFG, agents = { ore, power }, script = function(t)
     local x, y = M.find(label, 3)
     return x and M.fgAt(x - 2, y)
   end
-  local RED, YELLOW, GREEN = 0xff5c5c, 0xffd24c, 0x4cd17a
+  local RED, YELLOW, GREEN = require("lens.gui").C.bad, require("lens.gui").C.warn, require("lens.gui").C.good
   seen.ore = M.find("4.2k items", 3) and dotBefore("Ore ") == RED
   seen.machines = M.find("3/5 running", 3) ~= nil
   seen.progress = M.find("30%", 3) ~= nil

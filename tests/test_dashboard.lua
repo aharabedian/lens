@@ -86,6 +86,7 @@ do
   local n = net.new()
   local hubModem = n:endpoint("hub")
   local seen = {}
+  local slept = M.slept
   local ok, err = run(n, hubModem, {}, H.TMP .. "/missing.cfg", function(t)
     if t >= 3 and not seen.first then
       seen.first = true
@@ -99,6 +100,8 @@ do
     if t > 10 then return { "interrupted" } end
   end)
   check(ok, "lens-hub runs without a config file" .. (ok and "" or (": " .. tostring(err))))
+  check(M.slept - slept == require("lens.splash").SECONDS, "the SPECTRA logo shows while lens-hub starts")
+  check(not seen.header:find("▀", 1, true), "the first screen replaces the logo")
   check(seen.header:find("LENS", 1, true) and seen.header:find(" OK ", 1, true) and seen.header:find("0 nodes", 1, true)
     and seen.header:find("v" .. require("lens.version"), 1, true), "header: LENS, health OK, no nodes, the version")
   check(seen.waiting and seen.noPanels and seen.quiet, "an empty hub says it's waiting, how to add panels, and all quiet")
@@ -131,7 +134,7 @@ do
       s.running = M.find("2/2") ~= nil
       local _, by = M.find("Ore backlog")
       s.barCells = 0
-      for x = 1, M.W do if M.bgAt(x, by + 1) == 0x5fb4ff then s.barCells = s.barCells + 1 end end
+      for x = 1, M.W do if M.bgAt(x, by + 1) == require("lens.gui").C.info then s.barCells = s.barCells + 1 end end
       s.quiet = M.find("All quiet.") ~= nil
       H.screen("dashboard-running")
       ore.down.mac2 = true
@@ -144,7 +147,7 @@ do
       s.header = M.row(1)
       s.beeps = M.beeps
       local bx = M.find("9.5k items")
-      s.badColor = bx and M.fgAt(bx, select(2, M.find("9.5k items"))) == 0xff5c5c
+      s.badColor = bx and M.fgAt(bx, select(2, M.find("9.5k items"))) == require("lens.gui").C.bad
       s.downText = M.find("1/2") ~= nil
       H.screen("dashboard-alert")
       return tapText("mac2: no power")

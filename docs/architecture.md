@@ -31,7 +31,8 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.dashboard` | Picks the page for the model, then sends the GPU only the rows or segments that changed; touch dispatch |
 | **Program** | `lens.hub.app` | The hub program's state: core, board, HUDs, panels and their history, the one open editor; reacts to packets, touches, keys and ticks |
 | **Setup** | `lens.setup.hub`, `.input`, `.render` | `lens-setup`'s steps, questions on the terminal, `lens-hub.cfg` as commented Lua |
-| **Shared** | `lens.gui` | GPU primitives, the palette, the resolution that fits a screen's shape |
+| **Shared** | `lens.gui` | GPU primitives, the palette (the SPECTRA logo's, LENS blue as the accent), the resolution that fits a screen's shape |
+| | `lens.splash` | The SPECTRA logo in pixel art while `lens-hub` starts: `show(gpu, w, h, name, version, accent)`; `rows(scale)` is pure |
 | | `lens.files` | Reading files, atomic writes, `.bak` |
 | | `lens.discover` | Components, their methods and docs as report lines (`lens-discover`) |
 
@@ -105,6 +106,7 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified**; a one-router base's snapshots arrived fine (2026-11-12), but splitting into parts hasn't been exercised in game |
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |
 | A packet's size is the sum of its values: string length (min 1), number 8, boolean/nil 4; over the limit raises `packet too big`; at most 8 values | **Unverified** |
+| `os.sleep` (OpenOS) waits while yielding; `gpu.set` draws `▀` with the foreground on top (the splash's half-block pixels) | **Unverified** |
 | `modem_message` event: `localAddress, remoteAddress, port, distance, ...values` | **Reported working** (2026-11-12): hub heard a PRISM router; backlog, machine states and a machine-down alert showed on the dashboard |
 | `touch` event: `screenAddress, x, y, button, player` | **Reported working** (2026-11-12): tapping an alert and ACK ALL acknowledge |
 | The block characters `▁`–`▇`, `●`, `✓`, `–` draw on an OpenComputers screen | **Reported working** (2026-11-12): bars, sparklines and symbols look right |

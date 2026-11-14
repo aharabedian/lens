@@ -3,6 +3,10 @@
 **Live Engineering & Network Status.** Base-wide monitoring for **GregTech: New Horizons** on
 **OpenComputers**: one screen, and an AR glasses HUD, for everything your base's computers know.
 
+**[Website](https://aharabedian.github.io/spectra/lens/)** · **[Docs](https://aharabedian.github.io/spectra/lens/docs/)** · [Changelog](CHANGELOG.md) · [Install](#install)
+
+Part of **[SPECTRA](https://github.com/aharabedian/spectra)**, OpenComputers programs for running a GTNH base: 🟧 [PRISM](https://github.com/aharabedian/prism) (items) · **🟦 LENS** (monitoring) · 🟩 [LUMEN](https://github.com/aharabedian/lumen) (power). Each runs on its own.
+
 [PRISM](https://github.com/aharabedian/prism) splits one stream of items into many machines; LENS does the
 opposite and gathers what every system knows into one place. Each system (an **agent**: a PRISM router
 today, power and more to come) pushes its health, metrics and alerts over the network. The **hub** collects

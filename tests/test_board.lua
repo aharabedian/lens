@@ -141,7 +141,7 @@ local steps = {
   function()
     local _, fy = M.find("Format", 3)
     local qx, qy = M.find("lumen_net_5m_eut", 3)
-    st.typed = M.find("Net 5m", 3) and not M.find("Net 5mNet 5m", 3) and qx and M.bgAt(qx + 16, qy) == 0xe6e9ec  -- the cursor cell
+    st.typed = M.find("Net 5m", 3) and not M.find("Net 5mNet 5m", 3) and qx and M.bgAt(qx + 16, qy) == require("lens.gui").C.text  -- the cursor cell
       and M.find("-2.4k", fy)
     st.typedOnce = true
     return { "touch", "screen", 16, fy, 0, "Aaron" }   -- format: auto -> percent
@@ -157,7 +157,7 @@ local steps = {
     H.screen("view-editor")
     local pv = M.find("-2.4k", 3)
     local _, py = M.find("Now", 3)
-    st.preview = pv and M.fgAt(pv, py) == 0xff5c5c
+    st.preview = pv and M.fgAt(pv, py) == require("lens.gui").C.bad
     return tap("SAVE", "Aaron", 1)
   end,
   function()
@@ -186,7 +186,7 @@ local steps = {
   function()
     local _, y = M.find("Net 5m", 3)
     local vx = M.find("-2.4k", y)
-    st.dash = M.find("PANELS", 1) and vx and M.fgAt(vx, y) == 0xff5c5c and not M.find("95%", 3)
+    st.dash = M.find("PANELS", 1) and vx and M.fgAt(vx, y) == require("lens.gui").C.bad and not M.find("95%", 3)
     return tap(" EDIT ", "Bob", 1)
   end,
   function() st.bobNow = M.find("Edit the dashboard", 1) ~= nil; return tap("DONE", "Bob", 1) end,
