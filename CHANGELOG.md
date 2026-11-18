@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-18
+
 ### Added
 - **Dots on the left**: a HUD block's `dots = "left"` (Dots RIGHT / LEFT in the HUD editor) puts state dots
   before the label.
