@@ -210,6 +210,40 @@ do
   check(bg.x == 0 and bg.y + bg.h <= 400, "a block nudged off the view stays on it")
 end
 
+---------------------------------------------------------------- state dots
+-- A view with a value and a status dot: the label and dot stay put when the value has no data ("–"), and a block
+-- with dots = "left" puts them before the label.
+do
+  local G = glassesMock.new()
+  local h = hud.new(G.proxy, { scale = 1, alpha = 0.35 })
+  local function draw(text, side)
+    h:draw(blockModel({ { anchor = "top-left", x = 0, y = 0, width = 160, dots = side, items = {
+      { kind = "text", label = "Ore Backlog", text = text, valued = true, dots = { { name = "Ore Backlog", level = "good" } } },
+      { kind = "text", label = "Ore line", dots = { { level = "good" }, { level = "bad" } } } } } }))
+    local label, dot = G.find("Ore Backlog"), nil
+    for _, t in ipairs(texts(G)) do if t.text == "●" and label and t.y == label.y then dot = t end end
+    return label, dot
+  end
+  local label, dot = draw("0 items")
+  local lx, dx = label.x, dot.x
+  check(dot.x > label.x + G.textWidth(label) and G.find("0 items"), "dots after the label, the value at the right")
+  label, dot = draw("–")
+  H.glasses("hud-dots-no-data", G)
+  local dash = G.find("–")
+  check(label.x == lx and dot.x == dx and dash and near(dash.color, P.stale) and dash.y == label.y,
+    "no data: the label and dot don't move, and a dim – takes the value's place")
+  check(not G.find("Ore B…"), "no data: the label isn't cut short")
+  label, dot = draw("0 items", "left")
+  H.glasses("hud-dots-left", G)
+  check(dot.x == 6 and label.x > dot.x and G.find("0 items"), 'dots = "left": the dot first, then the label')
+  local line = G.find("Ore line")
+  local first
+  for _, t in ipairs(texts(G)) do if t.text == "●" and t.y == line.y and (not first or t.x < first.x) then first = t end end
+  check(first and first.x == 6 and line.x > first.x, 'dots = "left": a row of dots alone comes first too')
+  local _, err = config.check({ hud = { blocks = { { dots = "up" } } } })
+  check(err and err:find('dots must be "left" or "right"', 1, true), "a block's dots: left or right")
+end
+
 ---------------------------------------------------------------- in lens-hub
 local R = require("hubrun")(H)
 local PRISM = R.agent{ node = "prism-ore", role = "prism", setup = function(m)

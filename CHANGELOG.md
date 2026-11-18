@@ -5,6 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Dots on the left**: a HUD block's `dots = "left"` (Dots RIGHT / LEFT in the HUD editor) puts state dots
+  before the label.
+
+### Fixed
+- **HUD dots no longer jump** when a view's value has no data: the label stays whole, the dot stays put and a
+  dim `–` takes the value's place.
+
 ## [0.4.0] - 2026-11-13
 
 ### Added
