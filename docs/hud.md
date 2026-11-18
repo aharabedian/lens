@@ -17,6 +17,9 @@ player. For HUDs of their own, **each player links their glasses to their own te
 hub computer. The hub learns who wears which when they put their glasses on, and places each terminal's HUD for
 its wearer's view size.
 
+`lens-hub` owns its terminals: at start it removes every widget on them, so a HUD left frozen by a crash or a
+computer switched off doesn't stay next to the new one. Don't share a terminal with another program.
+
 `hud` in `lens-hub.cfg` is everyone's default. Each player changes their own on the dashboard (tap **HUD**), and
 keeps up to 8 named HUDs (**presets**) to switch between: one for the base, one for mining, one for power. Everyone
 starts with one, `main`.
@@ -35,6 +38,7 @@ Tap **HUD** in the dashboard's header. It opens for whoever tapped, and only the
 | POSITION | The anchor grid (↖ ↑ ↗ ← • → ↙ ↓ ↘), then ◀ ▲ ▼ ▶ to nudge by the step (tap it: 1, 8 or 32 px). Watch the glasses as you tap |
 | Width, Size | The block's width; text size for all your blocks |
 | BACK TO DEFAULT | This HUD shows `hud` from `lens-hub.cfg` again |
+| REFRESH | Wipes every terminal's widgets and draws the HUDs again, settings unchanged: for a HUD that's stuck or doubled |
 | DONE | Back to the dashboard (it also closes after a minute without a tap) |
 
 Changes show in your glasses straight away and are saved in `lens-board.cfg`. The views offered are the whole

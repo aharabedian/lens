@@ -5,6 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **REFRESH** in the HUD editor: wipes the glasses and draws the HUDs again, settings unchanged, for a HUD
+  that's stuck or doubled.
+
+### Fixed
+- **No frozen second HUD after a restart**: `lens-hub` removes every widget on its terminals at start, so one
+  left by a crash or a computer switched off goes away.
+
 ## [0.4.0] - 2026-11-13
 
 ### Added

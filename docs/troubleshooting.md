@@ -29,6 +29,7 @@ reported. `lens-discover` shows what the hub computer can see.
 | A bar has no fill | Bars need `max`, `of` or `percent` |
 | Text is cut off with … | Widen the block (**Width** in the HUD editor, or `width`; about 5 GUI pixels per character at scale 1) |
 | Colors are black or white blocks | Another glasses mod taking 0..255 colors: `hud.colors = "byte"` |
+| A second HUD, or one that's stuck and doesn't update | Widgets outlive the computer, so a crash can leave a frozen copy. Tap **HUD** on the dashboard, then **REFRESH**: it wipes the glasses and draws them again (restarting `lens-hub` does too) |
 | Everyone sees the same HUD | A terminal shows one HUD to everyone linked to it: link each player's glasses to a terminal of their own ([hud.md](hud.md#a-hud-for-each-player)) |
 | My HUD sits under the minimap or another overlay | Tap **HUD** on the dashboard, pick an anchor, nudge it clear (watch the glasses while you tap) |
 
