@@ -34,6 +34,7 @@ Tap **HUD** in the dashboard's header. It opens for whoever tapped, and only the
 | IN BLOCK n | Its elements in order: tap one to remove it, **BAR / TEXT** switches how it shows, ▲ ▼ order. Below: every view in the library to add, **+ ALERTS** (then − / + for how many) and **+ GAP** |
 | POSITION | The anchor grid (↖ ↑ ↗ ← • → ↙ ↓ ↘), then ◀ ▲ ▼ ▶ to nudge by the step (tap it: 1, 8 or 32 px). Watch the glasses as you tap |
 | Width, Size | The block's width; text size for all your blocks |
+| Dots RIGHT / LEFT | Where the block's state dots go: after the label, or before it |
 | BACK TO DEFAULT | This HUD shows `hud` from `lens-hub.cfg` again |
 | DONE | Back to the dashboard (it also closes after a minute without a tap) |
 
@@ -72,12 +73,13 @@ hud = {
 | `anchor` | `"top-right"` | The point it hangs from: `"top-left"`, `"top"`, `"top-right"`, `"left"`, `"center"`, `"right"`, `"bottom-left"`, `"bottom"`, `"bottom-right"` |
 | `x`, `y` | 4 in from the edges the anchor touches | GUI pixels from the anchor, **right and down positive** (3 screen pixels each at GUI scale 3). A block never leaves the view |
 | `width` | `160` | GUI pixels; text takes about 5 per character at scale 1 |
+| `dots` | `"right"` | Where state dots go: `"right"` after the label, `"left"` before it |
 | `elements` | `{}` | Top to bottom, below |
 
 | Element | Shows |
 |---|---|
 | `{ kind = "bar", ...a view }` | Label, a bar (with `max`, `of` or `format = "percent"`), value |
-| `{ kind = "text", ...a view }` | Label, then the value on the right. A view with `status` or `dots` shows its dots after the label |
+| `{ kind = "text", ...a view }` | Label, then the value on the right. A view with `status` or `dots` shows its dots after the label (or before it: the block's `dots`). A view with a value keeps its place without data and shows a dim `–` |
 | `{ kind = "alerts", count = 3 }` | The newest unacknowledged alerts, then `+N more` |
 | `{ kind = "gap" }` | Half a row of space |
 

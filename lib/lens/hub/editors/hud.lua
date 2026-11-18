@@ -12,7 +12,8 @@
                          rename = a lens.hub.textfield field | nil (the active preset's new name, being typed) }
   Actions: hud(player) opens it; hudDone, hudReset, hudBlock(i), hudBlockAdd, hudBlockRemove, hudToggle(label),
   hudKind(i), hudMove(i, -1 | 1), hudAlerts(-1 | 1), hudGap, hudRemove(i), hudAnchor(anchor), hudNudge(dx, dy),
-  hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1); presets: hudPreset(name), hudPresetAdd, hudPresetDelete,
+  hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1), hudDots (the block's dots: right / left);
+  presets: hudPreset(name), hudPresetAdd, hudPresetDelete,
   hudRename (start typing a new name), hudRenameOk, hudRenameCancel. Keys and pastes type the name; Enter is OK.
   Changes are saved at once (huds:change).
 ]]
@@ -82,6 +83,7 @@ function E.actions(app, a, mine)
     if dir > 0 then b.elements[#b.elements + 1] = { kind = "alerts", count = 1 } end
   end)
   a.hudGap = change(function(_, b) b.elements[#b.elements + 1] = { kind = "gap" } end)
+  a.hudDots = change(function(_, b) b.dots = b.dots ~= "left" and "left" or nil end)
   a.hudRemove = change(function(_, b, i) table.remove(b.elements, i) end)
   a.hudAnchor = change(function(_, b, anchor)
     b.anchor = anchor
@@ -147,7 +149,7 @@ function E.model(app, e)
   end
   local presets, active = app.huds:presets(e.player)
   return { own = s.own, scale = s.scale, blocks = #s.blocks, block = e.block, anchor = b.anchor, x = b.x, y = b.y,
-    width = b.width, rows = rows, hidden = hidden, step = e.step, wearing = app.huds:wearing(e.player),
+    width = b.width, dots = b.dots or "right", rows = rows, hidden = hidden, step = e.step, wearing = app.huds:wearing(e.player),
     presets = presets, preset = active, renaming = e.rename and e.rename.text, cursor = e.rename and e.rename.cursor,
     keyboard = app.env.keyboard ~= false }
 end

@@ -14,7 +14,8 @@
   hs:catalog(views) -> { view... }      what a player can pick: `views` (the board's library), then views in
                                         the default HUD with other labels (a label names a view)
   hs:settings(player) -> s              the player's active preset, or a copy of the defaults:
-    { own = bool, preset = name, scale, blocks = { { anchor, x, y, width, elements = { element... } }... } }
+    { own = bool, preset = name, scale, blocks = { { anchor, x, y, width, dots?, elements = { element... } }... } }
+    dots: "left" puts state dots before the label (lens.hub.hud); nil: after it
     element: { kind = "bar" | "text", view = label } | { kind = "alerts", count } | { kind = "gap" }
   hs:change(player, fn)                 fn(s) edits the active preset; saved at once -> true | nil, err
   hs:reset(player)                      the active preset back to the defaults -> true | nil, err
@@ -76,7 +77,8 @@ local function clean(s)
       local anchor = ANCHOR[b.anchor] and b.anchor or "top-right"
       local dx, dy = config.offset(anchor)
       local nb = { anchor = anchor, x = type(b.x) == "number" and b.x or dx, y = type(b.y) == "number" and b.y or dy,
-        width = within(b.width, huds.LIMITS.width) and b.width or 160, elements = {} }
+        width = within(b.width, huds.LIMITS.width) and b.width or 160, dots = b.dots == "left" and "left" or nil,
+        elements = {} }
       for _, el in ipairs(type(b.elements) == "table" and b.elements or {}) do
         if type(el) == "table" and #nb.elements < huds.LIMITS.elements[2] then
           if (el.kind == "bar" or el.kind == "text") and type(el.view) == "string" then
@@ -321,7 +323,7 @@ function Huds:blocksFor(player, byLabel, evaluate)
       if el.kind == "bar" or el.kind == "text" then
         local view = byLabel[el.view]
         if view then
-          local item = { kind = el.kind }
+          local item = { kind = el.kind, valued = view.value ~= nil or view.text ~= nil }
           items[#items + 1] = item
           views[#views + 1] = view
           slots[#slots + 1] = item
@@ -330,7 +332,7 @@ function Huds:blocksFor(player, byLabel, evaluate)
         items[#items + 1] = { kind = el.kind, count = el.count }
       end
     end
-    blocks[i] = { anchor = b.anchor, x = b.x, y = b.y, width = b.width, items = items }
+    blocks[i] = { anchor = b.anchor, x = b.x, y = b.y, width = b.width, dots = b.dots, items = items }
   end
   for i, v in ipairs(evaluate(views)) do
     local item = slots[i]
