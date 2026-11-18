@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **`dots = "left"` on a HUD block in `lens-hub.cfg`** is kept: it was dropped, so the dots stayed on the
+  right until the block was changed in the HUD editor.
+
 ## [0.5.0] - 2026-11-18
 
 ### Added

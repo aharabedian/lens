@@ -29,6 +29,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_elements.lua` | What a view can show, through `lens-hub`: state dots, several values in one line, `when`, on the dashboard, in the HUD and in the view editor (tier 2 too) |
 | `test_pages.lua` | The dashboard's pages and the alert log through `lens-hub`: + PAGE named on the keyboard, panels per page, tabs, deleting a page, LOG now and earlier, a 3 × 4 screen |
 | `test_examples.lua` | Every view in `docs/examples.md` as a panel in `lens-hub`, against a PRISM ore line and a LUMEN power room: each shows what the doc says |
+| `test_showcase.lua` | A busy base for the README's images (`make docs-images`): three PRISM routers, LUMEN and your own program, a full dashboard with live alerts, and a HUD block whose `dots = "left"` comes from `lens-hub.cfg` |
 | `test_data.lua` | The DATA page through `lens-hub`: metrics, series, filters, functions, SAVE AS PANEL, ADD TO MY HUD, counters as rates, `editors`, paging, narrow screens |
 | `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering, `--widgets`, `--events`, `--glasses-test` |
 | `test_setup.lua` | `lens-setup` with scripted answers: finding a PRISM router, its panels and HUD line (as blocks; an old one-corner hud rewritten), the file (loads, comments, `lens-hub` runs it), `.shrc`, re-runs keeping edits, PRISM's port refused, no agents, no network card, no glasses, cancelling, a broken file |
