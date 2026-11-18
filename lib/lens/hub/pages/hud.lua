@@ -3,7 +3,7 @@
 
   hud.draw(f, e, actions)   e: the editor's model: { player, presets = { name... }, preset = the active one,
                             renaming = text | nil, keyboard, own, scale, blocks = n, block = i (being edited),
-                            anchor, x, y, width, step, rows = { { index, kind, label?, count? }... } (the block's
+                            anchor, x, y, width, dots = "right" | "left", step, rows = { { index, kind, label?, count? }... } (the block's
                             elements), hidden = { label... } (views that could be added), wearing = n, error,
                             closesIn }
 ]]
@@ -103,7 +103,7 @@ local function elements(f, e, actions, lx, lw)
   end
 end
 
--- The anchor grid, nudges and the step, width, size, back to default, and whether anyone sees it.
+-- The anchor grid, nudges and the step, width, size, dots' side, back to default, and whether anyone sees it.
 local function position(f, e, actions, rx)
   f:text(rx, 5, "POSITION", C.accent)
   for k, a in ipairs(GRID) do
@@ -121,6 +121,8 @@ local function position(f, e, actions, rx)
     function(p) actions.hudWidth(p, 1) end)
   f:stepper(rx, 13, "Size", ("%.2g"):format(e.scale), function(p) actions.hudScale(p, -1) end,
     function(p) actions.hudScale(p, 1) end)
+  f:text(rx, 14, "Dots", C.dim)
+  f:button(rx + 9, 14, e.dots == "left" and "LEFT" or "RIGHT", actions.hudDots, C.sel)
   if e.own then f:button(rx, 15, "BACK TO DEFAULT", actions.hudReset, C.line) end
   local note
   if e.wearing == 0 then

@@ -3,10 +3,12 @@
 
   local h = require("lens.hub.hud").new(proxy, opts)    opts = cfg.hud (lens.hub.config has the defaults)
   h:draw(model)     model: the dashboard's model plus model.screen = { w, h } (the wearer's GUI size, from
-                    glasses_on; default 854 x 480) and model.hudBlocks = { { anchor, x, y, width, items }... },
-                    items evaluated: { kind = "bar" | "text", label, text, frac, level, dots? } | { kind =
+                    glasses_on; default 854 x 480) and model.hudBlocks = { { anchor, x, y, width, dots?, items }... },
+                    items evaluated: { kind = "bar" | "text", label, text, frac, level, valued?, dots? } | { kind =
                     "alerts", count } | { kind = "gap" }. An item with dots shows its label, a colored dot
-                    per group and its value (when it has one), whatever its kind. Widgets are made on first
+                    per group and, when its view has a value (valued), the value at the right ("–" without data,
+                    dim, so nothing moves), whatever its kind. A block's dots = "left" puts them before the
+                    label; otherwise they follow it (or, with no value, line up with the bars). Widgets are made on first
                     use; afterwards a setter is called only when its value changed, because every call is a
                     component call.
   opts              scale, alpha, colors (lens.hub.config's hud)
@@ -173,22 +175,32 @@ function Hud:block(i, b, m, unacked, used)
       self:text(mark(k .. "v"), right - valueW, y, cut(item.text or "-", valueChars), item.level and P[item.level] or P.text)
       y = y + line
     elseif item.dots then
-      -- State dots. With a value (one dot for a line, say): label, the dots, the value at the right, the label as
-      -- long as fits. Without: a short label and a dot per group, lined up with the bars' columns.
-      local value = (item.text and item.text ~= "–") and cut(item.text, math.max(4, math.floor((right - tx) / char) - 8)) or nil
+      -- State dots. The layout follows what the view is, not whether it has data now, so nothing moves when a
+      -- value goes missing. With a value (one dot for a line, say): label, the dots, the value at the right ("–"
+      -- without data), the label as long as fits. Without: a short label and a dot per group, lined up with the
+      -- bars' columns. Dots on the left: the dots, then the label as long as fits.
+      local value = item.valued and cut(item.text or "–", math.max(4, math.floor((right - tx) / char) - 8)) or nil
       local vw = value and math.ceil(unicode.len(value) * char) or 0
-      local dotsW = math.ceil(#item.dots * 2 * char)
-      local labelText, dx
-      if value then
-        local room = math.floor((right - vw - tx - dotsW - 2 * char) / char)
-        labelText = cut(item.label, math.max(labelChars, room))
-        dx = tx + math.ceil((unicode.len(labelText) + 1) * char)
-        self:text(mark(k .. "v"), right - vw, y, value, item.level and P[item.level] or P.text)
-      else
-        labelText, dx = cut(item.label, labelChars), tx + labelW
-      end
-      self:text(mark(k .. "l"), tx, y, labelText, P.dim)
       local stop = value and (right - vw - char) or right
+      local dotsW = math.ceil(#item.dots * 2 * char)
+      if value then
+        local missing = value == "–"
+        self:text(mark(k .. "v"), right - vw, y, value, missing and P.stale or item.level and P[item.level] or P.text)
+      end
+      local labelText, lx, dx
+      if b.dots == "left" then
+        local shown = math.min(#item.dots, math.max(0, math.floor((stop - tx) / (2 * char))))
+        dx, lx = tx, tx + math.ceil(shown * 2 * char)
+        local room = math.floor((stop - lx) / char)
+        labelText = room >= 2 and cut(item.label, room) or nil
+      elseif value then
+        local room = math.floor((stop - tx - dotsW - char) / char)
+        labelText, lx = cut(item.label, math.max(labelChars, room)), tx
+        dx = tx + math.ceil((unicode.len(labelText) + 1) * char)
+      else
+        labelText, lx, dx = cut(item.label, labelChars), tx, tx + labelW
+      end
+      if labelText then self:text(mark(k .. "l"), lx, y, labelText, P.dim) end
       local fit = math.max(0, math.floor((stop - dx) / (2 * char)))
       for d = 1, math.min(#item.dots, fit) do
         local dot = item.dots[d]

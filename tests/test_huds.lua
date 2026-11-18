@@ -184,7 +184,8 @@ local steps = {
     seen.step = M.find("32px", 5) ~= nil
     return R.tap("▼", "Bob", 5, 60)                  -- the nudge's, not a list row's
   end,
-  function() seen.down = GB.live()[1].y == 36; return R.tap(" + ", "Bob", 3) end,   -- a new block
+  function() seen.down = GB.live()[1].y == 36; return R.tap(" RIGHT ", "Bob", 5) end,
+  function() seen.left = M.find(" LEFT ", 5) ~= nil; return R.tap(" + ", "Bob", 3) end,   -- a new block
   function()
     seen.block2 = M.find("IN BLOCK 2", 5) and M.find("REMOVE 2", 3)
     return R.tap("[ ] Net 5m", "Bob", 5)
@@ -210,6 +211,7 @@ check(seen.text, "BAR / TEXT switches an element to text, colored by its view (g
 check(seen.anchored, "the anchor grid moves only the tapper's block")
 check(seen.nudged, "arrows nudge it by the step, and the editor says where it is")
 check(seen.step and seen.down, "the step cycles 1, 8, 32 px")
+check(seen.left, "Dots RIGHT / LEFT switches the block's dots to the left")
 check(seen.block2 and seen.second, "+ adds a block, edited on its own")
 check(seen.closed, "DONE goes back to the dashboard")
 check(seen.aaron, "another player opens their own editor")
@@ -218,7 +220,7 @@ local saved = files.loadTable(dir .. "/lens-board.cfg") or {}
 local bob = saved.huds and saved.huds.Bob and saved.huds.Bob.presets[1]
 local blk = bob and bob.blocks[1]
 check(bob and bob.name == "main" and saved.huds.Bob.active == "main" and bob.scale == 1
-  and blk.anchor == "top-left" and blk.x == 12 and blk.y == 36 and blk.width == 160
+  and blk.anchor == "top-left" and blk.x == 12 and blk.y == 36 and blk.width == 160 and blk.dots == "left"
   and blk.elements[#blk.elements].kind == "text" and blk.elements[#blk.elements].view == "Net 5m" and not saved.huds.Aaron,
   "Bob's settings are saved in lens-board.cfg next to the config; Aaron has none")
 

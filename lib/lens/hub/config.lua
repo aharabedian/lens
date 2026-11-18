@@ -9,7 +9,7 @@
              color, thresholds, text and values, status, dots, by and states, when. (percent = true is format = "percent")
   resolution: "fit" (fill the screen's shape), "max" (the GPU's largest) or { width, height }
   hud: the AR glasses HUD (HUD_DEFAULTS: scale, alpha, colors); hud = false turns it off. After check, hud.blocks
-       is always there: { { anchor, x, y, width, elements = { element... } }... } where an element is a view
+       is always there: { { anchor, x, y, width, dots?, elements = { element... } }... } where an element is a view
        with kind = "bar" | "text", or { kind = "alerts", count }, or { kind = "gap" }. x, y: GUI pixels from the
        anchor point, right and down positive (default 4 in from the edges).
        Written without blocks (the 0.1 form: anchor, x, y as margins, width, alerts, bars; ONE_CORNER has their
@@ -228,6 +228,7 @@ function config.checkBlocks(blocks)
     b.width = b.width or 160
     if type(b.x) ~= "number" or type(b.y) ~= "number" then return where .. ": x and y must be numbers" end
     if type(b.width) ~= "number" or b.width <= 0 then return where .. ": width must be a number above 0" end
+    if b.dots ~= nil and b.dots ~= "left" and b.dots ~= "right" then return where .. ': dots must be "left" or "right"' end
     b.elements = b.elements or {}
     if type(b.elements) ~= "table" then return where .. ": elements must be a list" end
     for j, el in ipairs(b.elements) do

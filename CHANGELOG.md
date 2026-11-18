@@ -6,10 +6,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Dots on the left**: a HUD block's `dots = "left"` (Dots RIGHT / LEFT in the HUD editor) puts state dots
+  before the label.
 - **REFRESH** in the HUD editor: wipes the glasses and draws the HUDs again, settings unchanged, for a HUD
   that's stuck or doubled.
 
 ### Fixed
+- **HUD dots no longer jump** when a view's value has no data: the label stays whole, the dot stays put and a
+  dim `–` takes the value's place.
 - **No frozen second HUD after a restart**: `lens-hub` removes every widget on its terminals at start, so one
   left by a crash or a computer switched off goes away.
 
