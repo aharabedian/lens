@@ -15,6 +15,8 @@
   hud.place(block, w, h, screen) -> x, y   a block's top left: its anchor (one of nine) plus x, y (right and
                     down positive), kept on screen
   h:clear()         remove every widget it made
+  h:wipe()          remove every widget on the terminal (removeAll: its own and any an earlier run left behind)
+                    and forget its own; the next draw makes them again
   h.calls           component calls made so far (shown on the dashboard, to see what the HUD costs)
   hud.rgb(hex, units) -> r, g, b   0xRRGGBB as "float" (0..1, OC Glasses) or "byte" (0..255)
 
@@ -252,6 +254,11 @@ function Hud:draw(m)
   for _, key in ipairs(self.order) do
     if not used[key] then self:set(self.slots[key], "setVisible", false) end
   end
+end
+
+function Hud:wipe()
+  self.calls = self.calls + 1
+  if pcall(self.proxy.removeAll) then self.slots, self.order = {}, {} else self:clear() end
 end
 
 function Hud:clear()

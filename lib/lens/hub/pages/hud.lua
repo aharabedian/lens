@@ -134,7 +134,8 @@ local function position(f, e, actions, rx)
 end
 
 function hud.draw(f, e, actions)
-  f:editorHeader("HUD for " .. tostring(e.player or "?"), { { "DONE", actions.hudDone } })
+  f:editorHeader("HUD for " .. tostring(e.player or "?"),
+    { { "REFRESH", actions.hudRefresh, C.line }, { "DONE", actions.hudDone } })
   presets(f, e, actions)
   blocks(f, e, actions)
   local lw = math.min(46, f.w - 36)

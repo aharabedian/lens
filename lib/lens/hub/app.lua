@@ -255,6 +255,7 @@ function App:start(now)
     modem.open(self.cfg.port)
     modem.broadcast(self.cfg.port, self.hub:hello())
   end
+  if self.huds then self.huds:wipe() end      -- widgets an earlier run left (crash, power off) would stay frozen
   self:tick(now)
 end
 

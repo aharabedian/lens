@@ -30,6 +30,8 @@
   huds.MAX_PRESETS, huds.NAME_LENGTH
   hs:wearing(player) -> n               terminals that player is wearing glasses on
   hs:clear()                            remove every widget
+  hs:wipe()                             remove every widget on every terminal, any left by an earlier run too
+                                        (lens.hub.hud's wipe); the next draw makes the HUDs again
   hs.calls, hs.error                    component calls so far (all terminals); the latest draw failure, or nil
   huds.LIMITS                           { scale, width, count, blocks, elements } -> { min, max, step }
 
@@ -363,6 +365,10 @@ function Huds:draw(m, evaluate, views)
   end
   self.calls = calls
   self.error = errs[1]
+end
+
+function Huds:wipe()
+  for _, t in ipairs(self.terms) do pcall(t.hud.wipe, t.hud) end
 end
 
 function Huds:clear()

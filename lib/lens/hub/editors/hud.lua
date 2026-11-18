@@ -10,6 +10,7 @@
 
   State (app.editing): { kind = "hud", player, block = the block being edited, step = nudge px (1, 8, 32),
                          rename = a lens.hub.textfield field | nil (the active preset's new name, being typed) }
+  Refresh: hudRefresh wipes every terminal's widgets (lens.hub.huds' wipe) and the HUDs are drawn again; settings stay.
   Actions: hud(player) opens it; hudDone, hudReset, hudBlock(i), hudBlockAdd, hudBlockRemove, hudToggle(label),
   hudKind(i), hudMove(i, -1 | 1), hudAlerts(-1 | 1), hudGap, hudRemove(i), hudAnchor(anchor), hudNudge(dx, dy),
   hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1), hudDots (the block's dots: right / left);
@@ -42,6 +43,7 @@ function E.actions(app, a, mine)
     end)
   end
   a.hudDone = mine(function() app:close() end)
+  a.hudRefresh = mine(function() app.huds:wipe() end)
   a.hudReset = mine(function(player) app.editing.block = 1; return app.huds:reset(player) end)
   a.hudBlock = mine(function(_, i) app.editing.block = i end)
   a.hudStepSize = mine(function()

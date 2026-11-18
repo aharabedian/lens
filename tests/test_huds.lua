@@ -264,6 +264,41 @@ check(flow.adding and flow.named, "+ makes a copy and asks for its name; typing 
 check(flow.mining and flow.main, "each HUD keeps its own elements; tapping a tab switches, the glasses follow")
 check(flow.deleted, "DELETE removes the active HUD and shows the next")
 
+-- Widgets left on a terminal by an earlier run (a crash, the computer switched off) are wiped at start, and
+-- REFRESH in the HUD editor wipes the glasses and draws them again, keeping the settings.
+M.setTime(0)
+M.resize(160, 50)
+local GR = terminal("Aaron")
+local stale = GR.proxy.addTextLabel()
+stale.setText("Ore 1.2M (frozen)")
+local wipe = {}
+local rstep = 0
+local rErr
+ok, rErr = R.run{ cfg = HUB_CFG, dir = "refresh", agents = { POWER }, terminals = { ["gl-a"] = GR },
+  script = function(t)
+    if t < 3 then return nil end
+    rstep = rstep + 1
+    if rstep == 1 then
+      wipe.start = not GR.find("frozen") and GR.find("Ore") ~= nil
+      return R.tap(" HUD ", "Aaron", 1)
+    end
+    if rstep == 2 then return R.tap("[ ] Power", "Aaron", 5) end
+    if rstep == 3 then
+      wipe.before = {}
+      for _, w in ipairs(GR.live()) do wipe.before[w.id] = true end
+      return R.tap("REFRESH", "Aaron", 1)
+    end
+    if rstep == 4 then
+      local fresh, old = 0, 0
+      for _, w in ipairs(GR.live()) do if wipe.before[w.id] then old = old + 1 else fresh = fresh + 1 end end
+      wipe.redrawn = old == 0 and fresh > 0 and GR.find("Ore") and GR.find("Power") and M.find("HUD for Aaron", 1)
+    end
+    return "stop"
+  end }
+check(ok, "refresh runs: " .. tostring(rErr))
+check(wipe.start, "at start, widgets left on the terminal by an earlier run are removed")
+check(wipe.redrawn, "REFRESH removes every widget and draws the HUD again, with the same settings")
+
 -- A long list of views: the block's list is cut with "+N more", and the position controls still show.
 M.setTime(0)
 M.resize(80, 25)
