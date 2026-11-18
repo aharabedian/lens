@@ -27,7 +27,8 @@ screens:
 # Refresh the images used in the docs
 docs-images: screens
 	mkdir -p docs/images
-	cp build/screens/dashboard-alert.png docs/images/dashboard.png
+	cp build/screens/showcase-dashboard.png docs/images/dashboard.png
+	cp build/screens/showcase-hud.png docs/images/hud.png
 	cp build/screens/dashboard-tier2.png docs/images/dashboard-tier2.png
 	cp build/screens/hud-quiet.png docs/images/hud-quiet.png
 	cp build/screens/hud-alerts.png docs/images/hud-alerts.png

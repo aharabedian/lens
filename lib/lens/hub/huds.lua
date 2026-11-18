@@ -177,7 +177,7 @@ end
 function Huds:defaultSettings()
   local s = { own = false, scale = self.defaults.scale or 1, blocks = {} }
   for _, b in ipairs(self.defaults.blocks or {}) do
-    local nb = { anchor = b.anchor, x = b.x, y = b.y, width = b.width, elements = {} }
+    local nb = { anchor = b.anchor, x = b.x, y = b.y, width = b.width, dots = b.dots, elements = {} }
     for _, el in ipairs(b.elements) do
       if el.kind == "bar" or el.kind == "text" then
         nb.elements[#nb.elements + 1] = { kind = el.kind, view = el.label }

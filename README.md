@@ -23,7 +23,7 @@ them, notices when one goes quiet, and shows the base at a glance. Agents today:
   previewed as you type); **DATA** shows everything the agents send and builds queries by tapping.
 - **AR glasses HUD** (OC Glasses): blocks of bars, text lines and the newest alerts, placed anywhere in your
   view. One Glasses Terminal per player gives each their own HUD, changed from the dashboard.
-  ![HUD](docs/images/hud-alerts.png)
+  ![HUD](docs/images/hud.png)
 - **Stale detection**: an agent that stops reporting (crashed, unloaded chunk, out of range) raises an alert.
 - **Queries and rules**: Prometheus-style queries (`sum(prism_machine_state{node="prism-ore", state="running"})`)
   for panels, HUD bars and the hub's own alerts, including ones across systems.
