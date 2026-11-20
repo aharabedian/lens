@@ -1,5 +1,5 @@
 --[[ tests/mocks/oc.lua - the parts of OpenComputers / OpenOS the tests need, as `require`-able modules
-  (component, computer, event, serialization, unicode, term, filesystem, internet).
+  (component, computer, event, serialization, unicode, term, filesystem, internet, sides).
 
   local M = require("oc")
   M.serialization        serialize / unserialize, round-tripping like OpenOS (non-pretty mode)
@@ -17,6 +17,8 @@
   M.row(y), M.find(text, minY, minX), M.dump(path)   read what the GPU drew (dump: within the resolution)
   M.fgAt(x, y), M.bgAt(x, y)
   M.slept                seconds waited in os.sleep (which OpenOS adds; time passes)
+  M.redstone()           a redstone card for M.components: { proxy, outputs = { [side] = value } }:
+                         setOutput(side, value) -> the old value, getOutput(side) (OpenComputers' API, unverified here)
   M.gpuCalls             set + fill calls so far
   M.beeps, M.cleared
   M.web[url] = text      served by internet.request (missing -> 404, { status = N } -> HTTP N)
@@ -218,6 +220,20 @@ setmetatable(component, { __index = function(_, k)
   return addr and M.components[addr].proxy or nil
 end })
 
+function M.redstone()
+  local r = { outputs = {}, calls = 0 }
+  r.proxy = {
+    setOutput = function(side, value)
+      r.calls = r.calls + 1
+      local old = r.outputs[side] or 0
+      r.outputs[side] = value
+      return old
+    end,
+    getOutput = function(side) return r.outputs[side] or 0 end,
+  }
+  return r
+end
+
 ---------------------------------------------------------------- unicode, filesystem, internet
 local unicode = {
   len = function(s) return utf8.len(s) end,
@@ -269,7 +285,12 @@ local internet = {
   end,
 }
 
+-- OpenOS's sides: names to numbers (as OpenOS defines them; down/up and north... are the same numbers).
+M.sides = { bottom = 0, top = 1, back = 2, front = 3, right = 4, left = 5,
+  down = 0, up = 1, north = 2, south = 3, west = 4, east = 5 }
+
 package.preload.serialization = function() return M.serialization end
+package.preload.sides         = function() return M.sides end
 package.preload.computer      = function() return M.computer end
 package.preload.event         = function() return event end
 package.preload.component     = function() return component end

@@ -28,6 +28,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_hud.lua` | The HUD on one terminal (`mocks/glasses.lua`): strip, bars, alerts, nothing overlapping, only changed setters, options, blocks from nine anchors with bar / text / gap / alerts, in `lens-hub` (calls per minute), a broken terminal |
 | `test_hudfilter.lua` | An alerts element's `nodes` and `level`: checked, from lens-hub.cfg, and set in the HUD editor (NODES, BAD ONLY), kept in `lens-board.cfg`; what the glasses show |
 | `test_huds.lua` | A HUD per terminal with its wearer's settings (`huds`), presets, and the HUD editor through `lens-hub`: presets, blocks, elements, anchors, nudges, only the tapping player, saved in `lens-board.cfg`, timing out, long lists, tier 2 and 3 × 4 screens |
+| `test_alarm.lua` | The alarm output through `lens-hub` with a redstone card: on with a BAD alert, off on ack, set only on change, `level = "warn"`, 0 on exit, no card; its settings |
 | `test_board.lua` | `lens-board.cfg` (`board`): the library, overrides, renames, deletes, undo, pages, migration from `lens-hud.cfg` and 0.2.0's panels; the EDIT page and view editor through `lens-hub`: typing, pasting, preview, order, remove, `editors`, no keyboard |
 | `test_elements.lua` | What a view can show, through `lens-hub`: state dots, several values in one line, `when`, on the dashboard, in the HUD and in the view editor (tier 2 too) |
 | `test_flash.lua` | A new BAD alert flashes the HUD blocks that list it for 10 seconds, then stops; WARN and muted nodes don't; the calls it costs |
@@ -41,14 +42,14 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_examples.lua` | Every view in `docs/examples.md` as a panel in `lens-hub`, against a PRISM ore line and a LUMEN power room: each shows what the doc says |
 | `test_showcase.lua` | A busy base for the README's images (`make docs-images`): three PRISM routers, LUMEN and your own program, a full dashboard with live alerts, and a HUD block whose `dots = "left"` comes from `lens-hub.cfg` |
 | `test_data.lua` | The DATA page through `lens-hub`: metrics, series, filters, functions, SAVE AS PANEL, ADD TO MY HUD, counters as rates, `editors`, paging, narrow screens |
-| `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering, `--widgets`, `--events`, `--glasses-test` |
+| `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering, `--widgets`, `--events`, `--glasses-test`, `--redstone` |
 | `test_rules.lua` | Alerts made on the screen: `ruledraft`, `rules:keep`, the board's rules; through `lens-hub` on a 3 × 4 screen: EDIT > ALERTS, + NEW typed, NOW, SAVE (fires, saved), SAVE AS ALERT from a panel and DATA, DELETE ALERT |
 | `test_setup.lua` | `lens-setup` with scripted answers: finding a PRISM router, its panels and HUD line (as blocks; an old one-corner hud rewritten), the file (loads, comments, `lens-hub` runs it), `.shrc`, re-runs keeping edits, PRISM's port refused, no agents, no network card, no glasses, cancelling, a broken file |
 | `test_update.lua` | `lens-update`: releases, main, branches, forks, keeping `lens-hub.cfg`, refusing broken downloads |
 | `test_layout.lua` | `manifest.lua` lists every file; one version; no `utf8` in `src/` and `lib/`; every module names itself in its header; **dependencies point one way**; every Lua example in the docs loads (the rules in [architecture.md](../docs/architecture.md#modules)) |
 | `hubrun.lua` | Runs `lens-hub` for feature tests: agents (`R.agent`, with a distance, going silent at `stopAt`, or restarting at `restartAt`), Glasses Terminals, a keyboard, a script of events, `R.tap` / `R.keys` / `R.paste` / `R.queue` |
 | `helper.lua` | Shared setup (`H`): `check`, `run`, `screen` and `glasses` dumps for `make screens` |
-| `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, screen shape, modem, others by type), `unicode`, `filesystem` (with `lastModified` as real time), `internet`, `math.random` as the game's, and a screen tests can read |
+| `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, screen shape, modem, others by type), `unicode`, `filesystem` (with `lastModified` as real time), `sides`, a redstone card (`M.redstone()`), `internet`, `math.random` as the game's, and a screen tests can read |
 | `mocks/glasses.lua` | A Glasses Terminal and its widget objects, as `lens-discover` saw them; records what setters get |
 | `mocks/net.lua` | Several computers' modems in one test, with packet loss and OpenComputers' packet limits |
 

@@ -36,6 +36,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Welcome back** in the HUD: after a while with your glasses off, putting them on shows for 20 seconds how
   long you were away, the alerts that started meanwhile and the nodes that restarted. (Whether logging out counts
   as taking them off is still to be checked in game.)
+- **Alarm output** (`alarm = { side = "north" }`): a redstone card in the hub computer gives a signal while a BAD
+  alert is neither acknowledged nor muted, for a lamp or a siren. Not tried in game yet: `lens-discover --redstone
+  north` is the check.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

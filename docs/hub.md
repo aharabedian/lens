@@ -43,6 +43,7 @@ shape in blocks, so text fills it with no empty borders. Characters are twice as
 | `beep` | `true` | Beep when a new `BAD` alert appears |
 | `sample` | `10` | Seconds between sparkline samples |
 | `timezone` | `nil` | Hours from UTC (`-5`, `1`, `5.5`): the [log](#the-alert-log) shows clock times. `nil`: how long ago |
+| `alarm` | `nil` | [Alarm output](#alarm-output): `{ side = "north" }` (and `level = "warn"` to count warns too) |
 | `glance` | `false` | [Glance mode](#glance-mode): `{ after = 5, views = { "Power", "Ore" } }` (minutes without a tap; the views to show, none: the first page's first five panels). `true`: those defaults |
 | `editors` | `nil` | Player names who may use EDIT: `{ "Steve", "Alex" }`. `nil`: anyone |
 | `resolution` | `"fit"` | `"fit"`: match the screen's shape (see above). `"max"`: the GPU's largest. `{ width, height }`: your own, e.g. `{ 80, 25 }` for bigger text |
@@ -107,6 +108,17 @@ With `glance` set, after `after` minutes without a tap the hub draws at a third 
 3 × 4 screen; half when a third would be under 12 rows), so the text is three times bigger and readable from
 across the room: overall health, the alert count, the views picked for it and the two worst alerts. Any tap goes
 back to the dashboard (that tap does nothing else). Not while an editor is open.
+
+## Alarm output
+
+With a redstone card in the hub computer and `alarm = { side = "north" }`, that side gives a signal (15) while a
+`BAD` alert (with `level = "warn"`, a `WARN` too) is neither acknowledged nor [muted](#muting): wire it to a lamp
+by the door or a siren. Acknowledging or muting turns it off at once, and it's 0 when `lens-hub` stops. It drives
+a lamp or a siren, never a machine or an agent. Without a card the footer says so.
+
+> [!NOTE]
+> Not tried in game yet. `lens-discover --redstone north` sets that side to 15 and leaves it (`--redstone north 0`
+> clears it): check a lamp lights, then what it does when the computer turns off.
 
 ## The panel page
 

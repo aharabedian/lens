@@ -11,6 +11,7 @@
     It sends a describe and a snapshot every 5 s, and answers the hub's hello.
   local ok, err, dir = R.run{ cfg = "return { ... }", dir = "name", keep = bool, agents = { a, ... },
                               terminals = { [address] = glasses mock }, keyboard = true,
+                              components = { [address] = { type, proxy } } (more, e.g. a redstone card),
                               script = function(t) -> event | nil | "stop" }
     Writes cfg to TMP/<dir>/lens-hub.cfg and runs lens-hub on it. The directory is fresh, or with keep = true
     the one from before (a restart); lens-board.cfg and lens-log.cfg appear next to the config. script is
@@ -63,6 +64,7 @@ function R.run(o)
   M.components = {}
   if o.keyboard then M.components["kb000000"] = { type = "keyboard", methods = {} } end
   for addr, G in pairs(o.terminals or {}) do M.components[addr] = { type = "glasses", proxy = G.proxy, methods = {} } end
+  for addr, c in pairs(o.components or {}) do M.components[addr] = { type = c.type, proxy = c.proxy, methods = {} } end
   local dir = H.TMP .. "/" .. (o.dir or "hub")
   if not o.keep then os.execute('rm -rf "' .. dir .. '"') end
   os.execute('mkdir -p "' .. dir .. '"')

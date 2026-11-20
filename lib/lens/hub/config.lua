@@ -20,6 +20,10 @@
   timezone: nil (the log says "3h12m ago") or hours from UTC (-12..14), for clock times in the log
   glance: false, or { after = minutes (5), views = { label... } (none: the first page's first panels) }: glance
           mode, big text after that long without a tap
+  alarm: nil, or { side = "north" (a side name: OpenOS's sides), level = "bad" | "warn" (default "bad": warn
+         also counts with "warn") }: a redstone card's output on that side is 15 while such an alert is neither
+         acknowledged nor muted, else 0
+  config.SIDES          the side names alarm.side takes
 ]]
 
 local query = require("lens.hub.query")
@@ -29,7 +33,7 @@ local config = {}
 
 config.DEFAULTS = {
   node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10, resolution = "fit", editors = nil,
-  timezone = nil, glance = false,
+  timezone = nil, glance = false, alarm = nil,
   nonCritical = {}, panels = {}, rules = {}, hud = {},
 }
 
@@ -47,6 +51,10 @@ end
 config.HUD_DEFAULTS = { scale = 1, alpha = 0.35, colors = "float" }
 -- An old one-corner hud's settings and their defaults; check turns them into one block.
 config.ONE_CORNER = { anchor = "top-right", x = 4, y = 4, width = 160, alerts = 3, bars = {} }
+
+config.SIDES = { "bottom", "top", "back", "front", "right", "left", "down", "up", "north", "south", "west", "east" }
+local SIDE = {}
+for _, s in ipairs(config.SIDES) do SIDE[s] = true end
 
 local THRESHOLDS = { "warnAbove", "badAbove", "warnBelow", "badBelow" }
 
@@ -188,6 +196,14 @@ function config.check(c)
     for _, l in ipairs(g.views) do
       if type(l) ~= "string" then return nil, "glance.views must be a list of view labels" end
     end
+  end
+  if c.alarm ~= nil then
+    local a = c.alarm
+    if type(a) ~= "table" or not SIDE[a.side] then
+      return nil, 'alarm must be { side = "north" } (a side: ' .. table.concat(config.SIDES, ", ") .. ")"
+    end
+    a.level = a.level or "bad"
+    if a.level ~= "bad" and a.level ~= "warn" then return nil, 'alarm.level must be "bad" or "warn"' end
   end
   if c.editors ~= nil then
     if type(c.editors) ~= "table" then return nil, 'editors must be a list of player names: { "Steve" }' end
