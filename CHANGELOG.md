@@ -33,6 +33,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Alerts by node in the HUD**: an alerts element can show only some nodes' alerts (`nodes = "^prism"`) or only
   BAD ones (`level = "bad"`); in the HUD editor, NODES and BAD ONLY. Each player sees the lines they look after.
 - **New-alert flash** in the HUD: a new BAD alert makes the blocks that list it blink for 10 seconds.
+- **Welcome back** in the HUD: after a while with your glasses off, putting them on shows for 20 seconds how
+  long you were away, the alerts that started meanwhile and the nodes that restarted. (Whether logging out counts
+  as taking them off is still to be checked in game.)
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

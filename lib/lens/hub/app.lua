@@ -15,6 +15,11 @@
   app:onKey(char, code, now, player)     a key_down, for the open editor (only its player's)
   app:onClipboard(text, now, player)     a paste, the same way
   app:onGlasses(address, player, width, height, now)   a glasses_on: that terminal's wearer and GUI size
+  app:onGlassesOff(address, player, now)                a glasses_off: when that player took them off
+  Welcome back: a player who puts glasses on after WELCOME_AFTER seconds or more with them off gets, for
+  WELCOME_FOR seconds, a block at the top of their HUD: how long they were away, the alerts that started meanwhile
+  (how many still on, the longest) and the nodes that restarted (model.welcome, lens.hub.huds). Whether logging
+  out sends glasses_off isn't known (docs/architecture.md).
   app:stop()
   app:real(now) -> seconds   real time (lens.hub.clock) at uptime now
   app.logbook                lens.hub.logbook: alerts that ended, lens-hub starting and stopping
@@ -66,6 +71,8 @@ local HISTORY = 120
 local EDIT_TIMEOUT = 60
 local SAVE_LOG = 60          -- seconds between writes of lens-log.cfg
 local FLASH = 10             -- seconds a new bad alert flashes in the HUD
+local WELCOME_AFTER = 60     -- seconds with glasses off before putting them on shows Welcome back
+local WELCOME_FOR = 20       -- seconds it shows
 
 local EDITORS = {
   hud  = require("lens.hub.editors.hud"),
@@ -88,7 +95,7 @@ function app.new(cfg, env)
   local b = board.new(env.boardPath, cfg)
   hub:setRules(b:allRules())          -- lens-hub.cfg's rules and the ones made on the screen (checked on load)
   local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0, now = 0,
-    page = 1, lastTap = 0, flashUntil = {} }, App)
+    page = 1, lastTap = 0, flashUntil = {}, away = {}, welcomes = {} }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
   self.board = b
   self.clock = clock.new(env.filesystem, env.clockPath)
@@ -371,7 +378,7 @@ function App:model(now)
     huds = self.huds ~= nil, editor = self:editorModel(now), notice = self.notice,
     pages = self:pageNames(), page = self.page, logged = self.logbook.count, logError = self.logError,
     glance = self.glancing and { panels = self:evaluate(self:glanceViews(), nil, now) } or nil,
-    flash = self:flashing(now), flashOn = math.floor(now) % 2 == 0,
+    flash = self:flashing(now), flashOn = math.floor(now) % 2 == 0, welcome = self:welcomeRows(now),
   }
 end
 
@@ -404,8 +411,61 @@ function App:onModem(from, port, data, now, distance)
   end
 end
 
+-- What happened between from and to (real seconds): rows for the Welcome back block.
+function App:awaySummary(from, to, now)
+  local started, still, longest, restarted, seen = 0, 0, nil, {}, {}
+  local function consider(a, stop)
+    started = started + 1
+    local long = stop - a.since
+    if not longest or long > longest.long then longest = { text = a.text, long = long } end
+  end
+  for _, e in ipairs(self.logbook:list()) do
+    if e.kind == "alert" and e.since >= from then consider(e, e.at)
+    elseif e.kind == "restart" and e.at >= from and not seen[e.node] then
+      seen[e.node] = true
+      restarted[#restarted + 1] = e.node
+    end
+  end
+  for _, a in ipairs(self.hub.alerts:list()) do
+    local since = to - (now - a.since)
+    if since >= from then
+      consider({ text = a.text, since = since }, to)
+      still = still + 1
+    end
+  end
+  local rows = { { "Welcome back", "away " .. format.duration(to - from) } }
+  if started == 0 then
+    rows[#rows + 1] = { "No new alerts meanwhile", "" }
+  else
+    rows[#rows + 1] = { ("%d alert%s meanwhile"):format(started, started == 1 and "" or "s"), still .. " still on" }
+    rows[#rows + 1] = { "Longest: " .. longest.text, format.duration(longest.long) }
+  end
+  if #restarted > 0 then rows[#rows + 1] = { "Restarted: " .. table.concat(restarted, ", "), "" } end
+  return rows
+end
+
+function App:onGlassesOff(_, player, now)
+  if type(player) == "string" then self.away[player] = self:real(now) end
+end
+
+function App:welcomeRows(now)
+  local out, any = {}, false
+  for player, w in pairs(self.welcomes) do
+    if now < w.untilT then out[player], any = w.rows, true else self.welcomes[player] = nil end
+  end
+  return any and out or nil
+end
+
 function App:onGlasses(address, player, w, h, now)
   if not self.huds then return end
+  local from = type(player) == "string" and self.away[player]
+  if from then
+    self.away[player] = nil
+    local time = self:real(now)
+    if time - from >= WELCOME_AFTER then
+      self.welcomes[player] = { untilT = now + WELCOME_FOR, rows = self:awaySummary(from, time, now) }
+    end
+  end
   self.huds:onGlasses(address, player, w, h)
   if self.running then self:redraw(now, true) end
 end
