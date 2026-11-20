@@ -5,12 +5,14 @@
   lens.hub.pages.node. The editor interface: lens.hub.editors.hud.
 
   State: { kind = "node", player, name }
-  Actions: node(player, name) opens it; nodeDone, nodeForget (a stale node; cfg.editors).
+  Actions: node(player, name) opens it; nodeDone, nodeForget (a stale node; cfg.editors); nodeMute(seconds | false:
+           until it clears), nodeUnmute, alertMute(key) (until it clears), alertUnmute(key) (app:mute, cfg.editors).
   Model: { name, found = bool, health, role, version, boot, interval, ago (seconds since it last reported), stale,
            traffic = core:traffic, restarts = n since the hub started, lastRestart (real) | nil,
            alerts = { alert with since in real seconds }, time, tz,
            band = lens.hub.timeline row | nil, step, ticks (24 hours over the screen's width less 15),
-           metrics = store:nodeMetrics, usedBy = { label... } (views reading its metrics), canForget }
+           metrics = store:nodeMetrics, usedBy = { label... } (views reading its metrics), canForget,
+           muted = { left?, by } | nil (the node's mute), canMute; each alert's muted as on the dashboard }
 ]]
 
 local timeline = require("lens.hub.timeline")
@@ -29,6 +31,10 @@ function E.actions(app, a, mine)
     app.board:forgetNode(app.editing.name)
     app:close()
   end)
+  a.nodeMute = mine(function(player, seconds) return app:mute(player, app.editing.name, nil, seconds or nil) end)
+  a.nodeUnmute = mine(function(player) return app:unmute(player, app.editing.name) end)
+  a.alertMute = mine(function(player, key) return app:mute(player, app.editing.name, key, nil) end)
+  a.alertUnmute = mine(function(player, key) return app:unmute(player, app.editing.name, key) end)
 end
 
 -- Labels of views whose queries read any of these metrics, or name the node.
@@ -50,7 +56,8 @@ local function usedBy(app, name, metricNames)
 end
 
 function E.model(app, e, now)
-  local m = { name = e.name, time = app:real(now), tz = app.cfg.timezone, canForget = app:mayEdit(e.player) }
+  local m = { name = e.name, time = app:real(now), tz = app.cfg.timezone, canForget = app:mayEdit(e.player),
+    canMute = app:mayEdit(e.player) }
   local n
   for _, x in ipairs(app.hub:nodes(now)) do if x.name == e.name then n = x end end
   if not n then return m end
@@ -60,8 +67,10 @@ function E.model(app, e, now)
   m.traffic = app.hub:traffic(e.name)
   m.restarts = #(n.restarts or {})
   if m.restarts > 0 then m.lastRestart = m.time - (now - n.restarts[#n.restarts]) end
+  local mute = app.mutes:node(e.name)
+  if mute then m.muted = { left = mute.ends and math.max(0, mute.ends - m.time) or nil, by = mute.by } end
   m.alerts = {}
-  for _, a in ipairs(app.hub.alerts:list()) do
+  for _, a in ipairs((app:muted(now))) do
     if a.node == e.name then
       local copy = {}
       for k, v in pairs(a) do copy[k] = v end

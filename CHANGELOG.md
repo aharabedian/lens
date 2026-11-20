@@ -22,6 +22,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Missing and restarted nodes**: the hub remembers every node it has heard, so after a restart one that
   doesn't report shows as `STALE` ("not heard since hub start") instead of being absent. A node's restarts are on
   LOG, its node page and the timeline, and 3 within an hour raise a warn.
+- **Mute** a node (1 h, 4 h or until it clears) or one alert from the node page, while you rebuild a line:
+  its alerts stay listed but don't beep, show in HUDs or count towards health. LOG records who muted what.
+  Nothing is sent to the agent.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

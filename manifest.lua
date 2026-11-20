@@ -44,6 +44,7 @@ return {
   { "lib/lens/hub/rules.lua", "lib/lens/hub/rules.lua" },
   { "lib/lens/hub/clock.lua", "lib/lens/hub/clock.lua" },
   { "lib/lens/hub/logbook.lua", "lib/lens/hub/logbook.lua" },
+  { "lib/lens/hub/mutes.lua", "lib/lens/hub/mutes.lua" },
   { "lib/lens/hub/timeline.lua", "lib/lens/hub/timeline.lua" },
   { "lib/lens/hub/store.lua", "lib/lens/hub/store.lua" },
   { "lib/lens/metrics.lua", "lib/lens/metrics.lua" },

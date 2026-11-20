@@ -1,7 +1,7 @@
 --[[ lens.hub.pages.log: the LOG page (lens.hub.editors.log): a timeline of the last 12 or 24 hours (a band per
   node, colored by its worst alert, │ where it restarted), then alerts happening now, then the kept log
   (lens.hub.logbook), newest first: alerts that ended, with when they started and how long they lasted, and when
-  lens-hub started and stopped, and nodes that restarted.
+  lens-hub started and stopped, nodes that restarted, and who muted or unmuted what.
 
   log.draw(f, e, actions)   e: { time, tz, active = alerts:list() with since in real seconds, past = logbook
                             entries (an alert's ackedBy: who acknowledged it), page, hours, timeline =
@@ -47,6 +47,19 @@ local function alertRow(f, y, a, e, past)
 end
 
 local function eventRow(f, y, ev, e)
+  if ev.kind == "mute" or ev.kind == "unmute" then
+    f:text(2, y, Gui.fit(" MUTE", 6), C.accent)
+    local what = ev.key and ("an alert of " .. tostring(ev.node)) or tostring(ev.node)
+    local text
+    if ev.kind == "unmute" then
+      text = ("%s unmuted %s"):format(tostring(ev.by or "?"), what)
+    else
+      local long = ev.ends and ("for " .. frame.ago(ev.ends - ev.at)) or "until it clears"
+      text = ("%s muted %s %s"):format(tostring(ev.by or "?"), what, long)
+    end
+    line(f, y, text, frame.when(ev.at, e.time, e.tz), C.text)
+    return
+  end
   if ev.kind == "restart" then
     f:text(2, y, Gui.fit(" NODE", 6), C.accent)
     line(f, y, tostring(ev.node) .. " restarted", frame.when(ev.at, e.time, e.tz), C.text)

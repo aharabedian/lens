@@ -22,7 +22,7 @@
 
   Each block, top to bottom, with a faint backdrop and a thin strip down the left in the overall health's color:
     bar: label, bar (fill colored by its level), value        text: label, then the value at the right, colored
-    alerts: the newest unacknowledged ones, a colored "!" and the text, then "+N more"; gap: half a row
+    alerts: the newest unacknowledged ones (not muted), a colored "!" and the text, then "+N more"; gap: half a row
     "LENS OK" only when a block has nothing to show, so the strip isn't alone
   Measured in game: positions are GUI pixels from the top left; Rect2D setSize takes the height first; text is
   about 5.2 px a character per unit of setScale (and starts at scale 2 unless set, so the HUD always sets it).
@@ -121,7 +121,7 @@ end
 
 local function unackedOf(m)
   local out = {}
-  for _, a in ipairs(m.alerts or {}) do if not a.acked then out[#out + 1] = a end end
+  for _, a in ipairs(m.alerts or {}) do if not a.acked and not a.muted then out[#out + 1] = a end end
   return out
 end
 

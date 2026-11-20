@@ -32,6 +32,7 @@
   b:knownNodes() -> { [name] = { role?, interval? } }   every node the hub has heard (it lists them after a restart)
   b:rememberNode(name, role?, interval?)     saved when it's new or its role or interval changed
   b:forgetNode(name)
+  b:mutes() -> { mute... }   muted nodes and alerts (lens.hub.mutes' list)      b:setMutes(list)   saved
   b:players() -> { [name] = hud settings }   (lens.hub.huds' form; huds reads and writes them through:)
   b:setPlayers(players) -> true | nil, err
   board.UNDO_DEPTH
@@ -156,6 +157,7 @@ function board.new(path, cfg)
     end
   end
   self.huds = type(data.huds) == "table" and data.huds or {}
+  self.muted = type(data.mutes) == "table" and data.mutes or {}
   self.nodes = {}
   for name, k in pairs(type(data.nodes) == "table" and data.nodes or {}) do
     if type(name) == "string" and type(k) == "table" then
@@ -177,7 +179,9 @@ function B:save()
     "-- views: made or changed on the screen (one with a lens-hub.cfg label replaces that one).",
     "-- pages: the dashboard's pages and their panels, in order. seen: lens-hub.cfg panels already offered.",
     "-- huds: each player's HUDs. nodes: every node the hub has heard, so it can tell when one is missing.",
-    "return " .. lit({ views = self.own, pages = self:storedPages(), seen = seen, huds = self.huds, nodes = self.nodes }),
+    "-- mutes: muted nodes and alerts (ends: real seconds since 1970).",
+    "return " .. lit({ views = self.own, pages = self:storedPages(), seen = seen, huds = self.huds, nodes = self.nodes,
+      mutes = self.muted }),
   }, "\n") .. "\n"
   local ok, err = files.writeAtomic(self.path, text)
   if not ok then return nil, err end
@@ -384,6 +388,13 @@ function B:addPanel(label, page)
   local list = { table.unpack(pageOf(self, page).list) }
   list[#list + 1] = label
   return self:setPanels(list, page)
+end
+
+function B:mutes() return self.muted end
+
+function B:setMutes(list)
+  self.muted = list
+  return self:save()
 end
 
 function B:knownNodes() return self.nodes end

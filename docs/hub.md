@@ -122,7 +122,18 @@ Tap a node for: its health, role, version and boot; how often it reports and whe
 (wireless); how many snapshots arrived whole since the hub started, and how many were cut short (a part lost on
 the way: a sign of range or interference); its alerts; its last 24 hours as a band (as on the [log's
 timeline](#the-alert-log)); its metrics with their type, unit and series; and the views that read them.
-**FORGET** (a node that stopped reporting; `editors`, when set) drops it until it reports again.
+**FORGET** (a node that stopped reporting; `editors`, when set) drops it until it reports again. **MUTE**:
+[below](#muting).
+
+## Muting
+
+While you rebuild a line, mute it so its alerts stop calling for attention. On a [node page](#the-node-page):
+**MUTE 1 H**, **4 H** or **UNTIL IT CLEARS** (until it has no alerts), or **MUTE** on one of its alerts (until
+that alert clears). A muted alert stays listed, dimmed, with `muted` and the time left, but doesn't beep, doesn't
+show in HUDs and isn't counted as bad or warn (the header counts it as muted); a muted node reads `MUTED` and is
+left out of overall health. Mutes end on their own, survive a restart (`lens-board.cfg`), and LOG records who
+muted and unmuted what. Only `editors` may mute, when set. Nothing is sent to the agent: it keeps raising its
+alerts, and they come back as they are when the mute ends.
 
 ## The DATA page
 

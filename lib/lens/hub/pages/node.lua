@@ -1,7 +1,8 @@
 --[[ lens.hub.pages.node: the node page (lens.hub.editors.node): one agent up close. Health, role, version and boot;
   how often it reports, when it last did, its distance and how many snapshots came whole; its alerts; its last 24
   hours as a band (colored by its worst alert, │ where it restarted); its metrics (as many as fit); and the views
-  that read them. FORGET for a node that stopped.
+  that read them. FORGET for a node that stopped. MUTE 1 H / 4 H / UNTIL IT CLEARS (or UNMUTE) for the node, and
+  MUTE / UNMUTE on each alert (until it clears).
 
   node.draw(f, e, actions)   e: the editor's model (its header comment), plus player, error, closesIn
 ]]
@@ -50,6 +51,22 @@ function node.draw(f, e, actions)
       frame.when(e.lastRestart, e.time, e.tz)), width), C.warn)
     y = y + 1
   end
+  if e.muted then
+    local left = e.muted.left and (frame.ago(e.muted.left) .. " left") or "until it clears"
+    local x = 2
+    f:text(x, y, Gui.fit(("MUTED by %s, %s"):format(tostring(e.muted.by or "?"), left), width - 11), C.warn)
+    if e.canMute then f:button(f.w - 9, y, "UNMUTE", actions.nodeUnmute, C.line) end
+    y = y + 1
+  elseif e.canMute then
+    f:text(2, y, "MUTE", C.accent)
+    local bx = 8
+    bx = f:button(bx, y, "1 H", function(p) actions.nodeMute(p, 3600) end)
+    bx = f:button(bx, y, "4 H", function(p) actions.nodeMute(p, 4 * 3600) end)
+    f:button(bx, y, "UNTIL IT CLEARS", function(p) actions.nodeMute(p, false) end)
+    y = y + 1
+    f:text(2, y, Gui.fit("Alerts stay listed, but don't beep, show in HUDs or count to health.", width), C.dim)
+    y = y + 1
+  end
   y = y + 1
 
   f:heading(2, y, ("ALERTS (%d)"):format(#e.alerts), width)
@@ -58,10 +75,20 @@ function node.draw(f, e, actions)
   for i, a in ipairs(e.alerts) do
     if i > 5 then f:text(2, y, ("+%d more"):format(#e.alerts - 5), C.dim); y = y + 1; break end
     local tag = Gui.fit(a.level == "bad" and " BAD" or " WARN", 6)
-    if a.acked then f:text(2, y, tag, C.dim) else f:text(2, y, tag, C.bg, a.level == "bad" and C.bad or C.warn) end
-    local when = "for " .. frame.ago(e.time - a.since)
-    f:text(9, y, Gui.fit(a.text, width - 8 - Gui.len(when) - 1), a.acked and C.dim or C.text)
-    f:text(f.w - Gui.len(when), y, when, C.dim)
+    local quiet = a.acked or a.muted
+    if quiet then f:text(2, y, tag, C.dim) else f:text(2, y, tag, C.bg, a.level == "bad" and C.bad or C.warn) end
+    local when = (a.muted and "muted · " or "") .. "for " .. frame.ago(e.time - a.since)
+    local chip = ""
+    if e.canMute and not e.muted then chip = a.muted and "UNMUTE" or "MUTE" end
+    local right = f.w - (chip ~= "" and Gui.len(chip) + 3 or 0)
+    f:text(9, y, Gui.fit(a.text, right - 9 - Gui.len(when) - 1), quiet and C.dim or C.text)
+    f:text(right - Gui.len(when), y, when, C.dim)
+    if chip ~= "" then
+      local key = a.key
+      f:button(f.w - Gui.len(chip) - 1, y, chip, function(p)
+        if a.muted then actions.alertUnmute(p, key) else actions.alertMute(p, key) end
+      end, C.line)
+    end
     y = y + 1
   end
   y = y + 1
