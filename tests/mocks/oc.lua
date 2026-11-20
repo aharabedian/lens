@@ -14,7 +14,7 @@
   M.resize(w, h)         a blank w x h screen (160x50 = tier 3, 80x25 = tier 2)
   M.aspect = { w, h }    the screen's size in blocks (component.screen.getAspectRatio); M.resolution: the
                          last gpu.setResolution
-  M.row(y), M.find(text, minY, minX), M.dump(path)   read what the GPU drew
+  M.row(y), M.find(text, minY, minX), M.dump(path)   read what the GPU drew (dump: within the resolution)
   M.fgAt(x, y), M.bgAt(x, y)
   M.slept                seconds waited in os.sleep (which OpenOS adds; time passes)
   M.gpuCalls             set + fill calls so far
@@ -153,11 +153,14 @@ end
 
 -- A "size<TAB>W<TAB>H" line, then one "char<TAB>fg<TAB>bg" line per cell; tools/render_screens.py
 -- turns it into a PNG.
+-- Only the part the resolution shows (gpu.setResolution), as the game's screen does.
 function M.dump(path)
   local f = assert(io.open(path, "w"))
-  f:write(string.format("size\t%d\t%d\n", GW, GH))
-  for y = 1, GH do
-    for x = 1, GW do f:write(string.format("%s\t%06x\t%06x\n", buf[y][x], fgb[y][x], bgb[y][x])) end
+  local w, h = GW, GH
+  if M.resolution then w, h = math.min(GW, M.resolution[1]), math.min(GH, M.resolution[2]) end
+  f:write(string.format("size\t%d\t%d\n", w, h))
+  for y = 1, h do
+    for x = 1, w do f:write(string.format("%s\t%06x\t%06x\n", buf[y][x], fgb[y][x], bgb[y][x])) end
   end
   f:close()
 end

@@ -37,6 +37,9 @@
   app:mayEdit(player) -> bool     cfg.editors, when set, lists who may change the dashboard
 
   Beeps once when a new bad alert appears (cfg.beep). Panel history keeps one value every cfg.sample seconds.
+  Glance mode (cfg.glance): after glance.after minutes without a tap, key or paste (and no editor open), the
+  dashboard is drawn at a third of its resolution (half when that's under 12 rows) with glance.views; the next tap
+  goes back and does nothing else. app.glancing; app:glanceSize() -> w, h
 ]]
 
 local codec = require("lens.codec")
@@ -72,7 +75,7 @@ function app.new(cfg, env)
     staleAfter = cfg.staleAfter, nonCritical = cfg.nonCritical, rules = cfg.rules }
   if not hub then return nil, err end
   local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0, now = 0,
-    page = 1 }, App)
+    page = 1, lastTap = 0 }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
   self.board = board.new(env.boardPath, cfg)
   self.clock = clock.new(env.filesystem, env.clockPath)
@@ -151,8 +154,34 @@ function App:typing(player, now, method, ...)
   if self.running then self:redraw(now, false) end
 end
 
-function App:onKey(char, code, now, player) self:typing(player, now, "key", char, code) end
-function App:onClipboard(text, now, player) self:typing(player, now, "paste", text) end
+function App:onKey(char, code, now, player) self.lastTap = now; self:typing(player, now, "key", char, code) end
+function App:onClipboard(text, now, player) self.lastTap = now; self:typing(player, now, "paste", text) end
+
+---------------------------------------------------------------- glance mode
+function App:glanceSize()
+  local w, h = self.env.w, self.env.h
+  local d = h // 3 >= 12 and 3 or 2
+  return math.max(16, w // d), math.max(8, h // d)
+end
+
+-- The views glance mode shows: glance.views by label, or the first page's first five panels.
+function App:glanceViews()
+  local out = {}
+  for _, label in ipairs(self.cfg.glance.views) do
+    local v = self.board:view(label)
+    if v then out[#out + 1] = v end
+  end
+  if #out == 0 then
+    for i, v in ipairs(self.board:panels(1)) do if i <= 5 then out[#out + 1] = v end end
+  end
+  return out
+end
+
+function App:setGlance(on)
+  if on == (self.glancing or false) then return end
+  self.glancing = on
+  if on then self.dash:resize(self:glanceSize()) else self.dash:resize(self.env.w, self.env.h) end
+end
 
 ---------------------------------------------------------------- the log
 function App:real(now) return self.clock:at(now) end
@@ -266,6 +295,7 @@ function App:model(now)
     alerts = self.hub.alerts:list(), counts = self.hub.alerts:counts(), panels = self:panels(now),
     huds = self.huds ~= nil, editor = self:editorModel(now), notice = self.notice,
     pages = self:pageNames(), page = self.page, logged = self.logbook.count, logError = self.logError,
+    glance = self.glancing and { panels = self:evaluate(self:glanceViews(), nil, now) } or nil,
   }
 end
 
@@ -279,7 +309,7 @@ function App:redraw(now, withHud)
 end
 
 function App:start(now)
-  self.now = now
+  self.now, self.lastTap = now, now
   local modem = self.env.modem
   if modem then
     modem.open(self.cfg.port)
@@ -305,6 +335,12 @@ end
 
 function App:onTouch(x, y, now, player)
   self.now = now
+  self.lastTap = now
+  if self.glancing then                       -- a tap wakes the dashboard; it doesn't press what's under it
+    self:setGlance(false)
+    if self.running then self:redraw(now, true) end
+    return
+  end
   self.notice = nil
   self.dash:tap(x, y, player)
   if self.running then self:redraw(now, true) end
@@ -331,12 +367,15 @@ function App:tick(now)
     self:saveLog()
   end
   self:sample(now)
+  local g = self.cfg.glance
+  if g and not self.glancing and not self.editing and now - self.lastTap >= g.after * 60 then self:setGlance(true) end
   return self:redraw(now, true)
 end
 
 function App:stop()
   self.logbook:add{ kind = "stop", at = round(self:real(self.now)) }
   self:saveLog()
+  self:setGlance(false)                       -- the terminal gets the full screen back
   if self.huds then self.huds:clear() end
   if self.env.modem then self.env.modem.close(self.cfg.port) end
   self.dash:restore()

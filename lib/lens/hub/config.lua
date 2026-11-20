@@ -18,6 +18,8 @@
   checkView(view) -> err | nil   one view, as a panel is checked
   editors: nil (anyone may edit the dashboard on the screen) or a list of player names
   timezone: nil (the log says "3h12m ago") or hours from UTC (-12..14), for clock times in the log
+  glance: false, or { after = minutes (5), views = { label... } (none: the first page's first panels) }: glance
+          mode, big text after that long without a tap
 ]]
 
 local query = require("lens.hub.query")
@@ -27,7 +29,7 @@ local config = {}
 
 config.DEFAULTS = {
   node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10, resolution = "fit", editors = nil,
-  timezone = nil,
+  timezone = nil, glance = false,
   nonCritical = {}, panels = {}, rules = {}, hud = {},
 }
 
@@ -174,6 +176,18 @@ function config.check(c)
   end
   if c.timezone ~= nil and (type(c.timezone) ~= "number" or c.timezone < -12 or c.timezone > 14) then
     return nil, "timezone must be hours from UTC, -12 to 14 (or nil)"
+  end
+  if c.glance ~= false then
+    local g = c.glance
+    if g == true then g = {}; c.glance = g end
+    if type(g) ~= "table" then return nil, "glance must be false or { after = minutes, views = { labels } }" end
+    g.after = g.after or 5
+    g.views = g.views or {}
+    if type(g.after) ~= "number" or g.after <= 0 then return nil, "glance.after must be minutes above 0" end
+    if type(g.views) ~= "table" then return nil, "glance.views must be a list of view labels" end
+    for _, l in ipairs(g.views) do
+      if type(l) ~= "string" then return nil, "glance.views must be a list of view labels" end
+    end
   end
   if c.editors ~= nil then
     if type(c.editors) ~= "table" then return nil, 'editors must be a list of player names: { "Steve" }' end

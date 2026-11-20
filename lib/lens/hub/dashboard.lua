@@ -5,6 +5,7 @@
   d:draw(model, actions)   build a frame (lens.hub.frame) with the page for the model, then redraw only the rows
                            (or, when a row keeps its shape, the segments) that differ from the last draw
   d:tap(x, y, player?) -> bool   run the touch target under (x, y): fn(player, x, y)
+  d:resize(w, h)           another resolution (glance mode); the next draw redraws every row
   d:restore()              plain terminal colors again (on exit)
 
   model = {
@@ -17,6 +18,7 @@
     hudError = text | nil,   shown in the footer
     hudPerMinute = n | nil,  HUD component calls in the last minute, shown in the footer
     pages = { name... }, page = i   the dashboard's pages and the one shown (tabs when there are several)
+    glance = nil | { panels }   glance mode: lens.hub.pages.glance is drawn (at the resolution set by resize)
     logged = n               entries in the kept log (LOG)
     logError = text | nil    lens-log.cfg couldn't be written: shown in the footer
     editor = nil | { kind = "hud" | "edit" | "view" | "data" | "log" | "panel", player, error, closesIn, ... }
@@ -39,6 +41,7 @@ local PAGES = {
   data = require("lens.hub.pages.data"),
   log  = require("lens.hub.pages.log"),
   panel = require("lens.hub.pages.panel"),
+  glance = require("lens.hub.pages.glance"),
 }
 
 local function rowKey(row)
@@ -62,13 +65,19 @@ local Dash = {}
 Dash.__index = Dash
 
 function dashboard.new(gpu, w, h)
-  return setmetatable({ ui = Gui.new(gpu, w, h), w = w, h = h, last = {}, hits = {} }, Dash)
+  return setmetatable({ gpu = gpu, ui = Gui.new(gpu, w, h), w = w, h = h, last = {}, hits = {} }, Dash)
+end
+
+function Dash:resize(w, h)
+  self.ui, self.w, self.h, self.last, self.hits = Gui.new(self.gpu, w, h), w, h, {}, {}
 end
 
 function Dash:build(m, actions)
   local f = frame.new(self.w, self.h)
   local e = m.editor
-  if e and PAGES[e.kind] then
+  if m.glance then
+    PAGES.glance.draw(f, m)
+  elseif e and PAGES[e.kind] then
     PAGES[e.kind].draw(f, e, actions)
   else
     PAGES.main.draw(f, m, actions)
