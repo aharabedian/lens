@@ -7,9 +7,12 @@
     rules = { ... },                        -- lens.hub.rules
   }
   hub:hello() -> data                         broadcast once at start
-  hub:receive(data, from, now) -> replies     from = sender's modem address; replies = { { to, data } }
+  hub:receive(data, from, now, distance?) -> replies   from = sender's modem address; replies = { { to, data } }
       A snapshot that follows descriptors the hub doesn't have gets a hello sent back to that node.
-      Messages that don't decode (other proto, wrong token, garbage) are ignored.
+      Messages that don't decode (other proto, wrong token, garbage) are ignored. distance: modem_message's.
+  hub:traffic(name) -> { distance?, whole, cut } | nil   per node since the hub started: snapshots that arrived
+      whole, and ones cut short (a part missing when the next snapshot began); the last packet's distance
+  hub:forget(name)                            a node that stopped is dropped (it comes back if it reports)
   hub:tick(now) -> alerts:update result       call every second or so: stale nodes, agent alerts, rules
   hub:query(text, now) -> value | nil, err    compiled once per text
   hub:select(text, now) -> series[] | nil, err   a bare selector's series (state dots), compiled once per text
@@ -42,16 +45,33 @@ function core.new(o)
     node = o.node, token = o.token, nonCritical = o.nonCritical or {},
     enc = codec.encoder{ node = o.node, role = "hub", boot = o.boot or 1, token = o.token },
     asm = codec.assembler(), store = store.new{ staleAfter = o.staleAfter }, rules = r,
-    alerts = alerts.new(), compiled = {}, selected = {},
+    alerts = alerts.new(), compiled = {}, selected = {}, snapshots = {},
   }, Hub)
 end
 
 function Hub:hello() return self.enc:hello()[1] end
 
-function Hub:receive(data, from, now)
+-- Snapshots per node: part 1 starts one (the one before is cut short if it never came whole).
+local function count(self, msg, whole, distance)
+  local t = self.snapshots[msg.node]
+  if not t then
+    t = { whole = 0, cut = 0 }
+    self.snapshots[msg.node] = t
+  end
+  if type(distance) == "number" then t.distance = distance end
+  if msg.kind ~= "snapshot" then return end
+  if (msg.part or 1) == 1 then
+    if t.open then t.cut = t.cut + 1 end
+    t.open = true
+  end
+  if whole then t.whole, t.open = t.whole + 1, false end
+end
+
+function Hub:receive(data, from, now, distance)
   local msg = codec.decode(data, self.token)
   if not msg or msg.kind == "hello" or msg.node == self.node then return {} end
   local whole = self.asm:add(msg, now)
+  count(self, msg, whole, distance)
   if not whole then return {} end
   if self.store:receive(whole, now) == "hello" and from then
     return { { to = from, data = self:hello() } }
@@ -121,6 +141,16 @@ function Hub:health(now)
 end
 
 function Hub:nodes(now) return self.store:nodes(now) end
+
+function Hub:traffic(name)
+  local t = self.snapshots[name]
+  return t and { distance = t.distance, whole = t.whole, cut = t.cut } or nil
+end
+
+function Hub:forget(name)
+  self.store:forget(name)
+  self.snapshots[name] = nil
+end
 function Hub:metrics(now) return self.store:metrics(now) end
 
 return core

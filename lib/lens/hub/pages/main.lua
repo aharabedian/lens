@@ -3,7 +3,7 @@
   main.draw(f, m, actions)   f: lens.hub.frame; m: the app's model (lens.hub.dashboard has its shape);
                              actions: ack(key, player), ackAll(player), quit(), page(player, i), and the buttons that open
                              editors: log, data, edit, hud (each gets the tapping player); panel(player, label)
-                             when a panel is tapped
+                             when a panel is tapped, node(player, name) when a node is
 
   With several pages, their tabs sit under the header; the panels are the shown page's.
 
@@ -53,7 +53,7 @@ local function header(f, m, actions)
   if Gui.len(right) <= room then f:text(rx - Gui.len(right) - 2, 1, right, C.dim, C.panel) end
 end
 
-local function nodes(f, m, x, y, width, maxRows)
+local function nodes(f, m, actions, x, y, width, maxRows)
   f:heading(x, y, "NODES", width)
   y = y + 1
   if #m.nodes == 0 then
@@ -73,6 +73,8 @@ local function nodes(f, m, x, y, width, maxRows)
     f:text(cx + 8, y, Gui.fit(HEALTH_TEXT[n.health] or "?", 6), hc)
     local seen = n.lastSeen and (frame.ago(m.now - n.lastSeen) .. " ago") or "never"
     f:text(cx + 15, y, Gui.rfit(seen, 8), n.stale and C.bad or C.dim)
+    local name = n.name
+    f:hit(x, y, x + width - 1, y, function(player) actions.node(player, name) end)
     y = y + 1
   end
   if shown < #m.nodes then
@@ -153,19 +155,18 @@ end
 
 local function footer(f, m)
   f:rowBg(f.h, C.bg)
+  local calls = m.hudPerMinute and ("HUD %d calls/min"):format(m.hudPerMinute) or ""
+  local room = f.w - 2 - (calls ~= "" and Gui.len(calls) + 1 or 0)
   if m.notice then
-    f:text(2, f.h, Gui.fit(m.notice, f.w - 2), C.warn)
+    f:text(2, f.h, Gui.fit(m.notice, room), C.warn)
   elseif m.hudError then
-    f:text(2, f.h, Gui.fit("HUD: " .. m.hudError, f.w - 2), C.warn)
+    f:text(2, f.h, Gui.fit("HUD: " .. m.hudError, room), C.warn)
   elseif m.logError then
-    f:text(2, f.h, Gui.fit("lens-log.cfg: " .. m.logError, f.w - 2), C.warn)
+    f:text(2, f.h, Gui.fit("lens-log.cfg: " .. m.logError, room), C.warn)
   else
-    f:text(2, f.h, Gui.fit("Tap an alert to acknowledge it, a panel for more.", f.w - 2), C.dim)
+    f:text(2, f.h, Gui.fit("Tap an alert to acknowledge; a panel or node for more.", room), C.dim)
   end
-  if m.hudPerMinute then
-    local s = ("HUD %d calls/min"):format(m.hudPerMinute)
-    f:text(f.w - Gui.len(s), f.h, s, C.dim)
-  end
+  if calls ~= "" then f:text(f.w - Gui.len(calls), f.h, calls, C.dim) end
 end
 
 local function tabs(f, m, actions)
@@ -184,14 +185,14 @@ function main.draw(f, m, actions)
   if f.w >= 120 then
     local lw = 56
     local rx = 2 + lw + 3
-    local y = nodes(f, m, 2, 3, lw, math.max(3, (f.h - 6) // 2))
+    local y = nodes(f, m, actions, 2, 3, lw, math.max(3, (f.h - 6) // 2))
     alerts(f, m, actions, 2, y + 1, lw, lastRow)
     panels(f, m, actions, rx, 3, f.w - rx, lastRow, true)
   else
     local width = f.w - 2
     local tall = f.h >= 40
     local y = panels(f, m, actions, 2, 3, width, f.h - (tall and 16 or 10), tall)   -- leave nodes and alerts room
-    y = nodes(f, m, 2, y + 1, width, tall and 6 or 5)
+    y = nodes(f, m, actions, 2, y + 1, width, tall and 6 or 5)
     alerts(f, m, actions, 2, y + 1, width, lastRow)
   end
   footer(f, m)

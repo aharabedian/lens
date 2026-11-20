@@ -3,7 +3,9 @@
   agents: they test the protocol itself.)
 
   local R = require("hubrun")(H)     H: the test's helper (its TMP directory and H.run)
-  local a = R.agent{ node = "power-room", role = "lumen", setup = function(m) ... end, cycle = function(m, now) end }
+  local a = R.agent{ node = "power-room", role = "lumen", setup = function(m) ... end, cycle = function(m, now) end,
+                     distance = n, stopAt = t }   (distance: what the hub's modem_message says, default 0;
+                     stopAt: the time it goes silent, as if switched off)
     setup(m) once (declare and set metrics on m, a lens.metrics registry); cycle(m, now) before every push.
     It sends a describe and a snapshot every 5 s, and answers the hub's hello.
   local ok, err, dir = R.run{ cfg = "return { ... }", dir = "name", keep = bool, agents = { a, ... },
@@ -33,7 +35,7 @@ local queued = {}
 function R.agent(o)
   local m = metrics.new{ role = o.role, clock = function() return M.time end }
   if o.setup then o.setup(m) end
-  return { node = o.node, role = o.role, m = m, cycle = o.cycle,
+  return { node = o.node, role = o.role, m = m, cycle = o.cycle, distance = o.distance, stopAt = o.stopAt,
     enc = codec.encoder{ node = o.node, role = o.role, boot = 3, interval = 5 } }
 end
 
@@ -71,10 +73,12 @@ function R.run(o)
   local agents = {}
   for _, a in ipairs(o.agents or {}) do
     a.ep = n:endpoint(a.node)
+    a.ep.distance = a.distance
     a.ep.open(PORT)
     agents[#agents + 1] = a
   end
   local function push(a, describe)
+    if a.stopAt and M.time >= a.stopAt then return end
     if a.cycle then a.cycle(a.m, M.time) end
     if describe then for _, p in ipairs(a.enc:describe(a.m:describe())) do a.ep.broadcast(PORT, p) end end
     for _, p in ipairs(a.enc:snapshot(a.m:snapshot())) do a.ep.broadcast(PORT, p) end

@@ -16,6 +16,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   and ADD TO MY HUD from there.
 - **Glance mode** (`glance` in lens-hub.cfg): after a few minutes without a tap the hub draws at a third of its
   resolution, so health, the views you pick and the two worst alerts read from across the room. A tap goes back.
+- **Node page**: tap a node for its health, version, how often it reports, its distance, how many snapshots
+  arrived whole or cut short, its alerts, its last 24 hours, its metrics and the views that read them. FORGET drops
+  a node that stopped.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

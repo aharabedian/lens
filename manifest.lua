@@ -37,6 +37,8 @@ return {
   { "lib/lens/hub/editors/panel.lua", "lib/lens/hub/editors/panel.lua" },
   { "lib/lens/hub/pages/panel.lua", "lib/lens/hub/pages/panel.lua" },
   { "lib/lens/hub/pages/glance.lua", "lib/lens/hub/pages/glance.lua" },
+  { "lib/lens/hub/editors/node.lua", "lib/lens/hub/editors/node.lua" },
+  { "lib/lens/hub/pages/node.lua", "lib/lens/hub/pages/node.lua" },
   { "lib/lens/hub/inspect.lua", "lib/lens/hub/inspect.lua" },
   { "lib/lens/hub/query.lua", "lib/lens/hub/query.lua" },
   { "lib/lens/hub/rules.lua", "lib/lens/hub/rules.lua" },

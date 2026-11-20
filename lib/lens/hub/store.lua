@@ -15,6 +15,7 @@
       snapshot, after a restart, or when the value went down)
   s:metrics(now) -> { { name, type, help?, unit?, series = n, nodes = { name... } }... }   every metric sent by
       a node that isn't stale, sorted by name; help and unit from the first node describing it
+  s:nodeMetrics(name) -> { { name, type, help?, unit?, series = n }... }   what one node sends, by name
   s:forget(name)
 
   Series exist while the node sends them: each snapshot replaces all of a node's series.
@@ -164,6 +165,18 @@ function Store:metrics(now)
     table.sort(m.nodes)
     out[#out + 1] = m
   end
+  return out
+end
+
+function Store:nodeMetrics(name)
+  local n = self.byName[name]
+  if not n then return {} end
+  local out = {}
+  for metric, list in pairs(n.byMetric) do
+    local d = (n.metrics or {})[metric] or {}
+    out[#out + 1] = { name = metric, type = d.type or "gauge", help = d.help, unit = d.unit, series = #list }
+  end
+  table.sort(out, function(a, b) return a.name < b.name end)
   return out
 end
 

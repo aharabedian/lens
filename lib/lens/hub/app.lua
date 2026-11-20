@@ -10,7 +10,7 @@
     minute and on stop; nil: kept in memory). filesystem, clockPath: real time (lens.hub.clock) for the log.
   app:start(now)                         open the port, broadcast hello, draw
   app:tick(now)                          about once a second: alerts, panel samples, beep, redraw
-  app:onModem(from, port, data, now)     feed a packet to the hub core, send its replies
+  app:onModem(from, port, data, now, distance?)   feed a packet to the hub core, send its replies
   app:onTouch(x, y, now, player)         tap the screen (player: who tapped), redraw
   app:onKey(char, code, now, player)     a key_down, for the open editor (only its player's)
   app:onClipboard(text, now, player)     a paste, the same way
@@ -28,7 +28,7 @@
                                          on the module: require("lens.hub.app").evaluateWith)
   app.running, app.hub (lens.hub.core), app.board, app.huds (or nil), app.dash (lens.hub.dashboard), app.now
 
-  Editors (lens.hub.editors.<kind>: hud, edit, view, data, log, panel; their interface is in editors/hud.lua). One is open
+  Editors (lens.hub.editors.<kind>: hud, edit, view, data, log, panel, node; their interface is in editors/hud.lua). One is open
   at a time (app.editing = { kind, player, until, ... }), for the player who opened it: only that player's taps
   and keys change anything, and it closes after EDIT_TIMEOUT seconds without one. For editors:
   app:open(kind, player, state)   open one, unless someone else has one open (app.notice says who)
@@ -65,6 +65,7 @@ local EDITORS = {
   data = require("lens.hub.editors.data"),
   log  = require("lens.hub.editors.log"),
   panel = require("lens.hub.editors.panel"),
+  node = require("lens.hub.editors.node"),
 }
 
 local App = {}
@@ -320,9 +321,9 @@ function App:start(now)
   self:tick(now)
 end
 
-function App:onModem(from, port, data, now)
+function App:onModem(from, port, data, now, distance)
   if port ~= self.cfg.port or type(data) ~= "string" then return end
-  for _, r in ipairs(self.hub:receive(data, from, now)) do
+  for _, r in ipairs(self.hub:receive(data, from, now, distance)) do
     if self.env.modem then self.env.modem.send(r.to, self.cfg.port, r.data) end
   end
 end

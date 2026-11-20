@@ -89,7 +89,7 @@ local ok, err, dir = R.run{ cfg = CFG, agents = { power }, keyboard = true, term
     seen.back = M.find("Panel: Power", 1) ~= nil
     return R.tap("DONE", "Aaron", 1)
   end
-  seen.dash = M.find("Tap an alert to acknowledge it, a panel for more.", 50) ~= nil
+  seen.dash = M.find("Tap an alert to acknowledge; a panel or node for more.", 50) ~= nil
   return "stop"
 end }
 M.aspect = nil
