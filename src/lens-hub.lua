@@ -59,7 +59,7 @@ local function main()
     local now = computer.uptime()
     if ev[1] == "modem_message" then
       -- modem_message: localAddress, remoteAddress, port, distance, payload
-      app:onModem(ev[3], ev[4], ev[6], now)
+      app:onModem(ev[3], ev[4], ev[6], now, ev[5])
     elseif ev[1] == "glasses_on" then
       -- glasses_on: terminal, player, width, height (the wearer's GUI size)
       app:onGlasses(ev[2], ev[3], ev[4], ev[5], now)

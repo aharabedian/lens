@@ -12,7 +12,7 @@ Install, connecting agents and the first run: [setup.md](setup.md). Problems: [t
 | Part | Shows |
 |---|---|
 | Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, **LOG** ([below](#the-alert-log)), **DATA** ([below](#the-data-page)), **EDIT** ([editing on the screen](#editing-on-the-screen)), **HUD** (with a Glasses Terminal), QUIT |
-| NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported |
+| NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported. **Tap one** for its [node page](#the-node-page) |
 | ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓ and who tapped it, dimmed) until it clears, and comes back unacknowledged if it gets worse |
 | Page tabs | With more than one page: tap one to show its panels (anyone may) |
 | PANELS | The shown page's panels: label, value, a bar, status and state dots ([views.md](views.md)), and a sparkline of its history (tier 3). **Tap one** for its [panel page](#the-panel-page) |
@@ -113,6 +113,14 @@ Tap a panel for a closer look, for example to see why its dot is yellow:
 | SHOWN ON | The dashboard pages and players' HUDs (and presets) it's on |
 | **EDIT VIEW** | The [view editor](views.md#the-view-editor), back here after (only `editors`, when set) |
 | **ADD TO MY HUD** | Puts it at the end of your HUD's first block (with a Glasses Terminal) |
+
+## The node page
+
+Tap a node for: its health, role, version and boot; how often it reports and when it last did; how far away it is
+(wireless); how many snapshots arrived whole since the hub started, and how many were cut short (a part lost on
+the way: a sign of range or interference); its alerts; its last 24 hours as a band (as on the [log's
+timeline](#the-alert-log)); its metrics with their type, unit and series; and the views that read them.
+**FORGET** (a node that stopped reporting; `editors`, when set) drops it until it reports again.
 
 ## The DATA page
 

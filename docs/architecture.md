@@ -16,7 +16,7 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.query` | The selector language ([queries.md](queries.md)), compiled to a function of a lookup |
 | | `lens.hub.rules` | The hub's own alerts: queries that must stay true for `for` seconds |
 | | `lens.hub.alerts` | One list of every active alert: dedupe by `node/id`, since, acks, ordering; the last 100 that ended (LOG) |
-| | `lens.hub.core` | The above together: `receive(data, from, now)` → replies, `tick(now)` → alert changes, `query`, `lookup`, `metrics`, `health` |
+| | `lens.hub.core` | The above together: `receive(data, from, now, distance)` → replies, `tick(now)` → alert changes, `query`, `lookup`, `metrics`, `health`; per node, snapshots whole and cut short and the distance (`traffic`), `forget` |
 | **Views** (pure) | `lens.hub.format` | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD |
 | | `lens.hub.timeline` | The LOG page's timeline: a node's worst alert in each column of the last 12 or 24 hours, restarts as marks, and the hour labels |
 | | `lens.hub.inspect` | What a view's query comes to on the panel page: its function calls, each replaced by its value, the metrics it reads; low / average / high of a history |
@@ -29,7 +29,7 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.board` | `/home/lens-board.cfg`: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's pages and their panels, players' HUD presets; undo |
 | | `lens.hub.huds` | One `lens.hub.hud` per Glasses Terminal with its wearer's blocks (kept by the board) or the config's `hud` |
 | | `lens.hub.hud` | Draws HUD blocks (bar, text, alerts, gap; nine anchors) as widgets on one terminal; setters only on change, calls counted |
-| **Editors** | `lens.hub.editors.<kind>` | One per editor: `hud` (a player's HUD presets), `edit` (the dashboard's pages, their panels, the library), `view` (one view's fields), `data` (queries by tapping), `log` (the alert log, read-only), `panel` (one panel up close). Each has `actions(app, a, mine)` and `model(app, e, now)`, and `key` / `paste` if it takes typing; state and actions only, no drawing |
+| **Editors** | `lens.hub.editors.<kind>` | One per editor: `hud` (a player's HUD presets), `edit` (the dashboard's pages, their panels, the library), `view` (one view's fields), `data` (queries by tapping), `log` (the alert log, read-only), `panel` (one panel up close), `node` (one agent up close). Each has `actions(app, a, mine)` and `model(app, e, now)`, and `key` / `paste` if it takes typing; state and actions only, no drawing |
 | **Screen** | `lens.hub.frame` | One screenful being built (row segments, touch targets) and the widgets pages share |
 | | `lens.hub.pages.<kind>` | One per page: `main` (the dashboard, with page tabs), `glance` (glance mode) and one per editor. `draw(f, model, actions)`; drawing only |
 | | `lens.hub.dashboard` | Picks the page for the model, then sends the GPU only the rows or segments that changed; touch dispatch |
@@ -116,6 +116,6 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |
 | A packet's size is the sum of its values: string length (min 1), number 8, boolean/nil 4; over the limit raises `packet too big`; at most 8 values | **Unverified** |
 | `os.sleep` (OpenOS) waits while yielding; `gpu.set` draws `▀` with the foreground on top (the splash's half-block pixels) | **Unverified** |
-| `modem_message` event: `localAddress, remoteAddress, port, distance, ...values` | **Reported working** (2026-11-12): hub heard a PRISM router; backlog, machine states and a machine-down alert showed on the dashboard |
+| `modem_message` event: `localAddress, remoteAddress, port, distance, ...values` | **Reported working** (2026-11-12): hub heard a PRISM router; backlog, machine states and a machine-down alert showed on the dashboard. The distance (the node page) hasn't been looked at in game |
 | `touch` event: `screenAddress, x, y, button, player` | **Reported working** (2026-11-12): tapping an alert and ACK ALL acknowledge |
 | The block characters `▁`–`▇`, `●`, `✓`, `–` draw on an OpenComputers screen | **Reported working** (2026-11-12): bars, sparklines and symbols look right |

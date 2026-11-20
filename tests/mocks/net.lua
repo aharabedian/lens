@@ -3,6 +3,7 @@
   local net = require("net").new{ maxPacketSize = 8192 }
   local modem = net:endpoint("addr-1")    a modem component: called with dots, like a component proxy
     modem.address, modem.isWireless(), modem.maxPacketSize()
+    modem.distance = n                     what modem_message says for packets from this one (default 0)
     modem.open(port) -> bool (false if already open), modem.close(port), modem.isOpen(port)
     modem.broadcast(port, ...) / modem.send(address, port, ...) -> true
   modem.inbox                              queued { "modem_message", localAddress, remoteAddress, port, distance, ... }
@@ -46,7 +47,7 @@ function net.new(opts)
     if self.drop and self.drop(packet) then return end
     for _, ep in ipairs(self.endpoints) do
       if ep ~= from and ep.ports[port] and (to == nil or to == ep.address) then
-        local ev = { "modem_message", ep.address, from.address, port, 0 }
+        local ev = { "modem_message", ep.address, from.address, port, from.distance or 0 }
         for i = 1, data.n do ev[5 + i] = data[i] end
         ev.n = 5 + data.n
         ep.inbox[#ep.inbox + 1] = ev
