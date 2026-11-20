@@ -1,7 +1,7 @@
 --[[ lens.hub.pages.panel: the panel page (lens.hub.editors.panel): one view up close. Its value, its history as a
-  chart (12 rows on screens 40 or taller, else 5) with the high and low at the right and the alerts that started
-  meanwhile under it, low / average / high, its query with what each part comes to and which nodes send it, its
-  status rules (▶ the one that set the dot), where it's shown, and EDIT VIEW / SAVE AS ALERT / ADD TO MY HUD.
+  chart (12 rows on screens 40 or taller, else 5; 20 M or, with cfg.history, 24 H) with the high and low at the
+  right and the alerts that started meanwhile under it, low / average / high, its query with what each part comes
+  to and which nodes send it, its status rules (▶ the one that set the dot), where it's shown; EDIT VIEW / SAVE AS ALERT / ADD TO MY HUD.
 
   panel.draw(f, e, actions)   e: the editor's model (its header comment), plus player, error, closesIn.
                               Sections that don't fit are left off the bottom.
@@ -104,9 +104,17 @@ function panel.draw(f, e, actions)
   f:text(f.w - Gui.len(text), 3, text, frame.levelColor(p.level, C.text))
 
   local y = 5
-  local minutes = math.floor(#e.history * (e.sample or 10) / 60 + 0.5)
-  f:heading(2, y, ("LAST %d MINUTES"):format(minutes), 18)
-  f:text(20, y, Gui.fit(("one sample every %d s"):format(e.sample or 10), f.w - 20), C.dim)
+  local span = #e.history * (e.sample or 10)
+  local title = span >= 7200 and ("LAST %d HOURS"):format(math.floor(span / 3600 + 0.5))
+    or ("LAST %d MINUTES"):format(math.floor(span / 60 + 0.5))
+  f:heading(2, y, title, Gui.len(title))
+  local every = e.long and "one value every 10 minutes" or ("one sample every %d s"):format(e.sample or 10)
+  local right = e.canLong and 14 or 0
+  f:text(4 + Gui.len(title), y, Gui.fit(every, f.w - 4 - Gui.len(title) - right), C.dim)
+  if e.canLong then
+    f:button(f.w - 13, y, "20 M", function(pl) actions.panelLong(pl, false) end, e.long and C.btn or C.btnOn)
+    f:button(f.w - 6, y, "24 H", function(pl) actions.panelLong(pl, true) end, e.long and C.btnOn or C.btn)
+  end
   local rows = f.h >= 40 and 12 or 5
   y = chart(f, e, y + 1, rows)
   local shownAlerts = 0

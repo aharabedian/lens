@@ -2,7 +2,7 @@
 
   local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, terminals?, boardPath?, keyboard?,
                                                         beep?, boot?, filesystem?, logPath?, clockPath?,
-                                                        redstone?, sides? })
+                                                        redstone?, sides?, historyPath? })
     cfg: lens.hub.config output. err when the hub core refuses the config (bad rules).
     terminals: { [address] = Glasses Terminal }; each shows its wearer's HUD every tick (lens.hub.huds) unless
     cfg.hud is false. A HUD failure is shown on the dashboard (model.hudError) and never stops the hub.
@@ -24,6 +24,7 @@
   app:stop()
   app:real(now) -> seconds   real time (lens.hub.clock) at uptime now
   app.logbook                lens.hub.logbook: alerts that ended, lens-hub starting and stopping
+  app.daily                  lens.hub.daily (cfg.history): each panel's last 24 hours, saved in env.historyPath
   app:panels(now) -> the shown page's panels, evaluated (with history)
   app.page                               the dashboard page shown (an index into board:pages()); tapping a
                                          tab changes it for everyone looking at the screen
@@ -69,6 +70,7 @@ local board = require("lens.hub.board")
 local clock = require("lens.hub.clock")
 local logbook = require("lens.hub.logbook")
 local mutes = require("lens.hub.mutes")
+local daily = require("lens.hub.daily")
 local VERSION = require("lens.version")
 
 local app = {}
@@ -107,6 +109,7 @@ function app.new(cfg, env)
   self.clock = clock.new(env.filesystem, env.clockPath)
   self.logbook = logbook.new(env.logPath)
   self.mutes = mutes.new(self.board:mutes())
+  if cfg.history then self.daily = daily.new(env.historyPath) end
   self.nextSave = 0
   if env.terminals and next(env.terminals) and cfg.hud ~= false then
     self.huds = huds.new(env.terminals, cfg.hud, self.board)
@@ -294,15 +297,21 @@ end
 function App:sample(now)
   if now < self.nextSample then return end
   self.nextSample = now + self.cfg.sample
-  local keep = {}
+  local keep, labels = {}, {}
+  local time = self.daily and self:real(now)
   for _, p in ipairs(self.board:allPanels()) do      -- every page's, so switching pages shows a history
     local h = self.history[p.label] or {}
     local v = p.value and self.hub:query(p.value, now) or nil
     h[#h + 1] = v == nil and false or v
     if #h > HISTORY then table.remove(h, 1) end
-    keep[p.label] = h
+    keep[p.label], labels[p.label] = h, true
+    if self.daily then self.daily:add(p.label, v, time) end
   end
   self.history = keep
+  if self.daily then
+    self.daily:keep(labels)
+    pcall(self.daily.save, self.daily)
+  end
 end
 
 -- HUD calls in the last minute, from samples taken each tick.
@@ -561,6 +570,7 @@ end
 function App:stop()
   self.logbook:add{ kind = "stop", at = round(self:real(self.now)) }
   self:saveLog()
+  if self.daily then pcall(self.daily.save, self.daily) end
   self:setGlance(false)                       -- the terminal gets the full screen back
   if self.alarmOn and self.env.redstone then pcall(self.env.redstone.setOutput, self.env.sides[self.cfg.alarm.side], 0) end
   if self.huds then self.huds:clear() end

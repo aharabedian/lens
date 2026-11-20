@@ -43,7 +43,7 @@ local terminals = {}
 for address in component.list("glasses", true) do terminals[address] = component.proxy(address) end
 local dir = path:match("^(.*)/[^/]*$") or "/home"
 local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, terminals = terminals,
-  boardPath = dir .. "/lens-board.cfg", logPath = dir .. "/lens-log.cfg",
+  boardPath = dir .. "/lens-board.cfg", logPath = dir .. "/lens-log.cfg", historyPath = dir .. "/lens-history.cfg",
   filesystem = require("filesystem"), clockPath = dir .. "/.lens-clock",
   keyboard = component.isAvailable("keyboard"), beep = computer.beep,
   redstone = component.isAvailable("redstone") and component.redstone or nil, sides = require("sides") })

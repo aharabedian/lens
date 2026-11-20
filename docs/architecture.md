@@ -28,6 +28,7 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.clock` | Real time (seconds since 1970) from a file's modification time, read once an hour and carried on with uptime |
 | | `lens.hub.logbook` | `/home/lens-log.cfg`: the alert log kept across restarts (alerts that ended, lens-hub starting and stopping), newest first, in real time |
 | | `lens.hub.mutes` | Muted nodes and alerts: for a time or until they clear; which mute covers an alert. Only what the hub shows and beeps changes |
+| | `lens.hub.daily` | `/home/lens-history.cfg` (`history = true`): each panel's last 24 hours, one average per 10-minute slot, in real time |
 | | `lens.hub.board` | `/home/lens-board.cfg`: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's pages and their panels, players' HUD presets; undo |
 | | `lens.hub.huds` | One `lens.hub.hud` per Glasses Terminal with its wearer's blocks (kept by the board) or the config's `hud` |
 | | `lens.hub.hud` | Draws HUD blocks (bar, text, alerts, gap; nine anchors) as widgets on one terminal; setters only on change, calls counted |
@@ -53,6 +54,7 @@ the hub's `config` and nothing else of it; `metrics` and `codec` need nothing of
 | `/home/lens-hub.cfg` | `lens-setup` and you | Network, the views and HUD to start from, rules, `editors` |
 | `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's pages, each player's HUDs; the nodes the hub has heard; mutes; alert rules made on the screen |
 | `/home/lens-log.cfg` | `lens-hub` only | The alert log (LOG): the last 300 entries, saved once a minute and on stop |
+| `/home/lens-history.cfg` | `lens-hub` only | With `history = true`: each panel's last 24 hours, saved as each 10-minute slot closes and on stop |
 | `/home/.lens-clock` | `lens-hub` only | Nothing: written once an hour to read the real time back from its modification time |
 
 ### Adding an editor

@@ -41,6 +41,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   north` is the check.
 - **Alerts in chat** (`chat = true`): each new BAD alert also goes to the chat of the players wearing glasses
   whose HUD would list it. Not tried in game yet: `lens-discover --chat <name>` is the check.
+- **24-hour history** (`history = true`): each panel keeps a value per 10 minutes for a day, across restarts;
+  24 H on its panel page. Off by default (about 2.3 KB of memory per panel).
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

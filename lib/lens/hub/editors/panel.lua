@@ -3,12 +3,13 @@
   (which one set the dot), where it's shown, EDIT VIEW and ADD TO MY HUD. Drawn by lens.hub.pages.panel. The
   editor interface: lens.hub.editors.hud.
 
-  State: { kind = "panel", player, label }
-  Actions: panel(player, label) opens it; panelDone, panelEdit (the view editor, back here; cfg.editors),
+  State: { kind = "panel", player, label, long = bool (24 H: lens.hub.daily, with cfg.history) }
+  Actions: panel(player, label) opens it; panelLong(bool) (20 M / 24 H); panelDone, panelEdit (the view editor, back here; cfg.editors),
            panelHud (the view at the end of the player's HUD's first block), panelAlert (an alert from its first
            bad or warn status rule, else its value above 0: lens.hub.editors.rule; cfg.editors).
   Model: { label, missing = bool (the view is gone), shown = app:evaluate's row (text, level, status...),
-           history = { number | false... } (one every cfg.sample seconds, oldest first), sample, time (real),
+           history = { number | false... } (one every `sample` seconds, oldest first: cfg.sample, or with long
+           daily.SLOT), sample, long, canLong (cfg.history), time (real),
            tz, stats = lens.hub.inspect.stats as text { low, average, high, last },
            alerts = { { since (real), level, text, node }... } (started within the history, oldest first),
            query = { text, parts = text | nil ("= 7.9G / 19.3G"), value, nodes = { name... } },
@@ -21,6 +22,7 @@ local format = require("lens.hub.format")
 local inspect = require("lens.hub.inspect")
 local view = require("lens.hub.editors.view")
 local ruleEditor = require("lens.hub.editors.rule")
+local daily = require("lens.hub.daily")
 
 local E = {}
 
@@ -66,6 +68,7 @@ end
 function E.actions(app, a, mine)
   a.panel = function(player, label) app:open("panel", player, { label = label }) end
   a.panelDone = mine(function() app:close() end)
+  a.panelLong = mine(function(_, long) app.editing.long = long and app.daily ~= nil end)
   a.panelEdit = mine(function(player)
     if not app:mayEdit(player) then
       return nil, ("Only %s can change views."):format(table.concat(app.cfg.editors, ", "))
@@ -111,12 +114,17 @@ function E.model(app, e, now)
     return m
   end
   m.shown = app:evaluate({ v }, nil, now)[1]
-  m.history = app.history[e.label] or {}
+  m.canLong, m.long = app.daily ~= nil, e.long and app.daily ~= nil
+  if m.long then
+    m.history, m.sample = app.daily:values(e.label, m.time), daily.SLOT
+  else
+    m.history = app.history[e.label] or {}
+  end
   local fmt = plain(v)
   local st = inspect.stats(m.history)
   if st then m.stats = { low = fmt(st.low), average = fmt(st.average), high = fmt(st.high), last = fmt(st.last) } end
   -- Alerts that started while the history was kept.
-  local from = m.time - #m.history * app.cfg.sample
+  local from = m.time - #m.history * m.sample
   local list = {}
   for _, x in ipairs(app.logbook:list()) do
     if x.kind == "alert" and x.since >= from then list[#list + 1] = x end

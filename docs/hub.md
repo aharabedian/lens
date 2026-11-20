@@ -44,6 +44,7 @@ shape in blocks, so text fills it with no empty borders. Characters are twice as
 | `sample` | `10` | Seconds between sparkline samples |
 | `timezone` | `nil` | Hours from UTC (`-5`, `1`, `5.5`): the [log](#the-alert-log) shows clock times. `nil`: how long ago |
 | `alarm` | `nil` | [Alarm output](#alarm-output): `{ side = "north" }` (and `level = "warn"` to count warns too) |
+| `history` | `false` | `true`: each panel also keeps its last 24 hours, one value per 10 minutes (the average), in `/home/lens-history.cfg` so a restart keeps it: **24 H** on the [panel page](#the-panel-page). About 2.3 KB of memory per panel |
 | `chat` | `false` | `true`: each new `BAD` alert (not muted) also goes to the chat of each player wearing glasses whose HUD would list it ([hud.md](hud.md)) |
 | `glance` | `false` | [Glance mode](#glance-mode): `{ after = 5, views = { "Power", "Ore" } }` (minutes without a tap; the views to show, none: the first page's first five panels). `true`: those defaults |
 | `editors` | `nil` | Player names who may use EDIT: `{ "Steve", "Alex" }`. `nil`: anyone |
@@ -127,7 +128,7 @@ Tap a panel for a closer look, for example to see why its dot is yellow:
 
 | Part | Shows |
 |---|---|
-| Chart | Its history (one sample every `sample` seconds, the last 120: 20 minutes), with the high and low at the right, and **▲** the alerts that started meanwhile |
+| Chart | Its history (one sample every `sample` seconds, the last 120: 20 minutes), with the high and low at the right, and **▲** the alerts that started meanwhile. With `history = true`, **20 M** / **24 H** switch to the last 24 hours |
 | low / average / high / now | Over that history |
 | QUERY | The view's query, what each part comes to (`= 7.9G / 19.3G = 0.41`) and which nodes send its metrics; `of` and `values` too |
 | STATUS | Its status rules in order, each with **yes**, **no**, **no data** or **not tried**; ▶ marks the first true one, which sets the dot |
