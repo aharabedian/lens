@@ -16,7 +16,7 @@
   hs:settings(player) -> s              the player's active preset, or a copy of the defaults:
     { own = bool, preset = name, scale, blocks = { { anchor, x, y, width, dots?, elements = { element... } }... } }
     dots: "left" puts state dots before the label (lens.hub.hud); nil: after it
-    element: { kind = "bar" | "text", view = label } | { kind = "alerts", count } | { kind = "gap" }
+    element: { kind = "bar" | "text", view = label } | { kind = "alerts", count, nodes?, level? } | { kind = "gap" }
   hs:change(player, fn)                 fn(s) edits the active preset; saved at once -> true | nil, err
   hs:reset(player)                      the active preset back to the defaults -> true | nil, err
 
@@ -86,7 +86,8 @@ local function clean(s)
           if (el.kind == "bar" or el.kind == "text") and type(el.view) == "string" then
             nb.elements[#nb.elements + 1] = { kind = el.kind, view = el.view }
           elseif el.kind == "alerts" then
-            nb.elements[#nb.elements + 1] = { kind = "alerts", count = within(el.count, huds.LIMITS.count) and el.count or 3 }
+            nb.elements[#nb.elements + 1] = { kind = "alerts", count = within(el.count, huds.LIMITS.count) and el.count or 3,
+              nodes = type(el.nodes) == "string" and el.nodes or nil, level = el.level == "bad" and "bad" or nil }
           elseif el.kind == "gap" then
             nb.elements[#nb.elements + 1] = { kind = "gap" }
           end
@@ -182,7 +183,7 @@ function Huds:defaultSettings()
       if el.kind == "bar" or el.kind == "text" then
         nb.elements[#nb.elements + 1] = { kind = el.kind, view = el.label }
       else
-        nb.elements[#nb.elements + 1] = { kind = el.kind, count = el.count }
+        nb.elements[#nb.elements + 1] = { kind = el.kind, count = el.count, nodes = el.nodes, level = el.level }
       end
     end
     s.blocks[#s.blocks + 1] = nb
@@ -331,7 +332,7 @@ function Huds:blocksFor(player, byLabel, evaluate)
           slots[#slots + 1] = item
         end
       else
-        items[#items + 1] = { kind = el.kind, count = el.count }
+        items[#items + 1] = { kind = el.kind, count = el.count, nodes = el.nodes, level = el.level }
       end
     end
     blocks[i] = { anchor = b.anchor, x = b.x, y = b.y, width = b.width, dots = b.dots, items = items }

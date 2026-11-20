@@ -5,7 +5,7 @@
   h:draw(model)     model: the dashboard's model plus model.screen = { w, h } (the wearer's GUI size, from
                     glasses_on; default 854 x 480) and model.hudBlocks = { { anchor, x, y, width, dots?, items }... },
                     items evaluated: { kind = "bar" | "text", label, text, frac, level, valued?, dots? } | { kind =
-                    "alerts", count } | { kind = "gap" }. An item with dots shows its label, a colored dot
+                    "alerts", count, nodes?, level? } | { kind = "gap" }. An item with dots shows its label, a colored dot
                     per group and, when its view has a value (valued), the value at the right ("–" without data,
                     dim, so nothing moves), whatever its kind. A block's dots = "left" puts them before the
                     label; otherwise they follow it (or, with no value, line up with the bars). Widgets are made on first
@@ -22,7 +22,8 @@
 
   Each block, top to bottom, with a faint backdrop and a thin strip down the left in the overall health's color:
     bar: label, bar (fill colored by its level), value        text: label, then the value at the right, colored
-    alerts: the newest unacknowledged ones (not muted), a colored "!" and the text, then "+N more"; gap: half a row
+    alerts: the newest unacknowledged ones (not muted), a colored "!" and the text, then "+N more"; only nodes
+    whose name matches `nodes` (a Lua pattern), only BAD with level = "bad"; gap: half a row
     "LENS OK" only when a block has nothing to show, so the strip isn't alone
   Measured in game: positions are GUI pixels from the top left; Rect2D setSize takes the height first; text is
   about 5.2 px a character per unit of setScale (and starts at scale 2 unless set, so the HUD always sets it).
@@ -125,9 +126,21 @@ local function unackedOf(m)
   return out
 end
 
+-- An alerts element's own list: its nodes (a Lua pattern on the node's name) and level ("bad": BAD only).
+local function only(item, unacked)
+  if not item.nodes and not item.level then return unacked end
+  local out = {}
+  for _, a in ipairs(unacked) do
+    local okNode = not item.nodes or (pcall(string.find, "", item.nodes) and tostring(a.node or ""):find(item.nodes) ~= nil)
+    if okNode and (item.level ~= "bad" or a.level == "bad") then out[#out + 1] = a end
+  end
+  return out
+end
+
 -- The rows an element takes (alerts: those shown, then "+N more").
 local function rowsOf(item, unacked)
   if item.kind == "alerts" then
+    unacked = only(item, unacked)
     local limit = item.count or 3
     if limit <= 0 then return 0 end
     return math.min(limit, #unacked) + (#unacked > limit and 1 or 0)
@@ -216,14 +229,15 @@ function Hud:block(i, b, m, unacked, used)
       y = y + line
     elseif item.kind == "alerts" then
       local limit = item.count or 3
-      for a = 1, math.min(limit, #unacked) do
-        local al = unacked[a]
+      local list = only(item, unacked)
+      for a = 1, math.min(limit, #list) do
+        local al = list[a]
         self:text(mark(k .. "a" .. a .. "i"), tx, y, "!", al.level == "bad" and P.bad or P.warn)
         self:text(mark(k .. "a" .. a), tx + math.ceil(2 * char), y, cut(al.text, math.floor((inner - 2 * char) / char)), P.text)
         y = y + line
       end
-      if limit > 0 and #unacked > limit then
-        self:text(mark(k .. "more"), tx, y, ("+%d more"):format(#unacked - limit), P.dim)
+      if limit > 0 and #list > limit then
+        self:text(mark(k .. "more"), tx, y, ("+%d more"):format(#list - limit), P.dim)
         y = y + line
       end
     elseif item.kind == "gap" then

@@ -30,6 +30,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Alerts made on the screen**: EDIT > ALERTS, or SAVE AS ALERT on DATA and a panel's page. Type the text, the
   query and how long it must stay true; NOW says whether it's true and when it would fire. Kept in
   `lens-board.cfg`; lens-hub.cfg's rules are listed read-only.
+- **Alerts by node in the HUD**: an alerts element can show only some nodes' alerts (`nodes = "^prism"`) or only
+  BAD ones (`level = "bad"`); in the HUD editor, NODES and BAD ONLY. Each player sees the lines they look after.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

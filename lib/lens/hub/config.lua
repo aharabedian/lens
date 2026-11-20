@@ -10,7 +10,7 @@
   resolution: "fit" (fill the screen's shape), "max" (the GPU's largest) or { width, height }
   hud: the AR glasses HUD (HUD_DEFAULTS: scale, alpha, colors); hud = false turns it off. After check, hud.blocks
        is always there: { { anchor, x, y, width, dots?, elements = { element... } }... } where an element is a view
-       with kind = "bar" | "text", or { kind = "alerts", count }, or { kind = "gap" }. x, y: GUI pixels from the
+       with kind = "bar" | "text", or { kind = "alerts", count, nodes?, level? }, or { kind = "gap" }. x, y: GUI pixels from the
        anchor point, right and down positive (default 4 in from the edges).
        Written without blocks (the 0.1 form: anchor, x, y as margins, width, alerts, bars; ONE_CORNER has their
        defaults), it becomes one block: the bars, then the alerts.
@@ -259,6 +259,10 @@ function config.checkBlocks(blocks)
       elseif el.kind == "alerts" then
         el.count = el.count or 3
         if type(el.count) ~= "number" or el.count < 0 then return w .. ": count must be a number" end
+        if el.nodes ~= nil and (type(el.nodes) ~= "string" or not pcall(string.find, "", el.nodes)) then
+          return w .. ': nodes must be a Lua pattern on node names, like "^prism"'
+        end
+        if el.level ~= nil and el.level ~= "bad" then return w .. ': level must be "bad" (only BAD alerts) or nil' end
       end
     end
   end

@@ -34,7 +34,7 @@ Tap **HUD** in the dashboard's header. It opens for whoever tapped, and only the
 |---|---|
 | HUDS | Your presets: tap one to switch to it; **+** copies the one you're on and asks for a name; **RENAME** (typed); **DELETE** (not the last) |
 | BLOCKS | A tab per block; **+** adds one, **REMOVE** drops the one you're editing |
-| IN BLOCK n | Its elements in order: tap one to remove it, **BAR / TEXT** switches how it shows, ▲ ▼ order. Below: every view in the library to add, **+ ALERTS** (then − / + for how many) and **+ GAP** |
+| IN BLOCK n | Its elements in order: tap one to remove it, **BAR / TEXT** switches how it shows, ▲ ▼ order. Below: every view in the library to add, **+ ALERTS** (then − / + for how many; **NODES** cycles which nodes' alerts it shows: all, a name prefix two or more nodes share such as `prism-*`, then each node; **BAD ONLY**) and **+ GAP** |
 | POSITION | The anchor grid (↖ ↑ ↗ ← • → ↙ ↓ ↘), then ◀ ▲ ▼ ▶ to nudge by the step (tap it: 1, 8 or 32 px). Watch the glasses as you tap |
 | Width, Size | The block's width; text size for all your blocks |
 | Dots RIGHT / LEFT | Where the block's state dots go: after the label, or before it |
@@ -84,7 +84,7 @@ hud = {
 |---|---|
 | `{ kind = "bar", ...a view }` | Label, a bar (with `max`, `of` or `format = "percent"`), value |
 | `{ kind = "text", ...a view }` | Label, then the value on the right. A view with `status` or `dots` shows its dots after the label (or before it: the block's `dots`). A view with a value keeps its place without data and shows a dim `–` |
-| `{ kind = "alerts", count = 3 }` | The newest unacknowledged alerts (not muted), then `+N more` |
+| `{ kind = "alerts", count = 3 }` | The newest unacknowledged alerts (not muted), then `+N more`. `nodes = "^prism"`: only nodes whose name matches that Lua pattern; `level = "bad"`: only `BAD` ones. Each player sees the lines they look after |
 | `{ kind = "gap" }` | Half a row of space |
 
 An element with `when` disappears while its query is false, and the block shrinks. A view's keys:
