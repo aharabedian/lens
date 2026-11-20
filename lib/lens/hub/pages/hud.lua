@@ -3,8 +3,9 @@
 
   hud.draw(f, e, actions)   e: the editor's model: { player, presets = { name... }, preset = the active one,
                             renaming = text | nil, keyboard, own, scale, blocks = n, block = i (being edited),
-                            anchor, x, y, width, dots = "right" | "left", step, rows = { { index, kind, label?, count? }... } (the block's
-                            elements), hidden = { label... } (views that could be added), wearing = n, error,
+                            anchor, x, y, width, dots = "right" | "left", step, rows = { { index, kind, label?, count?, nodes?,
+                            level? }... } (the block's elements; an alerts element has a second row: NODES and
+                            BAD ONLY), hidden = { label... } (views that could be added), wearing = n, error,
                             closesIn }
 ]]
 
@@ -75,6 +76,12 @@ local function elements(f, e, actions, lx, lw)
       f:button(lx + lw - 21, y, "-", function(p) actions.hudAlerts(p, -1) end)
       f:text(lx + lw - 17, y, tostring(r.count), C.text)
       f:button(lx + lw - 15, y, "+", function(p) actions.hudAlerts(p, 1) end)
+      if y + 1 <= last then
+        local bx = f:button(lx + 4, y + 1, "NODES: " .. tostring(r.nodes or "all"), function(p) actions.hudAlertNodes(p, i) end,
+          r.nodes ~= "all" and C.btnOn or C.btn)
+        f:button(bx, y + 1, "BAD ONLY", function(p) actions.hudAlertLevel(p, i) end, r.level == "bad" and C.btnOn or C.btn)
+        y = y + 1
+      end
     elseif r.kind == "gap" then
       f:text(lx + 4, y, Gui.fit("(gap)", labelW), C.dim)
       f:hit(lx, y, lx + labelW + 3, y, function(p) actions.hudRemove(p, i) end)

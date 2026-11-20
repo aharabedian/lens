@@ -12,7 +12,9 @@
                          rename = a lens.hub.textfield field | nil (the active preset's new name, being typed) }
   Refresh: hudRefresh wipes every terminal's widgets (lens.hub.huds' wipe) and the HUDs are drawn again; settings stay.
   Actions: hud(player) opens it; hudDone, hudReset, hudBlock(i), hudBlockAdd, hudBlockRemove, hudToggle(label),
-  hudKind(i), hudMove(i, -1 | 1), hudAlerts(-1 | 1), hudGap, hudRemove(i), hudAnchor(anchor), hudNudge(dx, dy),
+  hudKind(i), hudMove(i, -1 | 1), hudAlerts(-1 | 1), hudAlertNodes(i) (the next node filter: all, a name
+  prefix two or more nodes share ("^prism%-"), each node), hudAlertLevel(i) (BAD only or not), hudGap,
+  hudRemove(i), hudAnchor(anchor), hudNudge(dx, dy),
   hudStepSize, hudWidth(-1 | 1), hudScale(-1 | 1), hudDots (the block's dots: right / left);
   presets: hudPreset(name), hudPresetAdd, hudPresetDelete,
   hudRename (start typing a new name), hudRenameOk, hudRenameCancel. Keys and pastes type the name; Enter is OK.
@@ -28,6 +30,33 @@ local E = {}
 local STEPS = { 1, 8, 32 }
 
 local function clamp(v, lim) return math.max(lim[1], math.min(lim[2], v)) end
+
+-- The node filters an alerts element cycles through: name prefixes two or more nodes share, then each node.
+function E.nodeChoices(app)
+  local names, prefix = {}, {}
+  for _, n in ipairs(app.hub:nodes(app.now)) do
+    names[#names + 1] = n.name
+    local p = n.name:match("^([^-]+)%-")
+    if p then prefix[p] = (prefix[p] or 0) + 1 end
+  end
+  local out = {}
+  local ps = {}
+  for p, count in pairs(prefix) do if count >= 2 then ps[#ps + 1] = p end end
+  table.sort(ps)
+  for _, p in ipairs(ps) do out[#out + 1] = "^" .. p:gsub("%p", "%%%0") .. "%-" end
+  for _, n in ipairs(names) do out[#out + 1] = "^" .. n:gsub("%p", "%%%0") .. "$" end
+  return out
+end
+
+-- A node filter as the editor shows it: "all", "prism-*", "power-room", or the pattern itself.
+function E.nodesText(pattern)
+  if not pattern then return "all" end
+  local p = pattern:match("^%^(.-)%%%-$")
+  if p then return (p:gsub("%%(%p)", "%1")) .. "-*" end
+  local n = pattern:match("^%^(.-)%$$")
+  if n then return (n:gsub("%%(%p)", "%1")) end
+  return pattern
+end
 
 function E.actions(app, a, mine)
   a.hud = function(player) app:open("hud", player, { block = 1, step = 8 }) end
@@ -83,6 +112,18 @@ function E.actions(app, a, mine)
       end
     end
     if dir > 0 then b.elements[#b.elements + 1] = { kind = "alerts", count = 1 } end
+  end)
+  a.hudAlertNodes = change(function(_, b, i)
+    local el = b.elements[i]
+    if not el or el.kind ~= "alerts" then return end
+    local choices = E.nodeChoices(app)
+    local at = 0
+    for k, c in ipairs(choices) do if c == el.nodes then at = k end end
+    el.nodes = choices[at + 1]                     -- past the last: nil, all nodes
+  end)
+  a.hudAlertLevel = change(function(_, b, i)
+    local el = b.elements[i]
+    if el and el.kind == "alerts" then el.level = el.level ~= "bad" and "bad" or nil end
   end)
   a.hudGap = change(function(_, b) b.elements[#b.elements + 1] = { kind = "gap" } end)
   a.hudDots = change(function(_, b) b.dots = b.dots ~= "left" and "left" or nil end)
@@ -142,7 +183,8 @@ function E.model(app, e)
   local b = s.blocks[e.block]
   local rows, used = {}, {}
   for i, el in ipairs(b.elements) do
-    rows[#rows + 1] = { index = i, kind = el.kind, label = el.view, count = el.count }
+    rows[#rows + 1] = { index = i, kind = el.kind, label = el.view, count = el.count, level = el.level,
+      nodes = el.kind == "alerts" and E.nodesText(el.nodes) or nil }
     if el.view then used[el.view] = true end
   end
   local hidden = {}
