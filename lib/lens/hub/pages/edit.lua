@@ -81,6 +81,7 @@ end
 function edit.draw(f, e, actions)
   local buttons = {}
   if e.canUndo then buttons[#buttons + 1] = { "UNDO", actions.editUndo, C.line } end
+  buttons[#buttons + 1] = { "ALERTS", actions.editAlerts }
   buttons[#buttons + 1] = { "DONE", actions.editDone }
   f:editorHeader("Edit the dashboard", buttons)
   pages(f, e, actions)

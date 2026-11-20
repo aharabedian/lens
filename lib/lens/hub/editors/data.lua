@@ -5,13 +5,15 @@
 
   State: { kind = "data", player, metric = name | nil, filters = { [label] = value }, fn, page }
   Actions: data(player) opens it; dataDone, dataPick(name, type), dataBack, dataPage(-1 | 1),
-  dataFilter(label, value | nil), dataFn(fn), dataPanel (cfg.editors, when set), dataHud.
+  dataFilter(label, value | nil), dataFn(fn), dataPanel (cfg.editors, when set), dataHud, dataAlert (an alert on the
+  query: lens.hub.editors.rule; cfg.editors).
 ]]
 
 local explore = require("lens.hub.explore")
 local format = require("lens.hub.format")
 local query = require("lens.hub.query")
 local view = require("lens.hub.editors.view")
+local rule = require("lens.hub.editors.rule")
 
 local E = {}
 
@@ -50,6 +52,13 @@ function E.actions(app, a, mine)
       return nil, ("Only %s can add to the dashboard."):format(table.concat(app.cfg.editors, ", "))
     end
     view.start(app, player, draft(app), keep(app.editing), "dash")
+  end)
+  a.dataAlert = mine(function(player)
+    if not app:mayEdit(player) then
+      return nil, ("Only %s can make alerts."):format(table.concat(app.cfg.editors, ", "))
+    end
+    local d = draft(app)
+    rule.start(app, player, { text = d.label, when = d.value .. " > 0" }, keep(app.editing))
   end)
   a.dataHud = mine(function(player)
     if not app.huds then return nil, "No Glasses Terminal: there's no HUD to add to." end

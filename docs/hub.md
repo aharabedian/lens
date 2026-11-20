@@ -70,6 +70,12 @@ These are the starting point: the dashboard's pages and panels are then changed 
 
 ### Rules
 
+Rules can also be made on the screen: **EDIT** > **ALERTS** lists them (and lens-hub.cfg's, read-only), and
+**SAVE AS ALERT** on [DATA](#the-data-page) or a [panel's page](#the-panel-page) starts one from that query (a
+panel's: its first `bad` or `warn` status rule). The form has the alert's **Text**, **When** (a query: true when
+not 0), **For** (seconds it must stay true) and level, and **NOW** says whether it's true and when it would fire.
+They're kept in `lens-board.cfg` and work like the ones below; only `editors` may make them, when set.
+
 ```lua
 { id = "ore-backlog", level = "warn", text = "Ore backlog over 9k for 5 minutes",
   when = 'sum(prism_backlog_items{node="prism-ore"}) > 9000', ["for"] = 300 },

@@ -22,6 +22,7 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.inspect` | What a view's query comes to on the panel page: its function calls, each replaced by its value, the metrics it reads; low / average / high of a history |
 | | `lens.hub.explore` | Building a query by tapping: a metric, label filters, a function → query text |
 | | `lens.hub.viewdraft` | A view being edited: fields as text, status rules and dot states as rows, focus and cursor, back to a checked view |
+| | `lens.hub.ruledraft` | An alert rule being typed on the screen: its fields, the cursor, back to a checked rule |
 | | `lens.hub.textfield` | One line being typed, with a cursor (insert, ← → Home End, Backspace, Delete, pastes, a length limit): used by viewdraft and the editors' renames |
 | **Settings and state** | `lens.hub.config` | `/home/lens-hub.cfg`: defaults and checks, readable errors ([hub.md](hub.md)); views, HUD blocks |
 | | `lens.hub.clock` | Real time (seconds since 1970) from a file's modification time, read once an hour and carried on with uptime |
@@ -30,7 +31,7 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.board` | `/home/lens-board.cfg`: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's pages and their panels, players' HUD presets; undo |
 | | `lens.hub.huds` | One `lens.hub.hud` per Glasses Terminal with its wearer's blocks (kept by the board) or the config's `hud` |
 | | `lens.hub.hud` | Draws HUD blocks (bar, text, alerts, gap; nine anchors) as widgets on one terminal; setters only on change, calls counted |
-| **Editors** | `lens.hub.editors.<kind>` | One per editor: `hud` (a player's HUD presets), `edit` (the dashboard's pages, their panels, the library), `view` (one view's fields), `data` (queries by tapping), `log` (the alert log, read-only), `panel` (one panel up close), `node` (one agent up close). Each has `actions(app, a, mine)` and `model(app, e, now)`, and `key` / `paste` if it takes typing; state and actions only, no drawing |
+| **Editors** | `lens.hub.editors.<kind>` | One per editor: `hud` (a player's HUD presets), `edit` (the dashboard's pages, their panels, the library), `view` (one view's fields), `data` (queries by tapping), `log` (the alert log, read-only), `panel` (one panel up close), `node` (one agent up close), `rule` (alerts made on the screen). Each has `actions(app, a, mine)` and `model(app, e, now)`, and `key` / `paste` if it takes typing; state and actions only, no drawing |
 | **Screen** | `lens.hub.frame` | One screenful being built (row segments, touch targets) and the widgets pages share |
 | | `lens.hub.pages.<kind>` | One per page: `main` (the dashboard, with page tabs), `glance` (glance mode) and one per editor. `draw(f, model, actions)`; drawing only |
 | | `lens.hub.dashboard` | Picks the page for the model, then sends the GPU only the rows or segments that changed; touch dispatch |
@@ -50,7 +51,7 @@ the hub's `config` and nothing else of it; `metrics` and `codec` need nothing of
 | File | Written by | Holds |
 |---|---|---|
 | `/home/lens-hub.cfg` | `lens-setup` and you | Network, the views and HUD to start from, rules, `editors` |
-| `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's pages, each player's HUDs; the nodes the hub has heard; mutes |
+| `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's pages, each player's HUDs; the nodes the hub has heard; mutes; alert rules made on the screen |
 | `/home/lens-log.cfg` | `lens-hub` only | The alert log (LOG): the last 300 entries, saved once a minute and on stop |
 | `/home/.lens-clock` | `lens-hub` only | Nothing: written once an hour to read the real time back from its modification time |
 

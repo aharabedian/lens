@@ -1,7 +1,7 @@
 --[[ lens.hub.pages.panel: the panel page (lens.hub.editors.panel): one view up close. Its value, its history as a
   chart (12 rows on screens 40 or taller, else 5) with the high and low at the right and the alerts that started
   meanwhile under it, low / average / high, its query with what each part comes to and which nodes send it, its
-  status rules (▶ the one that set the dot), where it's shown, and EDIT VIEW / ADD TO MY HUD.
+  status rules (▶ the one that set the dot), where it's shown, and EDIT VIEW / SAVE AS ALERT / ADD TO MY HUD.
 
   panel.draw(f, e, actions)   e: the editor's model (its header comment), plus player, error, closesIn.
                               Sections that don't fit are left off the bottom.
@@ -191,7 +191,11 @@ function panel.draw(f, e, actions)
       C.text)
     y = y + 2
   end
-  if e.canHud and room() then f:button(2, y, "ADD TO MY HUD", actions.panelHud) end
+  if room() then
+    local bx = 2
+    if e.canEdit then bx = f:button(bx, y, "SAVE AS ALERT", actions.panelAlert) end
+    if e.canHud then f:button(bx, y, "ADD TO MY HUD", actions.panelHud) end
+  end
   f:editorFooter(e, "can use this")
 end
 

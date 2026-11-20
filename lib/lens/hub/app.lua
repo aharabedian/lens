@@ -28,7 +28,7 @@
                                          on the module: require("lens.hub.app").evaluateWith)
   app.running, app.hub (lens.hub.core), app.board, app.huds (or nil), app.dash (lens.hub.dashboard), app.now
 
-  Editors (lens.hub.editors.<kind>: hud, edit, view, data, log, panel, node; their interface is in editors/hud.lua). One is open
+  Editors (lens.hub.editors.<kind>: hud, edit, view, data, log, panel, node, rule; their interface is in editors/hud.lua). One is open
   at a time (app.editing = { kind, player, until, ... }), for the player who opened it: only that player's taps
   and keys change anything, and it closes after EDIT_TIMEOUT seconds without one. For editors:
   app:open(kind, player, state)   open one, unless someone else has one open (app.notice says who)
@@ -72,6 +72,7 @@ local EDITORS = {
   log  = require("lens.hub.editors.log"),
   panel = require("lens.hub.editors.panel"),
   node = require("lens.hub.editors.node"),
+  rule = require("lens.hub.editors.rule"),
 }
 
 local App = {}
@@ -81,10 +82,12 @@ function app.new(cfg, env)
   local hub, err = core.new{ node = cfg.node, boot = env.boot or codec.newBoot(), token = cfg.token,
     staleAfter = cfg.staleAfter, nonCritical = cfg.nonCritical, rules = cfg.rules }
   if not hub then return nil, err end
+  local b = board.new(env.boardPath, cfg)
+  hub:setRules(b:allRules())          -- lens-hub.cfg's rules and the ones made on the screen (checked on load)
   local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0, now = 0,
     page = 1, lastTap = 0 }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
-  self.board = board.new(env.boardPath, cfg)
+  self.board = b
   self.clock = clock.new(env.filesystem, env.clockPath)
   self.logbook = logbook.new(env.logPath)
   self.mutes = mutes.new(self.board:mutes())

@@ -5,7 +5,8 @@
 
   State: { kind = "panel", player, label }
   Actions: panel(player, label) opens it; panelDone, panelEdit (the view editor, back here; cfg.editors),
-           panelHud (the view at the end of the player's HUD's first block).
+           panelHud (the view at the end of the player's HUD's first block), panelAlert (an alert from its first
+           bad or warn status rule, else its value above 0: lens.hub.editors.rule; cfg.editors).
   Model: { label, missing = bool (the view is gone), shown = app:evaluate's row (text, level, status...),
            history = { number | false... } (one every cfg.sample seconds, oldest first), sample, time (real),
            tz, stats = lens.hub.inspect.stats as text { low, average, high, last },
@@ -19,6 +20,7 @@
 local format = require("lens.hub.format")
 local inspect = require("lens.hub.inspect")
 local view = require("lens.hub.editors.view")
+local ruleEditor = require("lens.hub.editors.rule")
 
 local E = {}
 
@@ -71,6 +73,22 @@ function E.actions(app, a, mine)
     local v = app.board:view(app.editing.label)
     if not v then return nil, "That view is gone." end
     view.start(app, player, v, { kind = "panel", label = app.editing.label })
+  end)
+  a.panelAlert = mine(function(player)
+    if not app:mayEdit(player) then
+      return nil, ("Only %s can make alerts."):format(table.concat(app.cfg.editors, ", "))
+    end
+    local v = app.board:view(app.editing.label)
+    if not v then return nil, "That view is gone." end
+    local r = { text = v.label, level = "warn" }
+    for _, s in ipairs(v.status or {}) do
+      if s[1] == "bad" or s[1] == "warn" then
+        r.when, r.level = format.expand(s[2], v.value), s[1]
+        break
+      end
+    end
+    r.when = r.when or (v.value and ("(" .. v.value .. ") > 0")) or ""
+    ruleEditor.start(app, player, r, { kind = "panel", label = app.editing.label })
   end)
   a.panelHud = mine(function(player)
     if not app.huds then return nil, "No Glasses Terminal: there's no HUD to add to." end

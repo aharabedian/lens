@@ -21,6 +21,7 @@
   f:panel(p, x, y, width, tall?)     one evaluated view as the dashboard shows it: status dot, label and value, then
                                      state dots, a bar (with a fraction) or a rule; with tall, a sparkline of
                                      p.history under it (lens.hub.app's evaluate rows)
+  frame.wrap(text, width) -> { line... }   text broken into lines at spaces (a word longer than width is cut)
   frame.spark(history, width) -> text   the last `width` values as ▁..▇, scaled between their own low and high
   f:editorHeader(title, { { label, fn, bg? }... })   an editor's top row: LENS, title, buttons on the right
   f:editorFooter(e, what?)           e.error in red, or who the editor is for and when it closes (what: the
@@ -172,6 +173,21 @@ function Frame:dots(x, y, width, dots)
 end
 
 local SPARK = { "▁", "▂", "▃", "▄", "▅", "▆", "▇" }
+
+function frame.wrap(text, width)
+  local lines, cur = {}, ""
+  for word in tostring(text):gmatch("%S+") do
+    if cur == "" then cur = word
+    elseif Gui.len(cur) + 1 + Gui.len(word) <= width then cur = cur .. " " .. word
+    else lines[#lines + 1] = cur; cur = word end
+    while Gui.len(cur) > width do
+      lines[#lines + 1] = unicode.sub(cur, 1, width)
+      cur = unicode.sub(cur, width + 1)
+    end
+  end
+  if cur ~= "" then lines[#lines + 1] = cur end
+  return lines
+end
 
 -- The last `width` values of history, scaled between their own low and high.
 function frame.spark(history, width)

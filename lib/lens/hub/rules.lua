@@ -6,6 +6,8 @@
   }
   err names the first bad rule (missing id, duplicate id, bad level, query that doesn't compile).
   r:evaluate(lookup, now) -> { { id, level, text, age } }   the rules firing now
+  r:trueSince(id) -> uptime | nil   since when a rule's query has been true (it fires `for` seconds after)
+  r:keep(old)       carry over old's timers (a rules object) for rules with the same id and query
 
   A rule fires once `when` has been true (non-zero) for `for` seconds (default 0) in a row. Missing data is
   false, so a rule never fires because a node went quiet; the hub's stale alert covers that.
@@ -31,9 +33,19 @@ function rules.new(list)
     if not q then return nil, where .. ": " .. tostring(err) end
     local hold = r["for"] or 0
     if type(hold) ~= "number" or hold < 0 then return nil, where .. ": for must be seconds" end
-    out[#out + 1] = { id = r.id, level = r.level, text = tostring(r.text or r.id), q = q, hold = hold }
+    out[#out + 1] = { id = r.id, level = r.level, text = tostring(r.text or r.id), q = q, hold = hold, when = r.when }
   end
   return setmetatable({ list = out, since = {} }, Rules)
+end
+
+function Rules:trueSince(id) return self.since[id] end
+
+function Rules:keep(old)
+  local was = {}
+  for _, r in ipairs(old.list) do was[r.id] = r.when end
+  for _, r in ipairs(self.list) do
+    if was[r.id] ~= nil and was[r.id] == r.when then self.since[r.id] = old.since[r.id] end
+  end
 end
 
 function Rules:evaluate(lookup, now)
