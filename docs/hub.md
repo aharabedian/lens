@@ -15,7 +15,7 @@ Install, connecting agents and the first run: [setup.md](setup.md). Problems: [t
 | NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported |
 | ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓, dimmed) until it clears, and comes back unacknowledged if it gets worse |
 | Page tabs | With more than one page: tap one to show its panels (anyone may) |
-| PANELS | The shown page's panels: label, value, a bar, status and state dots ([views.md](views.md)), and a sparkline of its history (tier 3) |
+| PANELS | The shown page's panels: label, value, a bar, status and state dots ([views.md](views.md)), and a sparkline of its history (tier 3). **Tap one** for its [panel page](#the-panel-page) |
 
 On a screen narrower than 120 columns, panels, nodes and alerts stack; on a tall one (40 rows or more)
 panels keep their sparklines. The hub beeps when a new `BAD` alert appears. It redraws only what changed
@@ -91,6 +91,20 @@ hub writes `/home/.lens-clock` for that). Without `timezone` they read `3h12m ag
 `06:40` today, `Thu 17:42` this week, `12 Nov` before.
 
 ![The alert log](images/log.png)
+
+## The panel page
+
+Tap a panel for a closer look, for example to see why its dot is yellow:
+
+| Part | Shows |
+|---|---|
+| Chart | Its history (one sample every `sample` seconds, the last 120: 20 minutes), with the high and low at the right, and **▲** the alerts that started meanwhile |
+| low / average / high / now | Over that history |
+| QUERY | The view's query, what each part comes to (`= 7.9G / 19.3G = 0.41`) and which nodes send its metrics; `of` and `values` too |
+| STATUS | Its status rules in order, each with **yes**, **no**, **no data** or **not tried**; ▶ marks the first true one, which sets the dot |
+| SHOWN ON | The dashboard pages and players' HUDs (and presets) it's on |
+| **EDIT VIEW** | The [view editor](views.md#the-view-editor), back here after (only `editors`, when set) |
+| **ADD TO MY HUD** | Puts it at the end of your HUD's first block (with a Glasses Terminal) |
 
 ## The DATA page
 
