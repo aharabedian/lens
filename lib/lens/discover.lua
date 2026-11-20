@@ -15,6 +15,11 @@
 
   discover.event(ev) -> line   one pulled event as text, for --events
 
+  discover.redstone(proxy, side, sideName, level) -> lines[]
+    For the alarm (lens-hub's alarm): sets a redstone card's output on one side and leaves it there, saying what
+    setOutput returned and what getOutput reads back, and what to check next (a lamp; the hub stopping; the
+    computer turning off).
+
   discover.glassesTest(proxy) -> ids[], lines[]
     Draws a calibration pattern on a Glasses Terminal, for what the first one (2026-11-12) left open:
       a green bar setSize(10, 80): wide and short if setSize takes the height first, as it seemed
@@ -176,6 +181,23 @@ function discover.event(ev)
   local parts = {}
   for i = 1, ev.n or #ev do parts[#parts + 1] = describeValue(ev[i]) end
   return table.concat(parts, "  ")
+end
+
+function discover.redstone(proxy, side, sideName, level)
+  local out = {}
+  local ok, old = pcall(proxy.setOutput, side, level)
+  if not ok then
+    out[#out + 1] = ("setOutput(%s, %d) failed: %s"):format(sideName, level, tostring(old))
+    return out
+  end
+  local okRead, now = pcall(proxy.getOutput, side)
+  out[#out + 1] = ("setOutput(%s = %d, %d) returned %s; getOutput reads %s"):format(sideName, side, level, tostring(old),
+    okRead and tostring(now) or ("an error: " .. tostring(now)))
+  out[#out + 1] = "The output stays like this after lens-discover ends. Check:"
+  out[#out + 1] = "  1. A lamp on that side of the computer lights (level 15) or goes out (level 0)."
+  out[#out + 1] = "  2. With it on, turn the computer off: does the lamp go out? Turn it on again: is it still lit?"
+  out[#out + 1] = ("  3. lens-discover --redstone %s 0 turns it off."):format(sideName)
+  return out
 end
 
 return discover

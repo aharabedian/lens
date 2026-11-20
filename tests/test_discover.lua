@@ -116,4 +116,18 @@ check(out:find("Is the green bar wide and short", 1, true) and M.time >= 10,
   "says what to look for, and keeps the pattern up for the given time")
 check(#G.live() == 0 and out:find("pattern removed", 1, true), "then removes it")
 
+---------------------------------------------------------------- --redstone (the alarm's probe)
+do
+  local rs = M.redstone()
+  M.components = { rs000000 = { type = "redstone", proxy = rs.proxy, methods = {} } }
+  ok, out, file = run("--redstone", "north")
+  check(ok and rs.outputs[2] == 15 and out:find("setOutput(north = 2, 15) returned 0; getOutput reads 15", 1, true)
+    and file:find("turn the computer off", 1, true), "--redstone north: sets 15 on that side, says what it read back and what to check")
+  ok = run("--redstone", "north", "0")
+  check(ok and rs.outputs[2] == 0, "--redstone north 0 turns it off")
+  local okBad, _, _, errBad = run("--redstone", "sideways")
+  check(not okBad and tostring(errBad):find("which side", 1, true), "an unknown side says how to name one")
+  M.components = {}
+end
+
 H.done()

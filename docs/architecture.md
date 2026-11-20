@@ -79,7 +79,7 @@ local enc = codec.encoder{ node = cfg.node, role = "power", boot = codec.newBoot
 |---|---|
 | `lens-hub.lua` | The hub: the event loop around `lens.hub.app` (packets, touches, keys, pastes, glasses, a tick a second); picks the resolution |
 | `lens-setup.lua` | Guided setup: writes `/home/lens-hub.cfg` (and `/home/.shrc`), finding agents with a hello (`lens.setup.*`) |
-| `lens-discover.lua` | Lists this computer's components with every method and doc string, into `/home/lens-discover.txt`: for designing against a mod's real API (`lens.discover`) |
+| `lens-discover.lua` | Lists this computer's components with every method and doc string, into `/home/lens-discover.txt`: for designing against a mod's real API (`lens.discover`). Probes: `--widgets`, `--events`, `--glasses-test`, `--redstone` |
 | `lens-update.lua` | Installs and updates from GitHub what `manifest.lua` lists. Self-contained: it installs the modules |
 
 Each program but `lens-update` starts with the same three lines as PRISM's: add `/home/lib/?.lua` to the path,
@@ -109,6 +109,7 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | Logging out (or changing dimension) with glasses on sends `glasses_off`, and logging back in `glasses_on` (Welcome back) | **Probe**: run `lens-discover --events 600` on the hub, put the glasses on, log out, log back in, then read `/home/lens-discover.txt`. Without them, Welcome back shows only after taking the glasses off by hand |
 | Events (the hub uses `glasses_on`'s size to place the HUD by its anchor): `glasses_on(terminal, player, width, height)` (854x457 here, briefly 854x480), `glasses_off(terminal, player)`; clicking with glasses on sends nothing | **Seen in game** (`lens-discover --events`, 2026-11-12) |
 | `setAlpha` on a Rect2D can change every second (the new-alert flash) without flicker or lag | **Unverified**: alpha is set in game, but not changed this often yet |
+| A redstone card's `setOutput(side, level)` (side from OpenOS `sides`) lights a lamp on that side; what the output does when `lens-hub` stops on an error (it sets 0 on the way out) and when the computer turns off (LUMEN saw a card drop to 0) | **Probe**: `lens-discover --redstone north`, then turn the computer off and on |
 | Colors 0..1 (`setColor(255, 0, 0)` clamps to the same red as `(1, 0, 0)`) | **Seen in game** (`--glasses-test`, 2026-11-12) |
 | Positions are GUI pixels from the top left (at GUI scale 3, x 10 is 30 screen px); `glasses_on`'s width and height are the GUI size at that moment | **Seen in game** (`--glasses-test`, 2026-11-12) |
 | Rect2D `setSize(a, b)` makes it `b` wide and `a` tall: **height first** | **Seen in game** twice (60, 14 drew 14 x 60; 10, 80 drew 80 x 10) |

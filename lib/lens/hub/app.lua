@@ -1,7 +1,8 @@
 --[[ lens.hub.app: the hub program's state and reactions, without the event loop (src/lens-hub.lua has that).
 
   local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, terminals?, boardPath?, keyboard?,
-                                                        beep?, boot?, filesystem?, logPath?, clockPath? })
+                                                        beep?, boot?, filesystem?, logPath?, clockPath?,
+                                                        redstone?, sides? })
     cfg: lens.hub.config output. err when the hub core refuses the config (bad rules).
     terminals: { [address] = Glasses Terminal }; each shows its wearer's HUD every tick (lens.hub.huds) unless
     cfg.hud is false. A HUD failure is shown on the dashboard (model.hudError) and never stops the hub.
@@ -48,6 +49,9 @@
   app:unmute(player, node, key?) -> true | nil, err
   A new bad alert (not muted) flashes for FLASH seconds in the HUD blocks that list it (model.flash, flashOn: the
   phase, which changes every tick).
+  Alarm (cfg.alarm): env.redstone's output on sides[alarm.side] is 15 while an alert of alarm.level or worse is
+  neither acknowledged nor muted, else 0; set only when that changes, and 0 on stop. Without a card the footer says
+  so (model.alarmError). It drives a lamp or a siren, never a machine or an agent.
   Beeps once when a new bad alert appears (cfg.beep). Panel history keeps one value every cfg.sample seconds.
   Glance mode (cfg.glance): after glance.after minutes without a tap, key or paste (and no editor open), the
   dashboard is drawn at a third of its resolution (half when that's under 12 rows) with glance.views; the next tap
@@ -377,6 +381,7 @@ function App:model(now)
     alerts = alerts, counts = counts, panels = self:panels(now),
     huds = self.huds ~= nil, editor = self:editorModel(now), notice = self.notice,
     pages = self:pageNames(), page = self.page, logged = self.logbook.count, logError = self.logError,
+    alarmError = self.alarmError,
     glance = self.glancing and { panels = self:evaluate(self:glanceViews(), nil, now) } or nil,
     flash = self:flashing(now), flashOn = math.floor(now) % 2 == 0, welcome = self:welcomeRows(now),
   }
@@ -480,6 +485,7 @@ function App:onTouch(x, y, now, player)
   end
   self.notice = nil
   self.dash:tap(x, y, player)
+  self:alarm()                                -- an ack or a mute turns it off straight away
   if self.running then self:redraw(now, true) end
 end
 
@@ -509,12 +515,30 @@ function App:flashing(now)
   return out
 end
 
+function App:alarm()
+  local a = self.cfg.alarm
+  if not a then return end
+  local rs, side = self.env.redstone, self.env.sides and self.env.sides[a.side]
+  if not (rs and side) then
+    self.alarmError = "alarm: no redstone card in the hub computer"
+    return
+  end
+  local want = false
+  for _, al in ipairs(self.hub.alerts:list()) do
+    if (al.level == "bad" or a.level == "warn") and not al.acked and not self.mutes:of(al) then want = true end
+  end
+  if want == self.alarmOn then return end
+  local ok, err = pcall(rs.setOutput, side, want and 15 or 0)
+  if ok then self.alarmOn, self.alarmError = want, nil else self.alarmError = "alarm: " .. tostring(err) end
+end
+
 function App:tick(now)
   self.now = now
   if self.editing and now >= self.editing["until"] then self:close() end
   local changes = self.hub:tick(now)
   if self.cfg.beep and self.env.beep and self:anyBad(changes.new) then self.env.beep() end
   self:flashNew(changes.new, now)
+  self:alarm()
   self:logEnded(changes.ended, now)
   self:noteNodes(now)
   if now >= self.nextSave then
@@ -531,6 +555,7 @@ function App:stop()
   self.logbook:add{ kind = "stop", at = round(self:real(self.now)) }
   self:saveLog()
   self:setGlance(false)                       -- the terminal gets the full screen back
+  if self.alarmOn and self.env.redstone then pcall(self.env.redstone.setOutput, self.env.sides[self.cfg.alarm.side], 0) end
   if self.huds then self.huds:clear() end
   if self.env.modem then self.env.modem.close(self.cfg.port) end
   self.dash:restore()

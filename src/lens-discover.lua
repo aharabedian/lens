@@ -9,6 +9,8 @@
     lens-discover --events [secs]  print every event for secs seconds (default 30): put glasses on, click...
     lens-discover --glasses-test [secs]   draw a calibration pattern in the glasses for secs seconds
                                    (default 60), to find the units colors and positions take
+    lens-discover --redstone side [level]   set a redstone card's output on that side (north, top...) to level
+                                   (default 15) and leave it: for lens-hub's alarm
   Everything is also written to /home/lens-discover.txt (on your own machine:
   saves/<world>/opencomputers/<disk address>/home/lens-discover.txt).
 ]]
@@ -27,7 +29,8 @@ local args = { ... }
 local opts, mode, arg2 = {}, "report", nil
 for i, a in ipairs(args) do
   if a == "--all" then opts.all = true
-  elseif a == "--widgets" or a == "--events" or a == "--glasses-test" then mode, arg2 = a:sub(3), args[i + 1]
+  elseif a == "--widgets" or a == "--events" or a == "--glasses-test" or a == "--redstone" then
+    mode, arg2, opts.level = a:sub(3), args[i + 1], args[i + 2]
   elseif mode == "report" then opts.filter = a end
 end
 
@@ -60,6 +63,13 @@ elseif mode == "glasses-test" then
   end
   for _, id in ipairs(ids) do pcall(proxy.removeObject, id) end
   print("pattern removed")
+elseif mode == "redstone" then
+  local sides = require("sides")
+  local side = arg2 and sides[arg2]
+  if type(side) ~= "number" then error("say which side: lens-discover --redstone north (or top, bottom, south...)", 0) end
+  if not component.isAvailable("redstone") then error("no redstone card or I/O block found", 0) end
+  local level = math.max(0, math.min(15, tonumber(opts.level) or 15))
+  for _, l in ipairs(discover.redstone(component.redstone, side, arg2, level)) do print(l); lines[#lines + 1] = l end
 elseif mode == "events" then
   local secs = tonumber(arg2) or 30
   print(("printing every event for %d s - Ctrl+C to stop sooner"):format(secs))

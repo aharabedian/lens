@@ -22,6 +22,7 @@
     glance = nil | { panels }   glance mode: lens.hub.pages.glance is drawn (at the resolution set by resize)
     logged = n               entries in the kept log (LOG)
     logError = text | nil    lens-log.cfg couldn't be written: shown in the footer
+    alarmError = text | nil  the alarm's redstone card is missing or failed: shown in the footer
     editor = nil | { kind = "hud" | "edit" | "view" | "data" | "log" | "panel" | "node" | "rule", player, error, closesIn, ... }
                              an editor is open: its page (lens.hub.pages.<kind>) is drawn instead of the
                              dashboard; the rest of its fields are that page's (its header comment)

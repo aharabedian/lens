@@ -45,7 +45,8 @@ local dir = path:match("^(.*)/[^/]*$") or "/home"
 local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, terminals = terminals,
   boardPath = dir .. "/lens-board.cfg", logPath = dir .. "/lens-log.cfg",
   filesystem = require("filesystem"), clockPath = dir .. "/.lens-clock",
-  keyboard = component.isAvailable("keyboard"), beep = computer.beep })
+  keyboard = component.isAvailable("keyboard"), beep = computer.beep,
+  redstone = component.isAvailable("redstone") and component.redstone or nil, sides = require("sides") })
 if not app then error(path .. ": " .. tostring(why), 0) end
 splash.show(gpu, w, h, "LENS", require("lens.version"), Gui.C.accent)
 os.sleep(splash.SECONDS)   -- yields: OpenOS keeps running while the logo shows
