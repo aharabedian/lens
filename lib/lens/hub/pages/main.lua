@@ -7,6 +7,8 @@
 
   With several pages, their tabs sit under the header; the panels are the shown page's.
 
+  ALERTS: a node with GROUP (3) or more alerts gets one row ("prism-ore: 7 alerts (3 bad) ▶", the worst level's
+  tag) that opens its node page; other alerts are tapped to acknowledge.
   Panels whose `when` is false now (hidden) aren't shown. A panel shows state dots when its view has them.
   Layout: 120 columns or more puts nodes and alerts on the left and panels (in two columns when there's room)
   on the right; narrower screens stack panels, nodes and alerts, with sparklines when 40 rows or taller. Lists
@@ -19,6 +21,7 @@ local frame = require("lens.hub.frame")
 local main = {}
 
 local C = frame.C
+local GROUP = 3          -- alerts from one node shown as one row from this many
 local HEALTH_COLOR = { ok = C.good, warn = C.warn, bad = C.bad, stale = C.bad }
 local HEALTH_TEXT = { ok = "OK", warn = "WARN", bad = "BAD", stale = "STALE" }
 
@@ -88,6 +91,62 @@ local function nodes(f, m, actions, x, y, width, maxRows)
   return y
 end
 
+-- The alert list as rows: single alerts, and a node's alerts as one group row when it has GROUP or more.
+local function alertRows(list)
+  local per = {}
+  for _, a in ipairs(list) do per[a.node or "?"] = (per[a.node or "?"] or 0) + 1 end
+  local rows, grouped = {}, {}
+  for _, a in ipairs(list) do
+    local node = a.node or "?"
+    if per[node] >= GROUP then
+      local g = grouped[node]
+      if not g then
+        g = { group = true, node = node, n = 0, bad = 0, level = "warn", quiet = true, since = a.since, mutedAll = true }
+        grouped[node] = g
+        rows[#rows + 1] = g
+      end
+      g.n = g.n + 1
+      if a.level == "bad" then g.bad, g.level = g.bad + 1, "bad" end
+      if not (a.acked or a.muted) then g.quiet = false end
+      if not a.muted then g.mutedAll = false end
+      g.since = math.min(g.since or a.since, a.since)
+    else
+      rows[#rows + 1] = a
+    end
+  end
+  return rows
+end
+
+local function alertRow(f, m, actions, a, x, y, width)
+  local tag = Gui.fit(a.level == "bad" and " BAD" or " WARN", 6)
+  local quiet = a.group and a.quiet or (not a.group and (a.acked or a.muted))
+  if quiet then
+    f:text(x, y, tag, C.dim)
+  else
+    f:text(x, y, tag, C.bg, a.level == "bad" and C.bad or C.warn)
+  end
+  local label, mute
+  if a.group then
+    label = ("%s: %d alerts%s ▶"):format(a.node, a.n, a.bad > 0 and (" (%d bad)"):format(a.bad) or "")
+    mute = a.mutedAll and "muted" or ""
+  else
+    label = (a.acked and ("✓ " .. (a.ackedBy and (a.ackedBy .. "  ") or "")) or "") .. a.text
+    if a.node and not a.text:find(a.node, 1, true) then label = label .. "  · " .. a.node end
+    mute = a.muted and ("muted" .. (a.muted.left and (" " .. frame.ago(a.muted.left)) or "")) or ""
+  end
+  local labelRoom = width - 14 - (mute ~= "" and Gui.len(mute) + 2 or 0)
+  f:text(x + 7, y, Gui.fit(label, labelRoom), quiet and C.dim or C.text)
+  if mute ~= "" then f:text(x + 7 + labelRoom + 2, y, mute, C.dim) end
+  f:text(x + width - 6, y, Gui.rfit(frame.ago(m.now - (a.since or m.now)), 6), C.dim)
+  if a.group then
+    local node = a.node
+    f:hit(x, y, x + width - 1, y, function(player) actions.node(player, node) end)
+  else
+    local key = a.key
+    f:hit(x, y, x + width - 1, y, function(player) actions.ack(key, player) end)
+  end
+end
+
 local function alerts(f, m, actions, x, y, width, lastRow)
   local list = m.alerts or {}
   f:heading(x, y, ("ALERTS (%d)"):format(#list), width)
@@ -99,30 +158,15 @@ local function alerts(f, m, actions, x, y, width, lastRow)
     f:text(x, y, "All quiet.", C.dim)
     return
   end
+  local rows = alertRows(list)
   local room = lastRow - y + 1
-  local shown = math.min(#list, room)
-  if shown < #list then shown = room - 1 end
+  local shown = math.min(#rows, room)
+  if shown < #rows then shown = room - 1 end
   for i = 1, shown do
-    local a = list[i]
-    local tag = Gui.fit(a.level == "bad" and " BAD" or " WARN", 6)
-    local quiet = a.acked or a.muted
-    if quiet then
-      f:text(x, y, tag, C.dim)
-    else
-      f:text(x, y, tag, C.bg, a.level == "bad" and C.bad or C.warn)
-    end
-    local label = (a.acked and ("✓ " .. (a.ackedBy and (a.ackedBy .. "  ") or "")) or "") .. a.text
-    if a.node and not a.text:find(a.node, 1, true) then label = label .. "  · " .. a.node end
-    local mute = a.muted and ("muted" .. (a.muted.left and (" " .. frame.ago(a.muted.left)) or "")) or ""
-    local labelRoom = width - 14 - (mute ~= "" and Gui.len(mute) + 2 or 0)
-    f:text(x + 7, y, Gui.fit(label, labelRoom), quiet and C.dim or C.text)
-    if mute ~= "" then f:text(x + 7 + labelRoom + 2, y, mute, C.dim) end
-    f:text(x + width - 6, y, Gui.rfit(frame.ago(m.now - (a.since or m.now)), 6), C.dim)
-    local key = a.key
-    f:hit(x, y, x + width - 1, y, function(player) actions.ack(key, player) end)
+    alertRow(f, m, actions, rows[i], x, y, width)
     y = y + 1
   end
-  if shown < #list then f:text(x, y, ("+%d more"):format(#list - shown), C.dim) end
+  if shown < #rows then f:text(x, y, ("+%d more"):format(#rows - shown), C.dim) end
 end
 
 -- One panel (frame's panel widget); tapping it opens its panel page.

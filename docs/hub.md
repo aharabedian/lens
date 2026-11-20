@@ -13,7 +13,7 @@ Install, connecting agents and the first run: [setup.md](setup.md). Problems: [t
 |---|---|
 | Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, **LOG** ([below](#the-alert-log)), **DATA** ([below](#the-data-page)), **EDIT** ([editing on the screen](#editing-on-the-screen)), **HUD** (with a Glasses Terminal), QUIT |
 | NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported. **Tap one** for its [node page](#the-node-page). The hub remembers every node it has heard (in `lens-board.cfg`): after a restart, one that doesn't report in time is `STALE` with "not heard since hub start", instead of missing from the list |
-| ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓ and who tapped it, dimmed) until it clears, and comes back unacknowledged if it gets worse |
+| ALERTS | Every active alert, `BAD` first, then oldest. A node with 3 or more is one row (`prism-ore: 7 alerts (3 bad) ▶`): tap it for its node page, where each is listed. **Tap an alert to acknowledge it** (here or on the node page); ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓ and who tapped it, dimmed) until it clears, and comes back unacknowledged if it gets worse |
 | Page tabs | With more than one page: tap one to show its panels (anyone may) |
 | PANELS | The shown page's panels: label, value, a bar, status and state dots ([views.md](views.md)), and a sparkline of its history (tier 3). **Tap one** for its [panel page](#the-panel-page) |
 

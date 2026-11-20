@@ -2,7 +2,7 @@
   how often it reports, when it last did, its distance and how many snapshots came whole; its alerts; its last 24
   hours as a band (colored by its worst alert, │ where it restarted); its metrics (as many as fit); and the views
   that read them. FORGET for a node that stopped. MUTE 1 H / 4 H / UNTIL IT CLEARS (or UNMUTE) for the node, and
-  MUTE / UNMUTE on each alert (until it clears).
+  MUTE / UNMUTE on each alert (until it clears). Tapping an alert acknowledges it (actions.ack), as on the dashboard.
 
   node.draw(f, e, actions)   e: the editor's model (its header comment), plus player, error, closesIn
 ]]
@@ -81,8 +81,11 @@ function node.draw(f, e, actions)
     local chip = ""
     if e.canMute and not e.muted then chip = a.muted and "UNMUTE" or "MUTE" end
     local right = f.w - (chip ~= "" and Gui.len(chip) + 3 or 0)
-    f:text(9, y, Gui.fit(a.text, right - 9 - Gui.len(when) - 1), quiet and C.dim or C.text)
+    local label = (a.acked and ("✓ " .. (a.ackedBy and (a.ackedBy .. "  ") or "")) or "") .. a.text
+    f:text(9, y, Gui.fit(label, right - 9 - Gui.len(when) - 1), quiet and C.dim or C.text)
     f:text(right - Gui.len(when), y, when, C.dim)
+    local ackKey = a.key
+    f:hit(2, y, right - 1, y, function(p) actions.ack(ackKey, p) end)
     if chip ~= "" then
       local key = a.key
       f:button(f.w - Gui.len(chip) - 1, y, chip, function(p)

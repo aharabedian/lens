@@ -25,6 +25,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Mute** a node (1 h, 4 h or until it clears) or one alert from the node page, while you rebuild a line:
   its alerts stay listed but don't beep, show in HUDs or count towards health. LOG records who muted what.
   Nothing is sent to the agent.
+- **Grouped alerts**: a node with 3 or more alerts is one row on the dashboard (`prism-ore: 7 alerts (3 bad)`), so
+  one broken line doesn't push the rest off the screen. Tap it for the node page, where each can be acknowledged.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18
