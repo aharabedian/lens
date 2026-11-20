@@ -9,7 +9,9 @@
     store: where players' settings live: { players() -> table, setPlayers(table) -> true | nil, err }, which
     lens.hub.board is; nil keeps them in memory
   hs:onGlasses(address, player, w, h)   a glasses_on: that terminal's wearer and GUI size
-  hs:draw(model, evaluate, views)       draw every terminal. evaluate(views) -> { { label, text, frac, level, dots?,
+  hs:draw(model, evaluate, views)       draw every terminal. model.welcome = { [player] = { { label, text }... } }:
+                                        that wearer's HUD gets one more block, at the top, with those rows.
+                                        evaluate(views) -> { { label, text, frac, level, dots?,
                                         hidden? } } (lens.hub.app's evaluate); hidden elements aren't drawn
   hs:catalog(views) -> { view... }      what a player can pick: `views` (the board's library), then views in
                                         the default HUD with other labels (a label names a view)
@@ -358,6 +360,12 @@ function Huds:draw(m, evaluate, views)
   local errs, calls = {}, 0
   for _, t in ipairs(self.terms) do
     local blocks, scale = self:blocksFor(t.player, byLabel, evaluate)
+    local welcome = m.welcome and t.player and m.welcome[t.player]
+    if welcome then
+      local items = {}
+      for _, r in ipairs(welcome) do items[#items + 1] = { kind = "text", label = r[1], text = r[2] or "" } end
+      blocks[#blocks + 1] = { anchor = "top", x = 0, y = 24, width = 240, items = items }
+    end
     t.hud.opts = { scale = scale, alpha = self.defaults.alpha, colors = self.defaults.colors }
     local view = setmetatable({ hudBlocks = blocks, screen = t.screen }, { __index = m })
     local ok, err = pcall(t.hud.draw, t.hud, view)
