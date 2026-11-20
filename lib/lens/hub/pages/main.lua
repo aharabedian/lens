@@ -19,7 +19,6 @@ local frame = require("lens.hub.frame")
 local main = {}
 
 local C = frame.C
-local SPARK = { "▁", "▂", "▃", "▄", "▅", "▆", "▇" }
 local HEALTH_COLOR = { ok = C.good, warn = C.warn, bad = C.bad, stale = C.bad }
 local HEALTH_TEXT = { ok = "OK", warn = "WARN", bad = "BAD", stale = "STALE" }
 
@@ -116,53 +115,11 @@ local function alerts(f, m, actions, x, y, width, lastRow)
   if shown < #list then f:text(x, y, ("+%d more"):format(#list - shown), C.dim) end
 end
 
--- The last `width` values of history, scaled between their own low and high.
-local function spark(history, width)
-  local n = #history
-  if n == 0 then return "" end
-  local first = math.max(1, n - width + 1)
-  local lo, hi = math.huge, -math.huge
-  for i = first, n do
-    local v = history[i]
-    if v then lo, hi = math.min(lo, v), math.max(hi, v) end
-  end
-  local out = {}
-  for i = first, n do
-    local v = history[i]
-    if not v then
-      out[#out + 1] = " "
-    elseif hi == lo then
-      out[#out + 1] = SPARK[1]
-    else
-      out[#out + 1] = SPARK[math.floor((v - lo) / (hi - lo) * (#SPARK - 1) + 0.5) + 1]
-    end
-  end
-  return table.concat(out)
-end
-
--- One panel: label and value, then state dots, a bar when it has a fraction, or a rule; a sparkline when tall.
--- Tapping it opens its panel page.
+-- One panel (frame's panel widget); tapping it opens its panel page.
 local function panel(f, p, x, y, width, tall, actions)
   local label = p.label
   f:hit(x, y, x + width - 1, y + (tall and 2 or 1), function(player) actions.panel(player, label) end)
-  local text = (p.text ~= "–" or not (p.dots or p.status)) and p.text or ""
-  local lx = x
-  if p.status then                                  -- the status dot leads the label
-    f:text(x, y, "●", frame.levelColor(p.status, C.dim))
-    lx = x + 2
-  end
-  f:text(lx, y, Gui.fit(p.label, width - Gui.len(text) - 1 - (lx - x)), C.dim)
-  f:text(x + width - Gui.len(text), y, text, frame.levelColor(p.level, C.text))
-  if p.dots then
-    f:dots(x, y + 1, width, p.dots)
-  elseif p.frac then
-    local filled = math.floor(math.max(0, math.min(1, p.frac)) * width + 0.5)
-    if filled > 0 then f:text(x, y + 1, string.rep(" ", filled), C.text, frame.levelColor(p.level, C.info)) end
-    if filled < width then f:text(x + filled, y + 1, string.rep(" ", width - filled), C.text, C.line) end
-  else
-    f:text(x, y + 1, string.rep("─", width), C.line)
-  end
-  if tall then f:text(x, y + 2, spark(p.history or {}, width), C.info) end
+  f:panel(p, x, y, width, tall)
 end
 
 local function panels(f, m, actions, x, y, width, lastRow, tall)

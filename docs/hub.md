@@ -43,6 +43,7 @@ shape in blocks, so text fills it with no empty borders. Characters are twice as
 | `beep` | `true` | Beep when a new `BAD` alert appears |
 | `sample` | `10` | Seconds between sparkline samples |
 | `timezone` | `nil` | Hours from UTC (`-5`, `1`, `5.5`): the [log](#the-alert-log) shows clock times. `nil`: how long ago |
+| `glance` | `false` | [Glance mode](#glance-mode): `{ after = 5, views = { "Power", "Ore" } }` (minutes without a tap; the views to show, none: the first page's first five panels). `true`: those defaults |
 | `editors` | `nil` | Player names who may use EDIT: `{ "Steve", "Alex" }`. `nil`: anyone |
 | `resolution` | `"fit"` | `"fit"`: match the screen's shape (see above). `"max"`: the GPU's largest. `{ width, height }`: your own, e.g. `{ 80, 25 }` for bigger text |
 | `nonCritical` | `{}` | Node names whose silence is only a warning and that don't count towards overall health |
@@ -91,6 +92,13 @@ hub writes `/home/.lens-clock` for that). Without `timezone` they read `3h12m ag
 `06:40` today, `Thu 17:42` this week, `12 Nov` before.
 
 ![The alert log](images/log.png)
+
+## Glance mode
+
+With `glance` set, after `after` minutes without a tap the hub draws at a third of its resolution (24 × 16 on a
+3 × 4 screen; half when a third would be under 12 rows), so the text is three times bigger and readable from
+across the room: overall health, the alert count, the views picked for it and the two worst alerts. Any tap goes
+back to the dashboard (that tap does nothing else). Not while an editor is open.
 
 ## The panel page
 

@@ -14,6 +14,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Panel page**: tap a panel for its history as a chart, low / average / high, the alerts that started
   meanwhile, what each part of its query comes to, which status rule set its dot, and where it's shown; EDIT VIEW
   and ADD TO MY HUD from there.
+- **Glance mode** (`glance` in lens-hub.cfg): after a few minutes without a tap the hub draws at a third of its
+  resolution, so health, the views you pick and the two worst alerts read from across the room. A tap goes back.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

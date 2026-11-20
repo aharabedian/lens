@@ -31,7 +31,7 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.hud` | Draws HUD blocks (bar, text, alerts, gap; nine anchors) as widgets on one terminal; setters only on change, calls counted |
 | **Editors** | `lens.hub.editors.<kind>` | One per editor: `hud` (a player's HUD presets), `edit` (the dashboard's pages, their panels, the library), `view` (one view's fields), `data` (queries by tapping), `log` (the alert log, read-only), `panel` (one panel up close). Each has `actions(app, a, mine)` and `model(app, e, now)`, and `key` / `paste` if it takes typing; state and actions only, no drawing |
 | **Screen** | `lens.hub.frame` | One screenful being built (row segments, touch targets) and the widgets pages share |
-| | `lens.hub.pages.<kind>` | One per page: `main` (the dashboard, with page tabs) and one per editor. `draw(f, model, actions)`; drawing only |
+| | `lens.hub.pages.<kind>` | One per page: `main` (the dashboard, with page tabs), `glance` (glance mode) and one per editor. `draw(f, model, actions)`; drawing only |
 | | `lens.hub.dashboard` | Picks the page for the model, then sends the GPU only the rows or segments that changed; touch dispatch |
 | **Program** | `lens.hub.app` | The hub program's state: core, board, HUDs, panels and their history, the one open editor; reacts to packets, touches, keys and ticks |
 | **Setup** | `lens.setup.hub`, `.input`, `.render` | `lens-setup`'s steps, questions on the terminal, `lens-hub.cfg` as commented Lua |
@@ -110,6 +110,7 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | Rect2D `setSize(a, b)` makes it `b` wide and `a` tall: **height first** | **Seen in game** twice (60, 14 drew 14 x 60; 10, 80 drew 80 x 10) |
 | Text without a `setScale` call is at scale 2; at scale s a character is about 5.2 * s px wide (measured at 0.5 and 2). `setScale(2)` looked like it did nothing only because 2 is the default | **Seen in game** (`--glasses-test`, 2026-11-12, twice) |
 | `filesystem.lastModified(path)` returns real-world milliseconds (UTC), so the log keeps real times across restarts | **Seen in game by LUMEN** (2026-11-18, the same OpenOS call): not yet in LENS |
+| `gpu.setResolution` can change while the program runs (glance mode drops to a third and back) | **Seen in game by LUMEN** (its big mode); not yet in LENS |
 | `math.random(m, n)` doesn't return an integer (the mock gives floats) | **Seen in game**: PRISM crashed on it. Use `codec.newBoot()` |
 | `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified**; a one-router base's snapshots arrived fine (2026-11-12), but splitting into parts hasn't been exercised in game |
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |
