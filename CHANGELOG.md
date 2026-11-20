@@ -9,6 +9,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **The alert log survives restarts**: LOG is kept in `/home/lens-log.cfg` (the last 300 entries, saved once a
   minute and when `lens-hub` stops), with when `lens-hub` started and stopped. Times are real: `3h12m ago`, or
   clock times (`06:40`, `Thu 17:42`) with the new `timezone` setting.
+- **Timeline** on LOG: a band per node over the last 12 hours (**24 H** for a day), colored by its worst alert at
+  each moment, so you see what happened overnight without reading every row.
 
 ## [0.5.1] - 2026-11-18
 

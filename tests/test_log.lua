@@ -1,6 +1,7 @@
 -- test_log.lua: the alert log kept across restarts: the real-time clock (a file's modification time), the log
 -- file (lens.hub.logbook), times as text (frame.when, with and without a time zone), and through lens-hub: an alert
--- that ended is still on LOG after a restart, with when lens-hub started and stopped. Previews: make screens.
+-- that ended is still on LOG after a restart, with when lens-hub started and stopped. The timeline (bands per node,
+-- hour labels, 12 H / 24 H), on a 3 x 4 screen with a night's log. Previews: make screens.
 local H = dofile((debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./") .. "helper.lua")
 local M = require("oc")
 local R = require("hubrun")(H)
@@ -11,6 +12,7 @@ local alerts = require("lens.hub.alerts")
 local config = require("lens.hub.config")
 local frame = require("lens.hub.frame")
 local files = require("lens.files")
+local timeline = require("lens.hub.timeline")
 
 ---------------------------------------------------------------- the clock
 do
@@ -78,6 +80,34 @@ do
   check(logbook.new(path).count == 0, "a broken file: an empty log (the next save replaces it)")
 end
 
+---------------------------------------------------------------- the timeline's bands
+do
+  local now = 1795154400 + 12 * 3600            -- 18:00 UTC; 12 hours in 12 columns: an hour each
+  local entries = {
+    { kind = "alert", node = "prism-ore", level = "warn", since = now - 11.5 * 3600, at = now - 9.5 * 3600 },
+    { kind = "alert", node = "prism-ore", level = "bad", since = now - 10.2 * 3600, at = now - 10.1 * 3600 },
+    { kind = "alert", node = "power-room", level = "bad", since = now - 20 * 3600, at = now - 19 * 3600 },   -- before
+    { kind = "restart", node = "power-room", at = now - 2.5 * 3600 },
+    { kind = "start", at = now - 5 * 3600 },
+    { node = "hub", level = "warn", since = now - 0.5 * 3600 },                       -- happening now
+  }
+  local b = timeline.bands(entries, now, 12 * 3600, 12)
+  local ore = b.rows[3]
+  check(#b.rows == 3 and b.rows[1].node == "hub" and b.rows[2].node == "power-room" and ore.node == "prism-ore",
+    "a row per node with something in the span, by name")
+  check(ore.cells[1] == "warn" and ore.cells[2] == "bad" and ore.cells[3] == "warn" and ore.cells[4] == nil,
+    "each column: the worst alert in it")
+  check(next(b.rows[2].cells) == nil and b.rows[2].marks[10], "a restart is a mark; alerts before the span aren't shown")
+  check(b.rows[1].cells[12] == "warn" and b.step == 3600, "an alert happening now reaches the last column")
+  check(#timeline.bands(entries, now, 12 * 3600, 12, 2).rows == 2 and timeline.bands(entries, now, 12 * 3600, 12, 2).more == 1,
+    "at most max rows; more says how many weren't shown")
+  local ticks = timeline.ticks(now, 12 * 3600, 60, 0)
+  check(ticks[1][2] == "08:00" and ticks[#ticks][2] == "now" and ticks[#ticks][1] == 58, "with a time zone: clock hours, then now")
+  local back = timeline.ticks(now, 12 * 3600, 60)
+  check(back[1][2] == "-10h" and back[2][2] == "-8h", "without: hours ago")
+  check(timeline.ticks(now, 24 * 3600, 60, 0)[1][2] == "20:00", "24 hours: every 4")
+end
+
 ---------------------------------------------------------------- through lens-hub, across a restart
 local function ore(from)
   from = from or 0
@@ -128,6 +158,53 @@ ok, err = R.run{ cfg = "return { timezone = 0 }", dir = "restart", keep = true, 
 end }
 check(ok, "lens-hub restarts" .. (ok and "" or (": " .. tostring(err))))
 check(seen.after, "after a restart LOG still has the alert, with its clock time, and the restart")
+
+-- A night's log on a 3 x 4 screen: the timeline over the last 12 hours, then 24.
+do
+  local d = H.TMP .. "/night"
+  os.execute('rm -rf "' .. d .. '" && mkdir -p "' .. d .. '"')
+  start = M.time
+  local now = M.epoch + start
+  local L = logbook.new(d .. "/lens-log.cfg")
+  local function logAlert(node, level, text, ago, lasted)
+    L:add{ kind = "alert", node = node, id = text, level = level, text = text, since = now - ago, at = now - ago + lasted }
+  end
+  logAlert("power-room", "bad", "Reactor N-1: fault signal", 20 * 3600, 900)
+  logAlert("power-room", "warn", "N-2 heat 86%", 4.5 * 3600, 720)
+  logAlert("prism-ore", "warn", "ore stalled 23m - 31k waiting", 3.4 * 3600, 1080)
+  logAlert("hub", "warn", "Ore line busy on low power", 2.6 * 3600, 2580)
+  logAlert("prism-ore", "bad", "Macerator 2: no power", 2.4 * 3600, 840)
+  logAlert("power-room", "warn", "Main low: 24.6%", 2.6 * 3600, 2820)
+  assert(L:save())
+  M.resize(73, 50)
+  M.aspect = { 3, 4 }
+  seen = {}
+  ok, err = R.run{ cfg = "return { timezone = 0 }", dir = "night", keep = true, agents = { ore(start - 15) },
+    keyboard = true, script = function(t)
+    if t < start + 3 then return nil end
+    if not seen.opened then seen.opened = true; return R.tap(" LOG ", "Aaron", 1) end
+    if not seen.at12 then
+      seen.at12 = true
+      local _, y = M.find("power-room", 4)
+      seen.twelve = M.find("TIMELINE", 3) and M.find("last 12 hours, a column is 12 minutes", 3) and M.find("now", 4)
+        and y and M.find("prism-ore", y) and M.find("hub", y) and M.bgAt(72, y) == 0x1a2129
+        and M.find("NOW (1)", 8) and M.find("EARLIER (", 8)
+      H.screen("log-timeline-portrait")
+      return R.tap(" 24 H ", "Aaron", 1)
+    end
+    if not seen.at24 then
+      seen.at24 = true
+      seen.day = M.find("last 24 hours, a column is 25 minutes", 3) ~= nil
+      return R.tap("DONE", "Aaron", 1)
+    end
+    return "stop"
+  end }
+  M.aspect = nil
+  M.resize(160, 50)
+  check(ok, "lens-hub runs on a 3 x 4 screen" .. (ok and "" or (": " .. tostring(err))))
+  check(seen.twelve, "LOG: a timeline of the last 12 hours, a band per node, above now and earlier")
+  check(seen.day, "24 H: the last 24 hours")
+end
 
 -- No usable clock: the log still works, in uptime.
 M.noClock = true
