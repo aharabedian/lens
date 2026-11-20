@@ -2,7 +2,8 @@
 
   main.draw(f, m, actions)   f: lens.hub.frame; m: the app's model (lens.hub.dashboard has its shape);
                              actions: ack(key), ackAll(), quit(), page(player, i), and the buttons that open
-                             editors: log, data, edit, hud (each gets the tapping player)
+                             editors: log, data, edit, hud (each gets the tapping player); panel(player, label)
+                             when a panel is tapped
 
   With several pages, their tabs sit under the header; the panels are the shown page's.
 
@@ -140,7 +141,10 @@ local function spark(history, width)
 end
 
 -- One panel: label and value, then state dots, a bar when it has a fraction, or a rule; a sparkline when tall.
-local function panel(f, p, x, y, width, tall)
+-- Tapping it opens its panel page.
+local function panel(f, p, x, y, width, tall, actions)
+  local label = p.label
+  f:hit(x, y, x + width - 1, y + (tall and 2 or 1), function(player) actions.panel(player, label) end)
   local text = (p.text ~= "–" or not (p.dots or p.status)) and p.text or ""
   local lx = x
   if p.status then                                  -- the status dot leads the label
@@ -161,7 +165,7 @@ local function panel(f, p, x, y, width, tall)
   if tall then f:text(x, y + 2, spark(p.history or {}, width), C.info) end
 end
 
-local function panels(f, m, x, y, width, lastRow, tall)
+local function panels(f, m, actions, x, y, width, lastRow, tall)
   f:heading(x, y, "PANELS", width)
   y = y + 1
   local shown = {}
@@ -185,7 +189,7 @@ local function panels(f, m, x, y, width, lastRow, tall)
       f:text(x, lastRow, ("+%d more panels"):format(#shown - i + 1), C.dim)
       return lastRow + 1
     end
-    panel(f, p, x + col * (pw + 3), py, pw, tall)
+    panel(f, p, x + col * (pw + 3), py, pw, tall, actions)
   end
   return y + ((#shown + cols - 1) // cols) * step
 end
@@ -199,7 +203,7 @@ local function footer(f, m)
   elseif m.logError then
     f:text(2, f.h, Gui.fit("lens-log.cfg: " .. m.logError, f.w - 2), C.warn)
   else
-    f:text(2, f.h, Gui.fit("Tap an alert to acknowledge it.", f.w - 2), C.dim)
+    f:text(2, f.h, Gui.fit("Tap an alert to acknowledge it, a panel for more.", f.w - 2), C.dim)
   end
   if m.hudPerMinute then
     local s = ("HUD %d calls/min"):format(m.hudPerMinute)
@@ -225,11 +229,11 @@ function main.draw(f, m, actions)
     local rx = 2 + lw + 3
     local y = nodes(f, m, 2, 3, lw, math.max(3, (f.h - 6) // 2))
     alerts(f, m, actions, 2, y + 1, lw, lastRow)
-    panels(f, m, rx, 3, f.w - rx, lastRow, true)
+    panels(f, m, actions, rx, 3, f.w - rx, lastRow, true)
   else
     local width = f.w - 2
     local tall = f.h >= 40
-    local y = panels(f, m, 2, 3, width, f.h - (tall and 16 or 10), tall)   -- leave nodes and alerts room
+    local y = panels(f, m, actions, 2, 3, width, f.h - (tall and 16 or 10), tall)   -- leave nodes and alerts room
     y = nodes(f, m, 2, y + 1, width, tall and 6 or 5)
     alerts(f, m, actions, 2, y + 1, width, lastRow)
   end

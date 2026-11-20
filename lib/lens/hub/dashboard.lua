@@ -19,7 +19,7 @@
     pages = { name... }, page = i   the dashboard's pages and the one shown (tabs when there are several)
     logged = n               entries in the kept log (LOG)
     logError = text | nil    lens-log.cfg couldn't be written: shown in the footer
-    editor = nil | { kind = "hud" | "edit" | "view" | "data" | "log", player, error, closesIn, ... }
+    editor = nil | { kind = "hud" | "edit" | "view" | "data" | "log" | "panel", player, error, closesIn, ... }
                              an editor is open: its page (lens.hub.pages.<kind>) is drawn instead of the
                              dashboard; the rest of its fields are that page's (its header comment)
   }
@@ -38,6 +38,7 @@ local PAGES = {
   view = require("lens.hub.pages.view"),
   data = require("lens.hub.pages.data"),
   log  = require("lens.hub.pages.log"),
+  panel = require("lens.hub.pages.panel"),
 }
 
 local function rowKey(row)

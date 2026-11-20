@@ -28,7 +28,7 @@
                                          on the module: require("lens.hub.app").evaluateWith)
   app.running, app.hub (lens.hub.core), app.board, app.huds (or nil), app.dash (lens.hub.dashboard), app.now
 
-  Editors (lens.hub.editors.<kind>: hud, edit, view, data, log; their interface is in editors/hud.lua). One is open
+  Editors (lens.hub.editors.<kind>: hud, edit, view, data, log, panel; their interface is in editors/hud.lua). One is open
   at a time (app.editing = { kind, player, until, ... }), for the player who opened it: only that player's taps
   and keys change anything, and it closes after EDIT_TIMEOUT seconds without one. For editors:
   app:open(kind, player, state)   open one, unless someone else has one open (app.notice says who)
@@ -61,6 +61,7 @@ local EDITORS = {
   view = require("lens.hub.editors.view"),
   data = require("lens.hub.editors.data"),
   log  = require("lens.hub.editors.log"),
+  panel = require("lens.hub.editors.panel"),
 }
 
 local App = {}

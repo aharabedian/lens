@@ -11,6 +11,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   clock times (`06:40`, `Thu 17:42`) with the new `timezone` setting.
 - **Timeline** on LOG: a band per node over the last 12 hours (**24 H** for a day), colored by its worst alert at
   each moment, so you see what happened overnight without reading every row.
+- **Panel page**: tap a panel for its history as a chart, low / average / high, the alerts that started
+  meanwhile, what each part of its query comes to, which status rule set its dot, and where it's shown; EDIT VIEW
+  and ADD TO MY HUD from there.
 
 ## [0.5.1] - 2026-11-18
 
