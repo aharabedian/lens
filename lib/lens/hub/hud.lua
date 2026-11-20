@@ -11,6 +11,8 @@
                     label; otherwise they follow it (or, with no value, line up with the bars). Widgets are made on first
                     use; afterwards a setter is called only when its value changed, because every call is a
                     component call.
+                    model.flash = { [alert key] = true } and model.flashOn: a block listing a flashing alert
+                    blinks, its backdrop at FLASH_ALPHA and its strip full while flashOn, both faint while not
   opts              scale, alpha, colors (lens.hub.config's hud)
   hud.place(block, w, h, screen) -> x, y   a block's top left: its anchor (one of nine) plus x, y (right and
                     down positive), kept on screen
@@ -150,6 +152,8 @@ local function rowsOf(item, unacked)
   return 1
 end
 
+hud.FLASH_ALPHA = 0.9
+
 function Hud:block(i, b, m, unacked, used)
   local o = self.opts
   local scale = o.scale or 1
@@ -166,6 +170,7 @@ function Hud:block(i, b, m, unacked, used)
   -- Made before any row, so they're drawn under the rows; sized once the rows are known.
   local bg, strip = self:slot(mark("bg"), "rect"), self:slot(mark("strip"), "rect")
 
+  local flashing = false                         -- a flashing alert is listed in this block
   local tx = x0 + 6                              -- text starts right of the strip
   local inner = width - 8
   local y = y0 + 2
@@ -232,6 +237,7 @@ function Hud:block(i, b, m, unacked, used)
       local list = only(item, unacked)
       for a = 1, math.min(limit, #list) do
         local al = list[a]
+        if m.flash and m.flash[al.key] then flashing = true end
         self:text(mark(k .. "a" .. a .. "i"), tx, y, "!", al.level == "bad" and P.bad or P.warn)
         self:text(mark(k .. "a" .. a), tx + math.ceil(2 * char), y, cut(al.text, math.floor((inner - 2 * char) / char)), P.text)
         y = y + line
@@ -252,11 +258,13 @@ function Hud:block(i, b, m, unacked, used)
   local height = y - y0
   self:set(bg, "setPosition", x0, y0)
   self:set(bg, "setSize", height, width)
-  self:paint(bg, P.backdrop, o.alpha or 0.35)
-  self:set(bg, "setVisible", (o.alpha or 0.35) > 0)
+  local base = o.alpha or 0.35
+  local lit = flashing and m.flashOn
+  self:paint(bg, P.backdrop, lit and hud.FLASH_ALPHA or base)
+  self:set(bg, "setVisible", lit or base > 0)
   self:set(strip, "setPosition", x0, y0)
   self:set(strip, "setSize", height, 2)
-  self:paint(strip, P[m.health] or P.stale, 1)
+  self:paint(strip, P[m.health] or P.stale, (flashing and not m.flashOn) and 0.3 or 1)
   self:set(strip, "setVisible", true)
 end
 
