@@ -29,7 +29,8 @@ local function header(f, m, actions)
   f:text(8, 1, " " .. (HEALTH_TEXT[m.health] or "?") .. " ", C.bg, hc)
   local c = m.counts or { bad = 0, warn = 0 }
   local nodes = ("%d node%s"):format(#m.nodes, #m.nodes == 1 and "" or "s")
-  local summary = ("%s   alerts: %d bad, %d warn"):format(nodes, c.bad, c.warn)
+  local muted = (c.muted or 0) > 0 and (", %d muted"):format(c.muted) or ""
+  local summary = ("%s   alerts: %d bad, %d warn%s"):format(nodes, c.bad, c.warn, muted)
   -- Buttons from the right: QUIT, HUD (with terminals), EDIT, DATA, LOG.
   local qx = f.w - 7
   f:button(qx, 1, "QUIT", actions.quit, C.line)
@@ -44,6 +45,9 @@ local function header(f, m, actions)
   f:button(rx, 1, "DATA", actions.data, C.btnOn)
   rx = rx - 6
   f:button(rx, 1, "LOG", actions.log, C.btnOn)
+  if 17 + Gui.len(summary) + 1 > rx then
+    summary = ("%s · %d bad %d warn%s"):format(nodes, c.bad, c.warn, muted ~= "" and (" %d muted"):format(c.muted) or "")
+  end
   if 17 + Gui.len(summary) + 1 > rx then summary = ("%s · %d bad %d warn"):format(nodes, c.bad, c.warn) end
   f:text(17, 1, Gui.fit(summary, math.max(1, rx - 18)), C.text, C.panel)
   -- The hub's name and port when there's room, else just the version, else nothing.
@@ -70,7 +74,7 @@ local function nodes(f, m, actions, x, y, width, maxRows)
     f:text(x + 2, y, Gui.fit(n.name, nameW), n.stale and C.dim or C.text)
     local cx = x + 3 + nameW
     f:text(cx, y, Gui.fit(n.role or "?", 7), C.dim)
-    f:text(cx + 8, y, Gui.fit(HEALTH_TEXT[n.health] or "?", 6), hc)
+    f:text(cx + 8, y, Gui.fit(n.muted and "MUTED" or HEALTH_TEXT[n.health] or "?", 6), n.muted and C.dim or hc)
     local seen = n.lastSeen and (frame.ago(m.now - n.lastSeen) .. " ago") or "never"
     f:text(cx + 15, y, Gui.rfit(seen, 8), n.stale and C.bad or C.dim)
     local name = n.name
@@ -101,14 +105,18 @@ local function alerts(f, m, actions, x, y, width, lastRow)
   for i = 1, shown do
     local a = list[i]
     local tag = Gui.fit(a.level == "bad" and " BAD" or " WARN", 6)
-    if a.acked then
+    local quiet = a.acked or a.muted
+    if quiet then
       f:text(x, y, tag, C.dim)
     else
       f:text(x, y, tag, C.bg, a.level == "bad" and C.bad or C.warn)
     end
     local label = (a.acked and ("✓ " .. (a.ackedBy and (a.ackedBy .. "  ") or "")) or "") .. a.text
     if a.node and not a.text:find(a.node, 1, true) then label = label .. "  · " .. a.node end
-    f:text(x + 7, y, Gui.fit(label, width - 14), a.acked and C.dim or C.text)
+    local mute = a.muted and ("muted" .. (a.muted.left and (" " .. frame.ago(a.muted.left)) or "")) or ""
+    local labelRoom = width - 14 - (mute ~= "" and Gui.len(mute) + 2 or 0)
+    f:text(x + 7, y, Gui.fit(label, labelRoom), quiet and C.dim or C.text)
+    if mute ~= "" then f:text(x + 7 + labelRoom + 2, y, mute, C.dim) end
     f:text(x + width - 6, y, Gui.rfit(frame.ago(m.now - (a.since or m.now)), 6), C.dim)
     local key = a.key
     f:hit(x, y, x + width - 1, y, function(player) actions.ack(key, player) end)

@@ -36,6 +36,11 @@
   app:close()
   app:mayEdit(player) -> bool     cfg.editors, when set, lists who may change the dashboard
 
+  Mutes (lens.hub.mutes, kept in lens-board.cfg): a muted alert, or any alert of a muted node, stays listed
+  (alert.muted = { left?, by }) but doesn't beep, show in HUDs or count in the header; a muted node (node.muted)
+  is left out of overall health. Nothing is sent to the agent.
+  app:mute(player, node, key?, seconds?) -> true | nil, err   (cfg.editors) seconds nil: until it clears
+  app:unmute(player, node, key?) -> true | nil, err
   Beeps once when a new bad alert appears (cfg.beep). Panel history keeps one value every cfg.sample seconds.
   Glance mode (cfg.glance): after glance.after minutes without a tap, key or paste (and no editor open), the
   dashboard is drawn at a third of its resolution (half when that's under 12 rows) with glance.views; the next tap
@@ -50,6 +55,7 @@ local huds = require("lens.hub.huds")
 local board = require("lens.hub.board")
 local clock = require("lens.hub.clock")
 local logbook = require("lens.hub.logbook")
+local mutes = require("lens.hub.mutes")
 local VERSION = require("lens.version")
 
 local app = {}
@@ -81,6 +87,7 @@ function app.new(cfg, env)
   self.board = board.new(env.boardPath, cfg)
   self.clock = clock.new(env.filesystem, env.clockPath)
   self.logbook = logbook.new(env.logPath)
+  self.mutes = mutes.new(self.board:mutes())
   self.nextSave = 0
   if env.terminals and next(env.terminals) and cfg.hud ~= false then
     self.huds = huds.new(env.terminals, cfg.hud, self.board)
@@ -302,11 +309,59 @@ function App:pageNames()
   return out
 end
 
+---------------------------------------------------------------- mutes
+function App:mute(player, node, key, seconds)
+  if not self:mayEdit(player) then
+    return nil, ("Only %s can mute."):format(table.concat(self.cfg.editors, ", "))
+  end
+  local time = round(self:real(self.now))
+  local ends = seconds and time + seconds or nil
+  self.mutes:add{ node = node, key = key, ends = ends, by = player, at = time }
+  self.logbook:add{ kind = "mute", node = node, key = key, ends = ends, by = player, at = time }
+  return self.board:setMutes(self.mutes:list())
+end
+
+function App:unmute(player, node, key)
+  if not self:mayEdit(player) then
+    return nil, ("Only %s can unmute."):format(table.concat(self.cfg.editors, ", "))
+  end
+  if not self.mutes:remove(node, key) then return true end
+  self.logbook:add{ kind = "unmute", node = node, key = key, by = player, at = round(self:real(self.now)) }
+  return self.board:setMutes(self.mutes:list())
+end
+
+-- The alerts with their mutes marked, the counts without the muted ones, and the muted nodes.
+function App:muted(now)
+  local time = self:real(now)
+  local list = self.hub.alerts:list()
+  if #self.mutes:expire(time, list) > 0 then self.board:setMutes(self.mutes:list()) end
+  local counts = { bad = 0, warn = 0, unacked = 0, muted = 0 }
+  for _, a in ipairs(list) do
+    local m = self.mutes:of(a)
+    if m then
+      a.muted = { left = m.ends and math.max(0, m.ends - time) or nil, by = m.by }
+      counts.muted = counts.muted + 1
+    else
+      counts[a.level] = counts[a.level] + 1
+      if not a.acked then counts.unacked = counts.unacked + 1 end
+    end
+  end
+  local skip = {}
+  for _, n in ipairs(self.hub:nodes(now)) do if self.mutes:node(n.name) then skip[n.name] = true end end
+  return list, counts, skip
+end
+
 function App:model(now)
+  local alerts, counts, skip = self:muted(now)
+  local nodes = self.hub:nodes(now)
+  for _, n in ipairs(nodes) do
+    local m = self.mutes:node(n.name)
+    if m then n.muted = { left = m.ends and math.max(0, m.ends - self:real(now)) or nil, by = m.by } end
+  end
   return {
-    now = now, port = self.cfg.port, node = self.cfg.node, version = VERSION, health = self.hub:health(now),
-    missingConfig = self.cfg.missing, nodes = self.hub:nodes(now),
-    alerts = self.hub.alerts:list(), counts = self.hub.alerts:counts(), panels = self:panels(now),
+    now = now, port = self.cfg.port, node = self.cfg.node, version = VERSION, health = self.hub:health(now, skip),
+    missingConfig = self.cfg.missing, nodes = nodes,
+    alerts = alerts, counts = counts, panels = self:panels(now),
     huds = self.huds ~= nil, editor = self:editorModel(now), notice = self.notice,
     pages = self:pageNames(), page = self.page, logged = self.logbook.count, logError = self.logError,
     glance = self.glancing and { panels = self:evaluate(self:glanceViews(), nil, now) } or nil,
@@ -366,7 +421,7 @@ function App:anyBad(keys)
   local new = {}
   for _, key in ipairs(keys) do new[key] = true end
   for _, a in ipairs(self.hub.alerts:list()) do
-    if new[a.key] and a.level == "bad" then return true end
+    if new[a.key] and a.level == "bad" and not self.mutes:of(a) then return true end
   end
   return false
 end

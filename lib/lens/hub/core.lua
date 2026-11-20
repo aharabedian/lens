@@ -18,7 +18,8 @@
   hub:tick(now) -> alerts:update result       call every second or so: stale nodes, agent alerts, rules
   hub:query(text, now) -> value | nil, err    compiled once per text
   hub:select(text, now) -> series[] | nil, err   a bare selector's series (state dots), compiled once per text
-  hub:health(now) -> "ok" | "warn" | "bad"    worst over critical nodes; a stale critical node is bad
+  hub:health(now, skip?) -> "ok" | "warn" | "bad"   worst over critical nodes; a stale critical node is bad;
+                                              skip: { [name] = true } nodes left out (muted)
   hub:nodes(now)                              store:nodes(now)
   hub:metrics(now)                            store:metrics(now): what's there to query
   hub:lookup(now) -> fn(name) -> series[]     the store's series as queries see them
@@ -145,10 +146,10 @@ end
 
 local RANK = { ok = 0, warn = 1, bad = 2, stale = 2 }
 
-function Hub:health(now)
+function Hub:health(now, skip)
   local worst = 0
   for _, n in ipairs(self.store:nodes(now)) do
-    if not self.nonCritical[n.name] then worst = math.max(worst, RANK[n.health] or 0) end
+    if not self.nonCritical[n.name] and not (skip and skip[n.name]) then worst = math.max(worst, RANK[n.health] or 0) end
   end
   return ({ [0] = "ok", "warn", "bad" })[worst]
 end

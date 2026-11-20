@@ -8,7 +8,7 @@ the newest unacknowledged alerts, with a thin strip down the left in the base's 
 
 Widgets are made once and only changed values are sent: the dashboard's footer shows the HUD's calls in the last
 minute (`HUD n calls/min`; about 0 when nothing changes). If a terminal fails, the dashboard keeps running and
-shows `HUD: <error>` in its footer. Acknowledge alerts on the dashboard and they leave the HUD.
+shows `HUD: <error>` in its footer. Acknowledge or [mute](hub.md#muting) alerts on the dashboard and they leave the HUD.
 
 ## A HUD for each player
 
@@ -84,7 +84,7 @@ hud = {
 |---|---|
 | `{ kind = "bar", ...a view }` | Label, a bar (with `max`, `of` or `format = "percent"`), value |
 | `{ kind = "text", ...a view }` | Label, then the value on the right. A view with `status` or `dots` shows its dots after the label (or before it: the block's `dots`). A view with a value keeps its place without data and shows a dim `–` |
-| `{ kind = "alerts", count = 3 }` | The newest unacknowledged alerts, then `+N more` |
+| `{ kind = "alerts", count = 3 }` | The newest unacknowledged alerts (not muted), then `+N more` |
 | `{ kind = "gap" }` | Half a row of space |
 
 An element with `when` disappears while its query is false, and the block shrinks. A view's keys:
