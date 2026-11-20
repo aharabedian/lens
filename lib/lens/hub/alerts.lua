@@ -5,10 +5,10 @@
       active = { { node, id, level, text, age? } }: everything firing right now (agents' alerts, the hub's
       rules, stale nodes). An alert missing from `active` has cleared and is dropped; ended has it as history()
       lists it. changed is true when anything a display shows (the set, a level, a text) differs from last time.
-  a:list() -> { { key, node, id, level, text, since, acked } }   bad first, then oldest, then by key
-  a:ack(key) -> bool      a:ackAll()
+  a:list() -> { { key, node, id, level, text, since, acked, ackedBy? } }   bad first, then oldest, then by key
+  a:ack(key, who?) -> bool      a:ackAll(who?)      who: the player who tapped, kept as ackedBy
   a:counts() -> { bad, warn, unacked }
-  a:history() -> { { key, node, id, level, text, since, ended }... }   alerts that have cleared, newest first:
+  a:history() -> { { key, node, id, level, text, since, ended, ackedBy? }... }   alerts that have cleared, newest first:
       level is the worst it reached, text its last. Kept in memory only (a restart starts over).
 
   key is node .. "/" .. id. since is when the condition started: now - age the first time it's seen, so an
@@ -40,7 +40,7 @@ function Alerts:update(now, active)
       elseif a.level ~= level or a.text ~= x.text then
         changed = true
       end
-      if a.acked and SEVERITY[level] > SEVERITY[a.ackedLevel] then a.acked, a.ackedLevel = false, nil end
+      if a.acked and SEVERITY[level] > SEVERITY[a.ackedLevel] then a.acked, a.ackedLevel, a.ackedBy = false, nil, nil end
       a.level, a.text = level, x.text
       if not a.worst or SEVERITY[level] > SEVERITY[a.worst] then a.worst = level end
     end
@@ -48,7 +48,7 @@ function Alerts:update(now, active)
   for key, a in pairs(self.byKey) do
     if not seen[key] then
       local e = { key = key, node = a.node, id = a.id, level = a.worst or a.level, text = a.text, since = a.since,
-        ended = now }
+        ended = now, ackedBy = a.acked and a.ackedBy or nil }
       table.insert(self.ended, 1, e)
       ended[#ended + 1] = e
       if #self.ended > self.keep then table.remove(self.ended) end
@@ -67,7 +67,7 @@ function Alerts:list()
   local out = {}
   for _, a in pairs(self.byKey) do
     out[#out + 1] = { key = a.key, node = a.node, id = a.id, level = a.level, text = a.text, since = a.since,
-      acked = a.acked or false }
+      acked = a.acked or false, ackedBy = a.acked and a.ackedBy or nil }
   end
   table.sort(out, function(x, y)
     if x.level ~= y.level then return SEVERITY[x.level] > SEVERITY[y.level] end
@@ -83,15 +83,16 @@ function Alerts:history()
   return out
 end
 
-function Alerts:ack(key)
+function Alerts:ack(key, who)
   local a = self.byKey[key]
   if not a then return false end
+  if not a.acked then a.ackedBy = type(who) == "string" and who or nil end
   a.acked, a.ackedLevel = true, a.level
   return true
 end
 
-function Alerts:ackAll()
-  for key in pairs(self.byKey) do self:ack(key) end
+function Alerts:ackAll(who)
+  for key, a in pairs(self.byKey) do if not a.acked then self:ack(key, who) end end
 end
 
 function Alerts:counts()

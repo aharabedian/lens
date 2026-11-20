@@ -14,6 +14,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Panel page**: tap a panel for its history as a chart, low / average / high, the alerts that started
   meanwhile, what each part of its query comes to, which status rule set its dot, and where it's shown; EDIT VIEW
   and ADD TO MY HUD from there.
+- **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18
 

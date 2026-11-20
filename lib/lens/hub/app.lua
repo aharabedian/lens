@@ -82,8 +82,8 @@ function app.new(cfg, env)
     self.huds = huds.new(env.terminals, cfg.hud, self.board)
   end
   self.actions = {
-    ack = function(key) self.hub.alerts:ack(key) end,
-    ackAll = function() self.hub.alerts:ackAll() end,
+    ack = function(key, player) self.hub.alerts:ack(key, player) end,
+    ackAll = function(player) self.hub.alerts:ackAll(player) end,
     quit = function() self.running = false end,
     page = function(_, i) self.page = i end,
   }
@@ -165,7 +165,7 @@ function App:logEnded(ended, now)
   local time = self:real(now)
   for _, e in ipairs(ended) do
     self.logbook:add{ kind = "alert", node = e.node, id = e.id, level = e.level, text = e.text,
-      since = round(time - (now - e.since)), at = round(time - (now - e.ended)) }
+      since = round(time - (now - e.since)), at = round(time - (now - e.ended)), ackedBy = e.ackedBy }
   end
 end
 

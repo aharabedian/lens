@@ -122,17 +122,18 @@ M.setTime(0)
 M.resize(160, 50)
 local seen = {}
 local ok, err, dir = R.run{ cfg = "return {}", dir = "restart", agents = { ore() }, keyboard = true, script = function(t)
+  if t >= 20 and not seen.acked then seen.acked = true; return R.tap("mac2: no power", "Aaron", 3) end
   if t < 50 then return nil end
   if not seen.opened then seen.opened = true; return R.tap(" LOG ", "Aaron", 1) end
   if not seen.first then
     seen.first = M.find("EARLIER (2)", 1) and M.find("kept in lens-log.cfg", 1) and M.find("mac2: no power", 3)
-      and M.find(" ago, lasted ", 3) and M.find("lens-hub started", 3)
+      and M.find(" ago, lasted ", 3) and M.find("lens-hub started", 3) and M.find("· ✓ Aaron", 3)
     return R.tap("DONE", "Aaron", 1)
   end
   return "stop"
 end }
 check(ok, "lens-hub runs" .. (ok and "" or (": " .. tostring(err))))
-check(seen.first, "LOG: the alert that ended and when lens-hub started, with how long ago")
+check(seen.first, "LOG: the alert that ended (and who acknowledged it) and when lens-hub started, with how long ago")
 local saved = files.loadTable(dir .. "/lens-log.cfg")
 local kinds = {}
 for _, e in ipairs(saved and saved.entries or {}) do kinds[#kinds + 1] = e.kind end
