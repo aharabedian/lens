@@ -52,6 +52,8 @@
   Alarm (cfg.alarm): env.redstone's output on sides[alarm.side] is 15 while an alert of alarm.level or worse is
   neither acknowledged nor muted, else 0; set only when that changes, and 0 on stop. Without a card the footer says
   so (model.alarmError). It drives a lamp or a siren, never a machine or an agent.
+  Chat (cfg.chat): each new bad alert that isn't muted goes to the chat of the players wearing glasses whose HUD
+  would list it (lens.hub.huds' chat; the call's arguments are a probe).
   Beeps once when a new bad alert appears (cfg.beep). Panel history keeps one value every cfg.sample seconds.
   Glance mode (cfg.glance): after glance.after minutes without a tap, key or paste (and no editor open), the
   dashboard is drawn at a third of its resolution (half when that's under 12 rows) with glance.views; the next tap
@@ -502,9 +504,14 @@ end
 function App:flashNew(keys, now)
   local new = {}
   for _, key in ipairs(keys) do new[key] = true end
+  local fresh = {}
   for _, a in ipairs(self.hub.alerts:list()) do
-    if new[a.key] and a.level == "bad" and not self.mutes:of(a) then self.flashUntil[a.key] = now + FLASH end
+    if new[a.key] and a.level == "bad" and not self.mutes:of(a) then
+      self.flashUntil[a.key] = now + FLASH
+      fresh[#fresh + 1] = a
+    end
   end
+  if self.cfg.chat and self.huds and #fresh > 0 then pcall(self.huds.chat, self.huds, fresh, now) end
 end
 
 function App:flashing(now)

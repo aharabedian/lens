@@ -39,6 +39,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Alarm output** (`alarm = { side = "north" }`): a redstone card in the hub computer gives a signal while a BAD
   alert is neither acknowledged nor muted, for a lamp or a siren. Not tried in game yet: `lens-discover --redstone
   north` is the check.
+- **Alerts in chat** (`chat = true`): each new BAD alert also goes to the chat of the players wearing glasses
+  whose HUD would list it. Not tried in game yet: `lens-discover --chat <name>` is the check.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

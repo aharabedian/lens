@@ -130,4 +130,17 @@ do
   M.components = {}
 end
 
+---------------------------------------------------------------- --chat (alerts in chat's probe)
+do
+  local T = require("glasses").new()
+  M.components = { gl000000 = { type = "glasses", proxy = T.proxy, methods = {} } }
+  ok, out, file = run("--chat", "Aaron")
+  check(ok and #T.sent == 2 and T.sent[1][1] == "Aaron" and T.sent[2][2] == "Aaron"
+    and out:find("try 1: sendMessageTo returned true", 1, true) and out:find("try 3: sendChatAs isn't there", 1, true)
+    and file:find("Which tries reached Aaron's chat?", 1, true), "--chat: numbered tries in each argument order, and what each did")
+  local okNo, _, _, errNo = run("--chat")
+  check(not okNo and tostring(errNo):find("say who", 1, true), "--chat without a name says what to add")
+  M.components = {}
+end
+
 H.done()

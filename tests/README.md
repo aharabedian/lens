@@ -24,6 +24,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_group.lua` | Grouped alerts through `lens-hub` on a 3 × 4 screen: one row for a node with 3 or more, the node page with each, acknowledging one there |
 | `test_hub.lua` | The hub's pure modules on their own: `store` (and its metric list), `query`, `rules`, `alerts` (and its history), `format` (templates, dots), `config` (views, HUD blocks, resolution), `explore`, `viewdraft`, and the resolution that fits a screen |
 | `test_net.lua` | Agents and the hub over `mocks/net.lua`: discovery, parts, lost packets, staleness, restarts, tokens, rules |
+| `test_chat.lua` | Alerts in chat through `lens-hub` with two terminals: new BAD alerts to each wearer whose HUD would list them, not WARNs, 5 a minute, off by default |
 | `test_dashboard.lua` | The dashboard end to end with a PRISM-like agent: panels, alerts and acks by touch, stale nodes, beeps, GPU calls per quiet second, tier 2, config errors, fitting a 3 × 4 screen |
 | `test_hud.lua` | The HUD on one terminal (`mocks/glasses.lua`): strip, bars, alerts, nothing overlapping, only changed setters, options, blocks from nine anchors with bar / text / gap / alerts, in `lens-hub` (calls per minute), a broken terminal |
 | `test_hudfilter.lua` | An alerts element's `nodes` and `level`: checked, from lens-hub.cfg, and set in the HUD editor (NODES, BAD ONLY), kept in `lens-board.cfg`; what the glasses show |
@@ -42,7 +43,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_examples.lua` | Every view in `docs/examples.md` as a panel in `lens-hub`, against a PRISM ore line and a LUMEN power room: each shows what the doc says |
 | `test_showcase.lua` | A busy base for the README's images (`make docs-images`): three PRISM routers, LUMEN and your own program, a full dashboard with live alerts, and a HUD block whose `dots = "left"` comes from `lens-hub.cfg` |
 | `test_data.lua` | The DATA page through `lens-hub`: metrics, series, filters, functions, SAVE AS PANEL, ADD TO MY HUD, counters as rates, `editors`, paging, narrow screens |
-| `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering, `--widgets`, `--events`, `--glasses-test`, `--redstone` |
+| `test_discover.lua` | `lens-discover`: listing, the report file, basics, filtering, `--widgets`, `--events`, `--glasses-test`, `--redstone`, `--chat` |
 | `test_rules.lua` | Alerts made on the screen: `ruledraft`, `rules:keep`, the board's rules; through `lens-hub` on a 3 × 4 screen: EDIT > ALERTS, + NEW typed, NOW, SAVE (fires, saved), SAVE AS ALERT from a panel and DATA, DELETE ALERT |
 | `test_setup.lua` | `lens-setup` with scripted answers: finding a PRISM router, its panels and HUD line (as blocks; an old one-corner hud rewritten), the file (loads, comments, `lens-hub` runs it), `.shrc`, re-runs keeping edits, PRISM's port refused, no agents, no network card, no glasses, cancelling, a broken file |
 | `test_update.lua` | `lens-update`: releases, main, branches, forks, keeping `lens-hub.cfg`, refusing broken downloads |
@@ -50,7 +51,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `hubrun.lua` | Runs `lens-hub` for feature tests: agents (`R.agent`, with a distance, going silent at `stopAt`, or restarting at `restartAt`), Glasses Terminals, a keyboard, a script of events, `R.tap` / `R.keys` / `R.paste` / `R.queue` |
 | `helper.lua` | Shared setup (`H`): `check`, `run`, `screen` and `glasses` dumps for `make screens` |
 | `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, screen shape, modem, others by type), `unicode`, `filesystem` (with `lastModified` as real time), `sides`, a redstone card (`M.redstone()`), `internet`, `math.random` as the game's, and a screen tests can read |
-| `mocks/glasses.lua` | A Glasses Terminal and its widget objects, as `lens-discover` saw them; records what setters get |
+| `mocks/glasses.lua` | A Glasses Terminal and its widget objects, as `lens-discover` saw them; records what setters get, and `sendMessageTo` calls (`G.sent`) |
 | `mocks/net.lua` | Several computers' modems in one test, with packet loss and OpenComputers' packet limits |
 
 ## Writing a test

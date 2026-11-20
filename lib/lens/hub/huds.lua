@@ -31,6 +31,10 @@
   hs:deletePreset(player, name) -> true | nil, err   not the last one; the first left becomes active if it was
   huds.MAX_PRESETS, huds.NAME_LENGTH
   hs:wearing(player) -> n               terminals that player is wearing glasses on
+  hs:chat(alerts, now) -> sent          each alert (lens.hub.alerts' rows) that passes a wearer's HUD alert filters
+                                        (any of their alerts elements' nodes and level; none: all) goes to their
+                                        chat through their terminal: sendMessageTo(player, text), arguments assumed
+                                        (lens-discover --chat checks). At most CHAT_PER_MINUTE per player
   hs:clear()                            remove every widget
   hs:wipe()                             remove every widget on every terminal, any left by an earlier run too
                                         (lens.hub.hud's wipe); the next draw makes the HUDs again
@@ -49,6 +53,7 @@ local huds = {}
 huds.LIMITS = { scale = { 0.5, 3, 0.25 }, width = { 100, 400, 20 }, count = { 0, 8, 1 },
   blocks = { 1, 6 }, elements = { 0, 20 } }
 huds.MAX_PRESETS = 8
+huds.CHAT_PER_MINUTE = 5
 huds.NAME_LENGTH = 16
 
 local ANCHOR = {}
@@ -374,6 +379,46 @@ function Huds:draw(m, evaluate, views)
   end
   self.calls = calls
   self.error = errs[1]
+end
+
+-- Whether a wearer's HUD would list this alert: one of their alerts elements takes it (none: every alert does).
+local function wants(s, a)
+  local any = false
+  for _, b in ipairs(s.blocks or {}) do
+    for _, el in ipairs(b.elements or {}) do
+      if el.kind == "alerts" then
+        any = true
+        local node = not el.nodes or (pcall(string.find, "", el.nodes) and tostring(a.node or ""):find(el.nodes) ~= nil)
+        if node and (el.level ~= "bad" or a.level == "bad") then return true end
+      end
+    end
+  end
+  return not any
+end
+
+function Huds:chat(alerts, now)
+  local sent = 0
+  self.chatted = self.chatted or {}
+  for _, t in ipairs(self.terms) do
+    local proxy = t.hud.proxy
+    if t.player and proxy and proxy.sendMessageTo then
+      local times = self.chatted[t.player] or {}
+      while times[1] and now - times[1] > 60 do table.remove(times, 1) end
+      self.chatted[t.player] = times
+      local s = self:settings(t.player)
+      for _, a in ipairs(alerts) do
+        if #times < huds.CHAT_PER_MINUTE and wants(s, a) then
+          local text = ("[LENS] %s %s"):format(a.level == "bad" and "BAD" or "WARN", a.text)
+          if a.node and not a.text:find(a.node, 1, true) then text = text .. " · " .. a.node end
+          if pcall(proxy.sendMessageTo, t.player, text) then
+            times[#times + 1] = now
+            sent = sent + 1
+          end
+        end
+      end
+    end
+  end
+  return sent
 end
 
 function Huds:wipe()

@@ -9,6 +9,8 @@
     lens-discover --events [secs]  print every event for secs seconds (default 30): put glasses on, click...
     lens-discover --glasses-test [secs]   draw a calibration pattern in the glasses for secs seconds
                                    (default 60), to find the units colors and positions take
+    lens-discover --chat player    send numbered test messages to a player's chat through the Glasses Terminal
+                                   (sendMessageTo, sendChatAs), to see which arguments work: for alerts in chat
     lens-discover --redstone side [level]   set a redstone card's output on that side (north, top...) to level
                                    (default 15) and leave it: for lens-hub's alarm
   Everything is also written to /home/lens-discover.txt (on your own machine:
@@ -29,7 +31,7 @@ local args = { ... }
 local opts, mode, arg2 = {}, "report", nil
 for i, a in ipairs(args) do
   if a == "--all" then opts.all = true
-  elseif a == "--widgets" or a == "--events" or a == "--glasses-test" or a == "--redstone" then
+  elseif a == "--widgets" or a == "--events" or a == "--glasses-test" or a == "--redstone" or a == "--chat" then
     mode, arg2, opts.level = a:sub(3), args[i + 1], args[i + 2]
   elseif mode == "report" then opts.filter = a end
 end
@@ -63,6 +65,11 @@ elseif mode == "glasses-test" then
   end
   for _, id in ipairs(ids) do pcall(proxy.removeObject, id) end
   print("pattern removed")
+elseif mode == "chat" then
+  if not arg2 then error("say who to send to: lens-discover --chat <your player name>", 0) end
+  local addr = component.list("glasses", true)()
+  if not addr then error("no glasses component found (is the Glasses Terminal attached?)", 0) end
+  for _, l in ipairs(discover.chat(component.proxy(addr), arg2)) do print(l); lines[#lines + 1] = l end
 elseif mode == "redstone" then
   local sides = require("sides")
   local side = arg2 and sides[arg2]
