@@ -4,7 +4,8 @@
 
   State: { kind = "edit", player, page = the page being edited (starts at the one shown),
            rename = a lens.hub.textfield field | nil (the page's new name, being typed) }
-  Actions: edit(player) opens it (cfg.editors, when set, lists who may); editDone, editUndo, editMove(i, -1 | 1),
+  Actions: edit(player) opens it (cfg.editors, when set, lists who may); editDone, editUndo, editAlerts (the alerts
+  made on the screen: lens.hub.editors.rule), editMove(i, -1 | 1),
   editRemove(i), editAdd(label), editView(label), editNew; pages: editPage(i), editPageAdd, editPageDelete,
   editPageRename (typed; Enter or editPageRenameOk), editPageRenameCancel.
 ]]
@@ -30,6 +31,7 @@ function E.actions(app, a, mine)
     app:open("edit", player, { page = app.page })
   end
   a.editDone = mine(function() app:close() end)
+  a.editAlerts = mine(function(player) app:switch(player, { kind = "rule" }) end)
   a.editUndo = mine(function() app.board:undo() end)
   a.editMove = mine(function(_, i, dir)
     local l = labels(app)

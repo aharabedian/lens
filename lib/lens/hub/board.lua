@@ -32,6 +32,10 @@
   b:knownNodes() -> { [name] = { role?, interval? } }   every node the hub has heard (it lists them after a restart)
   b:rememberNode(name, role?, interval?)     saved when it's new or its role or interval changed
   b:forgetNode(name)
+  b:rules() -> { rule... }   alert rules made on the screen (lens.hub.rules' form)
+  b:allRules() -> { rule... }   lens-hub.cfg's rules, then the screen's
+  b:setRule(rule, oldId?) -> true | nil, err   add or replace (checked with lens-hub.cfg's: ids must differ). Saved
+  b:deleteRule(id) -> true | nil, err
   b:mutes() -> { mute... }   muted nodes and alerts (lens.hub.mutes' list)      b:setMutes(list)   saved
   b:players() -> { [name] = hud settings }   (lens.hub.huds' form; huds reads and writes them through:)
   b:setPlayers(players) -> true | nil, err
@@ -40,6 +44,7 @@
 
 local files = require("lens.files")
 local config = require("lens.hub.config")
+local rules = require("lens.hub.rules")
 
 local board = {}
 
@@ -158,6 +163,13 @@ function board.new(path, cfg)
   end
   self.huds = type(data.huds) == "table" and data.huds or {}
   self.muted = type(data.mutes) == "table" and data.mutes or {}
+  self.cfgRules = cfg.rules or {}
+  self.screenRules = {}
+  for _, r in ipairs(type(data.rules) == "table" and data.rules or {}) do
+    local list = { table.unpack(self:allRules()) }
+    list[#list + 1] = r
+    if type(r) == "table" and rules.new(list) then self.screenRules[#self.screenRules + 1] = r end
+  end
   self.nodes = {}
   for name, k in pairs(type(data.nodes) == "table" and data.nodes or {}) do
     if type(name) == "string" and type(k) == "table" then
@@ -179,9 +191,9 @@ function B:save()
     "-- views: made or changed on the screen (one with a lens-hub.cfg label replaces that one).",
     "-- pages: the dashboard's pages and their panels, in order. seen: lens-hub.cfg panels already offered.",
     "-- huds: each player's HUDs. nodes: every node the hub has heard, so it can tell when one is missing.",
-    "-- mutes: muted nodes and alerts (ends: real seconds since 1970).",
+    "-- mutes: muted nodes and alerts (ends: real seconds since 1970). rules: alerts made on the screen.",
     "return " .. lit({ views = self.own, pages = self:storedPages(), seen = seen, huds = self.huds, nodes = self.nodes,
-      mutes = self.muted }),
+      mutes = self.muted, rules = self.screenRules }),
   }, "\n") .. "\n"
   local ok, err = files.writeAtomic(self.path, text)
   if not ok then return nil, err end
@@ -388,6 +400,41 @@ function B:addPanel(label, page)
   local list = { table.unpack(pageOf(self, page).list) }
   list[#list + 1] = label
   return self:setPanels(list, page)
+end
+
+function B:rules() return self.screenRules end
+
+function B:allRules()
+  local out = {}
+  for _, r in ipairs(self.cfgRules) do out[#out + 1] = r end
+  for _, r in ipairs(self.screenRules or {}) do out[#out + 1] = r end
+  return out
+end
+
+function B:setRule(rule, oldId)
+  local mine, replaced = {}, false
+  for _, r in ipairs(self.screenRules) do
+    if r.id == (oldId or rule.id) then mine[#mine + 1] = rule; replaced = true
+    else mine[#mine + 1] = r end
+  end
+  if not replaced then mine[#mine + 1] = rule end
+  local all = {}
+  for _, r in ipairs(self.cfgRules) do all[#all + 1] = r end
+  for _, r in ipairs(mine) do all[#all + 1] = r end
+  local _, err = rules.new(all)
+  if err then
+    if err:find("id used twice", 1, true) then return nil, "there's already an alert called " .. rule.id end
+    return nil, err
+  end
+  self.screenRules = mine
+  return self:save()
+end
+
+function B:deleteRule(id)
+  local keep = {}
+  for _, r in ipairs(self.screenRules) do if r.id ~= id then keep[#keep + 1] = r end end
+  self.screenRules = keep
+  return self:save()
 end
 
 function B:mutes() return self.muted end

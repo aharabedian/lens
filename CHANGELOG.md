@@ -27,6 +27,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   Nothing is sent to the agent.
 - **Grouped alerts**: a node with 3 or more alerts is one row on the dashboard (`prism-ore: 7 alerts (3 bad)`), so
   one broken line doesn't push the rest off the screen. Tap it for the node page, where each can be acknowledged.
+- **Alerts made on the screen**: EDIT > ALERTS, or SAVE AS ALERT on DATA and a panel's page. Type the text, the
+  query and how long it must stay true; NOW says whether it's true and when it would fire. Kept in
+  `lens-board.cfg`; lens-hub.cfg's rules are listed read-only.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

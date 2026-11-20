@@ -83,6 +83,7 @@ local function metricDetail(f, e, actions, x, y, width, last, narrow)
   local bx = x
   if e.canPanel then bx = f:button(bx, y, "SAVE AS PANEL", actions.dataPanel) end
   if e.canHud then bx = f:button(bx, y, "ADD TO MY HUD", actions.dataHud) end
+  if e.canPanel then bx = f:button(bx, y, "SAVE AS ALERT", actions.dataAlert) end
   if not e.canPanel then
     f:text(bx, y, Gui.fit(("Only %s can add panels."):format(table.concat(e.editors or {}, ", ")), x + width - bx), C.dim)
   end

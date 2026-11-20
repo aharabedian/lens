@@ -13,6 +13,9 @@
   hub:traffic(name) -> { distance?, whole, cut } | nil   per node since the hub started: snapshots that arrived
       whole, and ones cut short (a part missing when the next snapshot began); the last packet's distance
   hub:forget(name)                            a node that stopped is dropped (it comes back if it reports)
+  hub:setRules(list) -> true | nil, err       the rules from now on (lens-hub.cfg's and the screen's); a rule
+                                              kept with the same id and query keeps its timer
+  hub.rules                                   lens.hub.rules (trueSince)
   hub:remember(name, role?, interval?, now)   a node heard in an earlier run (store:remember)
   hub:drain() -> events                       store:drain(): nodes that restarted
   hub:tick(now) -> alerts:update result       call every second or so: stale nodes, agent alerts, rules
@@ -159,6 +162,14 @@ function Hub:nodes(now) return self.store:nodes(now) end
 function Hub:traffic(name)
   local t = self.snapshots[name]
   return t and { distance = t.distance, whole = t.whole, cut = t.cut } or nil
+end
+
+function Hub:setRules(list)
+  local r, err = rules.new(list)
+  if not r then return nil, err end
+  r:keep(self.rules)
+  self.rules = r
+  return true
 end
 
 function Hub:remember(name, role, interval, now) self.store:remember(name, role, interval, now) end
