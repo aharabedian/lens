@@ -24,6 +24,7 @@
          also counts with "warn") }: a redstone card's output on that side is 15 while such an alert is neither
          acknowledged nor muted, else 0
   config.SIDES          the side names alarm.side takes
+  history: true keeps each panel's last 24 hours too (lens.hub.daily, lens-history.cfg; about 2.3 KB a panel)
   chat: true sends each new BAD alert (not muted) to the chat of the players wearing glasses, through their Glasses
         Terminal, when their HUD would list it (lens.hub.huds' chat)
 ]]
@@ -35,7 +36,7 @@ local config = {}
 
 config.DEFAULTS = {
   node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10, resolution = "fit", editors = nil,
-  timezone = nil, glance = false, alarm = nil, chat = false,
+  timezone = nil, glance = false, alarm = nil, chat = false, history = false,
   nonCritical = {}, panels = {}, rules = {}, hud = {},
 }
 
@@ -200,6 +201,7 @@ function config.check(c)
     end
   end
   if type(c.chat) ~= "boolean" then return nil, "chat must be true or false" end
+  if type(c.history) ~= "boolean" then return nil, "history must be true or false" end
   if c.alarm ~= nil then
     local a = c.alarm
     if type(a) ~= "table" or not SIDE[a.side] then

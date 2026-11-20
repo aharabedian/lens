@@ -22,6 +22,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_welcome.lua` | Welcome back through `lens-hub`: glasses off for minutes then on shows how long, the alerts meanwhile and restarts for 20 seconds; a short break shows nothing |
 | `test_units.lua` | `metrics` and `codec` on their own |
 | `test_group.lua` | Grouped alerts through `lens-hub` on a 3 × 4 screen: one row for a node with 3 or more, the node page with each, acknowledging one there |
+| `test_history.lua` | The 24-hour history: `daily` on its own (averages, gaps, 144 slots, kept panels, saved, slots missed while off); through `lens-hub`: 24 H on the panel page, `lens-history.cfg`, after a restart, off by default |
 | `test_hub.lua` | The hub's pure modules on their own: `store` (and its metric list), `query`, `rules`, `alerts` (and its history), `format` (templates, dots), `config` (views, HUD blocks, resolution), `explore`, `viewdraft`, and the resolution that fits a screen |
 | `test_net.lua` | Agents and the hub over `mocks/net.lua`: discovery, parts, lost packets, staleness, restarts, tokens, rules |
 | `test_chat.lua` | Alerts in chat through `lens-hub` with two terminals: new BAD alerts to each wearer whose HUD would list them, not WARNs, 5 a minute, off by default |
