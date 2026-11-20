@@ -14,6 +14,11 @@ top of your HUD says how long you were away, how many alerts started meanwhile (
 longest) and which nodes restarted. It needs `glasses_off` when you take them off; whether logging out with them
 on sends one isn't confirmed yet ([architecture.md](architecture.md#whats-verified-in-game)).
 
+**Alerts in chat** (`chat = true` in lens-hub.cfg): each new `BAD` alert that isn't muted is also sent to your
+chat through your Glasses Terminal, when your HUD would list it (its alerts elements' `nodes` and `level`), so it
+reaches you with the HUD hidden or a menu open. At most 5 a minute. Not tried in game yet: `lens-discover --chat
+<your name>` sends three numbered test messages; tell which arrived.
+
 A new `BAD` alert (not muted) makes each block that lists it blink for 10 seconds, its backdrop dark and light once
 a second, so you notice it while looking elsewhere; that costs about 2 calls a second per block.
 

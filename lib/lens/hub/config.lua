@@ -24,6 +24,8 @@
          also counts with "warn") }: a redstone card's output on that side is 15 while such an alert is neither
          acknowledged nor muted, else 0
   config.SIDES          the side names alarm.side takes
+  chat: true sends each new BAD alert (not muted) to the chat of the players wearing glasses, through their Glasses
+        Terminal, when their HUD would list it (lens.hub.huds' chat)
 ]]
 
 local query = require("lens.hub.query")
@@ -33,7 +35,7 @@ local config = {}
 
 config.DEFAULTS = {
   node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10, resolution = "fit", editors = nil,
-  timezone = nil, glance = false, alarm = nil,
+  timezone = nil, glance = false, alarm = nil, chat = false,
   nonCritical = {}, panels = {}, rules = {}, hud = {},
 }
 
@@ -197,6 +199,7 @@ function config.check(c)
       if type(l) ~= "string" then return nil, "glance.views must be a list of view labels" end
     end
   end
+  if type(c.chat) ~= "boolean" then return nil, "chat must be true or false" end
   if c.alarm ~= nil then
     local a = c.alarm
     if type(a) ~= "table" or not SIDE[a.side] then

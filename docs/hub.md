@@ -44,6 +44,7 @@ shape in blocks, so text fills it with no empty borders. Characters are twice as
 | `sample` | `10` | Seconds between sparkline samples |
 | `timezone` | `nil` | Hours from UTC (`-5`, `1`, `5.5`): the [log](#the-alert-log) shows clock times. `nil`: how long ago |
 | `alarm` | `nil` | [Alarm output](#alarm-output): `{ side = "north" }` (and `level = "warn"` to count warns too) |
+| `chat` | `false` | `true`: each new `BAD` alert (not muted) also goes to the chat of each player wearing glasses whose HUD would list it ([hud.md](hud.md)) |
 | `glance` | `false` | [Glance mode](#glance-mode): `{ after = 5, views = { "Power", "Ore" } }` (minutes without a tap; the views to show, none: the first page's first five panels). `true`: those defaults |
 | `editors` | `nil` | Player names who may use EDIT: `{ "Steve", "Alex" }`. `nil`: anyone |
 | `resolution` | `"fit"` | `"fit"`: match the screen's shape (see above). `"max"`: the GPU's largest. `{ width, height }`: your own, e.g. `{ 80, 25 }` for bigger text |

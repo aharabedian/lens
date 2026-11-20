@@ -14,12 +14,13 @@
   G.live() -> widget states not removed, in creation order
   G.find(text) -> the live text widget whose text contains `text`
   G.textWidth(state) -> px the text takes at its scale
+  G.sent                           every sendMessageTo call's arguments (assumed: player, text)
 ]]
 
 local glasses = {}
 
 function glasses.new()
-  local G = { widgets = {}, order = {}, calls = 0, nextId = 0 }
+  local G = { widgets = {}, order = {}, calls = 0, nextId = 0, sent = {} }
   local function count() G.calls = G.calls + 1 end
 
   local function widget(kind, extra)
@@ -74,6 +75,8 @@ function glasses.new()
     end,
     removeAll = function() count(); for _, s in pairs(G.widgets) do s.removed = true end end,
     getBindPlayers = function() count(); return "Aaron" end,
+    -- Listed by lens-discover (2026-11-12); the arguments are a guess (player, text): G.sent records each call.
+    sendMessageTo = function(...) count(); G.sent[#G.sent + 1] = { ... }; return true end,
   }
 
   function G.live()

@@ -15,6 +15,10 @@
 
   discover.event(ev) -> line   one pulled event as text, for --events
 
+  discover.chat(proxy, player) -> lines[]
+    For alerts in chat: calls a Glasses Terminal's sendMessageTo and sendChatAs with the argument orders they
+    might take, each message numbered, and reports what each returned or the error; the player says which arrived.
+
   discover.redstone(proxy, side, sideName, level) -> lines[]
     For the alarm (lens-hub's alarm): sets a redstone card's output on one side and leaves it there, saying what
     setOutput returned and what getOutput reads back, and what to check next (a lamp; the hub stopping; the
@@ -181,6 +185,34 @@ function discover.event(ev)
   local parts = {}
   for i = 1, ev.n or #ev do parts[#parts + 1] = describeValue(ev[i]) end
   return table.concat(parts, "  ")
+end
+
+function discover.chat(proxy, player)
+  local tries = {
+    { "sendMessageTo", { player, "lens-discover: try 1 of 3, sendMessageTo(player, text)" } },
+    { "sendMessageTo", { "lens-discover: try 2 of 3, sendMessageTo(text, player)", player } },
+    { "sendChatAs", { "LENS", "lens-discover: try 3 of 3, sendChatAs(name, text)" } },
+  }
+  local out = {}
+  for n, t in ipairs(tries) do
+    local fn = proxy[t[1]]
+    local line
+    if type(fn) ~= "function" and type(fn) ~= "table" then
+      line = ("try %d: %s isn't there"):format(n, t[1])
+    else
+      local res = table.pack(pcall(fn, table.unpack(t[2])))
+      if res[1] then
+        local rets = {}
+        for k = 2, res.n do rets[#rets + 1] = tostring(res[k]) end
+        line = ("try %d: %s returned %s"):format(n, t[1], #rets > 0 and table.concat(rets, ", ") or "nothing")
+      else
+        line = ("try %d: %s failed: %s"):format(n, t[1], tostring(res[2]))
+      end
+    end
+    out[#out + 1] = line
+  end
+  out[#out + 1] = ("Which tries reached %s's chat? Did anyone else linked to this terminal see them?"):format(tostring(player))
+  return out
 end
 
 function discover.redstone(proxy, side, sideName, level)
