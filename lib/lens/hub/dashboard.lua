@@ -17,7 +17,8 @@
     hudError = text | nil,   shown in the footer
     hudPerMinute = n | nil,  HUD component calls in the last minute, shown in the footer
     pages = { name... }, page = i   the dashboard's pages and the one shown (tabs when there are several)
-    logged = n               ended alerts the LOG page has
+    logged = n               entries in the kept log (LOG)
+    logError = text | nil    lens-log.cfg couldn't be written: shown in the footer
     editor = nil | { kind = "hud" | "edit" | "view" | "data" | "log", player, error, closesIn, ... }
                              an editor is open: its page (lens.hub.pages.<kind>) is drawn instead of the
                              dashboard; the rest of its fields are that page's (its header comment)

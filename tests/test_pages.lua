@@ -64,14 +64,14 @@ local ok, err, dir = R.run{ cfg = CFG, agents = agents(), keyboard = true, scrip
     if seen.logNow and not seen.nowChecked then
       seen.nowChecked = true
       seen.now = M.find("Alert log", 1) and M.find("NOW (1)", 1) and M.find("mac2: no power", 3) and M.find("for ", 3)
-        and M.find("EARLIER (0)", 1)
+        and M.find("EARLIER (1)", 1) and M.find("lens-hub started", 3)
       return R.tap("DONE", "Aaron", 1)
     end
     return nil
   end
   if not seen.logLater then seen.logLater = true; return R.tap(" LOG ", "Aaron", 1) end
   if not seen.later then
-    seen.later = M.find("NOW (0)", 1) and M.find("EARLIER (1)", 1) and M.find("lasted", 3) and M.find("mac2: no power", 3)
+    seen.later = M.find("NOW (0)", 1) and M.find("EARLIER (2)", 1) and M.find("lasted", 3) and M.find("mac2: no power", 3)
     H.screen("log")
     return R.tap("DONE", "Aaron", 1)
   end
