@@ -92,7 +92,7 @@ local ok, err, dir = R.run{ cfg = 'return { editors = { "Aaron" } }', agents = a
   if t < 100 then return nil end
   if not seen.later then
     seen.later = true
-    seen.noBeep = M.beeps == beeps and M.find("Macerator 3: no power", 3) and M.find("3 muted", 1)
+    seen.noBeep = M.beeps == beeps and M.find("prism-ore: 3 alerts (2 bad) ▶", 3) and M.find("3 muted", 1)
     seen.noHud = not hudSays("Macerator")
     return R.tap(" LOG ", "Aaron", 1)
   end

@@ -20,6 +20,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | File | Covers |
 |---|---|
 | `test_units.lua` | `metrics` and `codec` on their own |
+| `test_group.lua` | Grouped alerts through `lens-hub` on a 3 × 4 screen: one row for a node with 3 or more, the node page with each, acknowledging one there |
 | `test_hub.lua` | The hub's pure modules on their own: `store` (and its metric list), `query`, `rules`, `alerts` (and its history), `format` (templates, dots), `config` (views, HUD blocks, resolution), `explore`, `viewdraft`, and the resolution that fits a screen |
 | `test_net.lua` | Agents and the hub over `mocks/net.lua`: discovery, parts, lost packets, staleness, restarts, tokens, rules |
 | `test_dashboard.lua` | The dashboard end to end with a PRISM-like agent: panels, alerts and acks by touch, stale nodes, beeps, GPU calls per quiet second, tier 2, config errors, fitting a 3 × 4 screen |
