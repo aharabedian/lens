@@ -41,6 +41,8 @@
   is left out of overall health. Nothing is sent to the agent.
   app:mute(player, node, key?, seconds?) -> true | nil, err   (cfg.editors) seconds nil: until it clears
   app:unmute(player, node, key?) -> true | nil, err
+  A new bad alert (not muted) flashes for FLASH seconds in the HUD blocks that list it (model.flash, flashOn: the
+  phase, which changes every tick).
   Beeps once when a new bad alert appears (cfg.beep). Panel history keeps one value every cfg.sample seconds.
   Glance mode (cfg.glance): after glance.after minutes without a tap, key or paste (and no editor open), the
   dashboard is drawn at a third of its resolution (half when that's under 12 rows) with glance.views; the next tap
@@ -63,6 +65,7 @@ local app = {}
 local HISTORY = 120
 local EDIT_TIMEOUT = 60
 local SAVE_LOG = 60          -- seconds between writes of lens-log.cfg
+local FLASH = 10             -- seconds a new bad alert flashes in the HUD
 
 local EDITORS = {
   hud  = require("lens.hub.editors.hud"),
@@ -85,7 +88,7 @@ function app.new(cfg, env)
   local b = board.new(env.boardPath, cfg)
   hub:setRules(b:allRules())          -- lens-hub.cfg's rules and the ones made on the screen (checked on load)
   local self = setmetatable({ cfg = cfg, env = env, hub = hub, running = true, history = {}, nextSample = 0, now = 0,
-    page = 1, lastTap = 0 }, App)
+    page = 1, lastTap = 0, flashUntil = {} }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
   self.board = b
   self.clock = clock.new(env.filesystem, env.clockPath)
@@ -368,6 +371,7 @@ function App:model(now)
     huds = self.huds ~= nil, editor = self:editorModel(now), notice = self.notice,
     pages = self:pageNames(), page = self.page, logged = self.logbook.count, logError = self.logError,
     glance = self.glancing and { panels = self:evaluate(self:glanceViews(), nil, now) } or nil,
+    flash = self:flashing(now), flashOn = math.floor(now) % 2 == 0,
   }
 end
 
@@ -429,11 +433,28 @@ function App:anyBad(keys)
   return false
 end
 
+function App:flashNew(keys, now)
+  local new = {}
+  for _, key in ipairs(keys) do new[key] = true end
+  for _, a in ipairs(self.hub.alerts:list()) do
+    if new[a.key] and a.level == "bad" and not self.mutes:of(a) then self.flashUntil[a.key] = now + FLASH end
+  end
+end
+
+function App:flashing(now)
+  local out = {}
+  for key, untilT in pairs(self.flashUntil) do
+    if now < untilT then out[key] = true else self.flashUntil[key] = nil end
+  end
+  return out
+end
+
 function App:tick(now)
   self.now = now
   if self.editing and now >= self.editing["until"] then self:close() end
   local changes = self.hub:tick(now)
   if self.cfg.beep and self.env.beep and self:anyBad(changes.new) then self.env.beep() end
+  self:flashNew(changes.new, now)
   self:logEnded(changes.ended, now)
   self:noteNodes(now)
   if now >= self.nextSave then

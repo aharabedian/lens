@@ -107,6 +107,7 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | `key_down(keyboard, char, code, player)` and `clipboard(keyboard, text, player)` reach the hub from a keyboard attached to its screen; Insert pastes | **Reported working** (2026-11-12): typing and pasting in the view editor |
 | A `glasses_on` arrives for a player already wearing glasses when the hub starts | Assumed not: getBindPlayers covers it |
 | Events (the hub uses `glasses_on`'s size to place the HUD by its anchor): `glasses_on(terminal, player, width, height)` (854x457 here, briefly 854x480), `glasses_off(terminal, player)`; clicking with glasses on sends nothing | **Seen in game** (`lens-discover --events`, 2026-11-12) |
+| `setAlpha` on a Rect2D can change every second (the new-alert flash) without flicker or lag | **Unverified**: alpha is set in game, but not changed this often yet |
 | Colors 0..1 (`setColor(255, 0, 0)` clamps to the same red as `(1, 0, 0)`) | **Seen in game** (`--glasses-test`, 2026-11-12) |
 | Positions are GUI pixels from the top left (at GUI scale 3, x 10 is 30 screen px); `glasses_on`'s width and height are the GUI size at that moment | **Seen in game** (`--glasses-test`, 2026-11-12) |
 | Rect2D `setSize(a, b)` makes it `b` wide and `a` tall: **height first** | **Seen in game** twice (60, 14 drew 14 x 60; 10, 80 drew 80 x 10) |

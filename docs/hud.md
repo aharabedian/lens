@@ -9,6 +9,8 @@ the newest unacknowledged alerts, with a thin strip down the left in the base's 
 Widgets are made once and only changed values are sent: the dashboard's footer shows the HUD's calls in the last
 minute (`HUD n calls/min`; about 0 when nothing changes). If a terminal fails, the dashboard keeps running and
 shows `HUD: <error>` in its footer. Acknowledge or [mute](hub.md#muting) alerts on the dashboard and they leave the HUD.
+A new `BAD` alert (not muted) makes each block that lists it blink for 10 seconds, its backdrop dark and light once
+a second, so you notice it while looking elsewhere; that costs about 2 calls a second per block.
 
 ## A HUD for each player
 
