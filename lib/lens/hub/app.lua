@@ -1,12 +1,13 @@
 --[[ lens.hub.app: the hub program's state and reactions, without the event loop (src/lens-hub.lua has that).
 
   local app, err = require("lens.hub.app").new(cfg, { gpu, w, h, modem?, terminals?, boardPath?, keyboard?,
-                                                        beep?, boot? })
+                                                        beep?, boot?, filesystem?, logPath?, clockPath? })
     cfg: lens.hub.config output. err when the hub core refuses the config (bad rules).
     terminals: { [address] = Glasses Terminal }; each shows its wearer's HUD every tick (lens.hub.huds) unless
     cfg.hud is false. A HUD failure is shown on the dashboard (model.hudError) and never stops the hub.
     boardPath: lens-board.cfg (lens.hub.board: views, the dashboard's pages, players' HUDs). keyboard: whether
-    one is attached (fields can be typed).
+    one is attached (fields can be typed). logPath: lens-log.cfg (lens.hub.logbook: the alert log, saved once a
+    minute and on stop; nil: kept in memory). filesystem, clockPath: real time (lens.hub.clock) for the log.
   app:start(now)                         open the port, broadcast hello, draw
   app:tick(now)                          about once a second: alerts, panel samples, beep, redraw
   app:onModem(from, port, data, now)     feed a packet to the hub core, send its replies
@@ -15,6 +16,8 @@
   app:onClipboard(text, now, player)     a paste, the same way
   app:onGlasses(address, player, width, height, now)   a glasses_on: that terminal's wearer and GUI size
   app:stop()
+  app:real(now) -> seconds   real time (lens.hub.clock) at uptime now
+  app.logbook                lens.hub.logbook: alerts that ended, lens-hub starting and stopping
   app:panels(now) -> the shown page's panels, evaluated (with history)
   app.page                               the dashboard page shown (an index into board:pages()); tapping a
                                          tab changes it for everyone looking at the screen
@@ -42,12 +45,15 @@ local dashboard = require("lens.hub.dashboard")
 local format = require("lens.hub.format")
 local huds = require("lens.hub.huds")
 local board = require("lens.hub.board")
+local clock = require("lens.hub.clock")
+local logbook = require("lens.hub.logbook")
 local VERSION = require("lens.version")
 
 local app = {}
 
 local HISTORY = 120
 local EDIT_TIMEOUT = 60
+local SAVE_LOG = 60          -- seconds between writes of lens-log.cfg
 
 local EDITORS = {
   hud  = require("lens.hub.editors.hud"),
@@ -68,6 +74,9 @@ function app.new(cfg, env)
     page = 1 }, App)
   self.dash = dashboard.new(env.gpu, env.w, env.h)
   self.board = board.new(env.boardPath, cfg)
+  self.clock = clock.new(env.filesystem, env.clockPath)
+  self.logbook = logbook.new(env.logPath)
+  self.nextSave = 0
   if env.terminals and next(env.terminals) and cfg.hud ~= false then
     self.huds = huds.new(env.terminals, cfg.hud, self.board)
   end
@@ -143,6 +152,26 @@ end
 
 function App:onKey(char, code, now, player) self:typing(player, now, "key", char, code) end
 function App:onClipboard(text, now, player) self:typing(player, now, "paste", text) end
+
+---------------------------------------------------------------- the log
+function App:real(now) return self.clock:at(now) end
+
+local function round(x) return math.floor(x + 0.5) end
+
+-- Alerts that ended (alerts:update's `ended`) go into the kept log, in real time.
+function App:logEnded(ended, now)
+  if #ended == 0 then return end
+  local time = self:real(now)
+  for _, e in ipairs(ended) do
+    self.logbook:add{ kind = "alert", node = e.node, id = e.id, level = e.level, text = e.text,
+      since = round(time - (now - e.since)), at = round(time - (now - e.ended)) }
+  end
+end
+
+function App:saveLog()
+  local ok, saved, err = pcall(self.logbook.save, self.logbook)
+  self.logError = (not ok and tostring(saved)) or (not saved and tostring(err)) or nil
+end
 
 ---------------------------------------------------------------- panels and the HUD
 -- One view's value now: { label, text, frac, level, value, dots?, hidden? }. query(text) and select(text)
@@ -235,7 +264,7 @@ function App:model(now)
     missingConfig = self.cfg.missing, nodes = self.hub:nodes(now),
     alerts = self.hub.alerts:list(), counts = self.hub.alerts:counts(), panels = self:panels(now),
     huds = self.huds ~= nil, editor = self:editorModel(now), notice = self.notice,
-    pages = self:pageNames(), page = self.page, logged = #self.hub.alerts:history(),
+    pages = self:pageNames(), page = self.page, logged = self.logbook.count, logError = self.logError,
   }
 end
 
@@ -256,6 +285,7 @@ function App:start(now)
     modem.broadcast(self.cfg.port, self.hub:hello())
   end
   if self.huds then self.huds:wipe() end      -- widgets an earlier run left (crash, power off) would stay frozen
+  self.logbook:add{ kind = "start", at = round(self:real(now)) }
   self:tick(now)
 end
 
@@ -294,11 +324,18 @@ function App:tick(now)
   if self.editing and now >= self.editing["until"] then self:close() end
   local changes = self.hub:tick(now)
   if self.cfg.beep and self.env.beep and self:anyBad(changes.new) then self.env.beep() end
+  self:logEnded(changes.ended, now)
+  if now >= self.nextSave then
+    self.nextSave = now + SAVE_LOG
+    self:saveLog()
+  end
   self:sample(now)
   return self:redraw(now, true)
 end
 
 function App:stop()
+  self.logbook:add{ kind = "stop", at = round(self:real(self.now)) }
+  self:saveLog()
   if self.huds then self.huds:clear() end
   if self.env.modem then self.env.modem.close(self.cfg.port) end
   self.dash:restore()

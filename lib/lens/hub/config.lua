@@ -17,6 +17,7 @@
   ANCHORS: the nine anchor names; config.offset(anchor) -> the default x, y for it
   checkView(view) -> err | nil   one view, as a panel is checked
   editors: nil (anyone may edit the dashboard on the screen) or a list of player names
+  timezone: nil (the log says "3h12m ago") or hours from UTC (-12..14), for clock times in the log
 ]]
 
 local query = require("lens.hub.query")
@@ -26,6 +27,7 @@ local config = {}
 
 config.DEFAULTS = {
   node = "hub", port = 4243, token = nil, staleAfter = 3, beep = true, sample = 10, resolution = "fit", editors = nil,
+  timezone = nil,
   nonCritical = {}, panels = {}, rules = {}, hud = {},
 }
 
@@ -169,6 +171,9 @@ function config.check(c)
     end
     local e = config.checkBlocks(h.blocks)
     if e then return nil, e end
+  end
+  if c.timezone ~= nil and (type(c.timezone) ~= "number" or c.timezone < -12 or c.timezone > 14) then
+    return nil, "timezone must be hours from UTC, -12 to 14 (or nil)"
   end
   if c.editors ~= nil then
     if type(c.editors) ~= "table" then return nil, 'editors must be a list of player names: { "Steve" }' end

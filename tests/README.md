@@ -27,6 +27,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_huds.lua` | A HUD per terminal with its wearer's settings (`huds`), presets, and the HUD editor through `lens-hub`: presets, blocks, elements, anchors, nudges, only the tapping player, saved in `lens-board.cfg`, timing out, long lists, tier 2 and 3 × 4 screens |
 | `test_board.lua` | `lens-board.cfg` (`board`): the library, overrides, renames, deletes, undo, pages, migration from `lens-hud.cfg` and 0.2.0's panels; the EDIT page and view editor through `lens-hub`: typing, pasting, preview, order, remove, `editors`, no keyboard |
 | `test_elements.lua` | What a view can show, through `lens-hub`: state dots, several values in one line, `when`, on the dashboard, in the HUD and in the view editor (tier 2 too) |
+| `test_log.lua` | The kept alert log: the real-time clock (`clock`), `lens-log.cfg` (`logbook`), times as text with and without `timezone`; through `lens-hub`: an alert still on LOG after a restart, lens-hub starting and stopping, no usable clock |
 | `test_pages.lua` | The dashboard's pages and the alert log through `lens-hub`: + PAGE named on the keyboard, panels per page, tabs, deleting a page, LOG now and earlier, a 3 × 4 screen |
 | `test_examples.lua` | Every view in `docs/examples.md` as a panel in `lens-hub`, against a PRISM ore line and a LUMEN power room: each shows what the doc says |
 | `test_showcase.lua` | A busy base for the README's images (`make docs-images`): three PRISM routers, LUMEN and your own program, a full dashboard with live alerts, and a HUD block whose `dots = "left"` comes from `lens-hub.cfg` |
@@ -37,7 +38,7 @@ Pure modules are tested on their own; features end to end, through `lens-hub` on
 | `test_layout.lua` | `manifest.lua` lists every file; one version; no `utf8` in `src/` and `lib/`; every module names itself in its header; **dependencies point one way**; every Lua example in the docs loads (the rules in [architecture.md](../docs/architecture.md#modules)) |
 | `hubrun.lua` | Runs `lens-hub` for feature tests: agents (`R.agent`), Glasses Terminals, a keyboard, a script of events, `R.tap` / `R.keys` / `R.paste` / `R.queue` |
 | `helper.lua` | Shared setup (`H`): `check`, `run`, `screen` and `glasses` dumps for `make screens` |
-| `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, screen shape, modem, others by type), `unicode`, `filesystem`, `internet`, `math.random` as the game's, and a screen tests can read |
+| `mocks/oc.lua` | OpenOS `serialization`, `computer`, `event`, `component` (GPU, screen shape, modem, others by type), `unicode`, `filesystem` (with `lastModified` as real time), `internet`, `math.random` as the game's, and a screen tests can read |
 | `mocks/glasses.lua` | A Glasses Terminal and its widget objects, as `lens-discover` saw them; records what setters get |
 | `mocks/net.lua` | Several computers' modems in one test, with packet loss and OpenComputers' packet limits |
 

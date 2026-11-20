@@ -22,6 +22,8 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.viewdraft` | A view being edited: fields as text, status rules and dot states as rows, focus and cursor, back to a checked view |
 | | `lens.hub.textfield` | One line being typed, with a cursor (insert, ← → Home End, Backspace, Delete, pastes, a length limit): used by viewdraft and the editors' renames |
 | **Settings and state** | `lens.hub.config` | `/home/lens-hub.cfg`: defaults and checks, readable errors ([hub.md](hub.md)); views, HUD blocks |
+| | `lens.hub.clock` | Real time (seconds since 1970) from a file's modification time, read once an hour and carried on with uptime |
+| | `lens.hub.logbook` | `/home/lens-log.cfg`: the alert log kept across restarts (alerts that ended, lens-hub starting and stopping), newest first, in real time |
 | | `lens.hub.board` | `/home/lens-board.cfg`: the view library (lens-hub.cfg's views with screen edits over them, plus new ones), the dashboard's pages and their panels, players' HUD presets; undo |
 | | `lens.hub.huds` | One `lens.hub.hud` per Glasses Terminal with its wearer's blocks (kept by the board) or the config's `hud` |
 | | `lens.hub.hud` | Draws HUD blocks (bar, text, alerts, gap; nine anchors) as widgets on one terminal; setters only on change, calls counted |
@@ -46,6 +48,8 @@ the hub's `config` and nothing else of it; `metrics` and `codec` need nothing of
 |---|---|---|
 | `/home/lens-hub.cfg` | `lens-setup` and you | Network, the views and HUD to start from, rules, `editors` |
 | `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's pages, each player's HUDs |
+| `/home/lens-log.cfg` | `lens-hub` only | The alert log (LOG): the last 300 entries, saved once a minute and on stop |
+| `/home/.lens-clock` | `lens-hub` only | Nothing: written once an hour to read the real time back from its modification time |
 
 ### Adding an editor
 
@@ -103,6 +107,7 @@ The tests run against the mocks. This table says which of their behaviors we've 
 | Positions are GUI pixels from the top left (at GUI scale 3, x 10 is 30 screen px); `glasses_on`'s width and height are the GUI size at that moment | **Seen in game** (`--glasses-test`, 2026-11-12) |
 | Rect2D `setSize(a, b)` makes it `b` wide and `a` tall: **height first** | **Seen in game** twice (60, 14 drew 14 x 60; 10, 80 drew 80 x 10) |
 | Text without a `setScale` call is at scale 2; at scale s a character is about 5.2 * s px wide (measured at 0.5 and 2). `setScale(2)` looked like it did nothing only because 2 is the default | **Seen in game** (`--glasses-test`, 2026-11-12, twice) |
+| `filesystem.lastModified(path)` returns real-world milliseconds (UTC), so the log keeps real times across restarts | **Seen in game by LUMEN** (2026-11-18, the same OpenOS call): not yet in LENS |
 | `math.random(m, n)` doesn't return an integer (the mock gives floats) | **Seen in game**: PRISM crashed on it. Use `codec.newBoot()` |
 | `serialization.serialize` output is no larger than the mock's (the mock writes every key in full) | **Unverified**; a one-router base's snapshots arrived fine (2026-11-12), but splitting into parts hasn't been exercised in game |
 | `modem.maxPacketSize()` is 8192, so 7 KB messages fit | **Unverified** (PRISM assumes the same) |

@@ -5,7 +5,7 @@
   Glasses Terminals attached, it also draws a small HUD in the glasses linked to each: one terminal per
   player for HUDs of their own (tap HUD on the dashboard). Tap EDIT to change the dashboard's panels and make
   views (a keyboard on the screen lets you type them). What's changed on the screen is saved in
-  lens-board.cfg next to the config.
+  lens-board.cfg next to the config, and the alert log (LOG) in lens-log.cfg.
   Usage: lens-hub [path]    (default /home/lens-hub.cfg; optional - see docs/hub.md)
   Tap an alert to acknowledge it; QUIT or Ctrl+C to stop. The work is in /home/lib/lens/hub/.
 ]]
@@ -43,7 +43,8 @@ local terminals = {}
 for address in component.list("glasses", true) do terminals[address] = component.proxy(address) end
 local dir = path:match("^(.*)/[^/]*$") or "/home"
 local app, why = App.new(cfg, { gpu = gpu, w = w, h = h, modem = component.modem, terminals = terminals,
-  boardPath = dir .. "/lens-board.cfg",
+  boardPath = dir .. "/lens-board.cfg", logPath = dir .. "/lens-log.cfg",
+  filesystem = require("filesystem"), clockPath = dir .. "/.lens-clock",
   keyboard = component.isAvailable("keyboard"), beep = computer.beep })
 if not app then error(path .. ": " .. tostring(why), 0) end
 splash.show(gpu, w, h, "LENS", require("lens.version"), Gui.C.accent)

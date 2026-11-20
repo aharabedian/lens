@@ -1,10 +1,10 @@
 --[[ lens.hub.alerts: one list of every active alert in the base, with acknowledgements. Pure.
 
   local a = require("lens.hub.alerts").new{ keep = 100 }   keep: how many ended alerts history() remembers
-  a:update(now, active) -> { new = { key... }, cleared = { key... }, changed = bool }
+  a:update(now, active) -> { new = { key... }, cleared = { key... }, ended = { history entry... }, changed = bool }
       active = { { node, id, level, text, age? } }: everything firing right now (agents' alerts, the hub's
-      rules, stale nodes). An alert missing from `active` has cleared and is dropped.
-      changed is true when anything a display shows (the set, a level, a text) differs from last time.
+      rules, stale nodes). An alert missing from `active` has cleared and is dropped; ended has it as history()
+      lists it. changed is true when anything a display shows (the set, a level, a text) differs from last time.
   a:list() -> { { key, node, id, level, text, since, acked } }   bad first, then oldest, then by key
   a:ack(key) -> bool      a:ackAll()
   a:counts() -> { bad, warn, unacked }
@@ -25,7 +25,7 @@ Alerts.__index = Alerts
 function alerts.new(o) return setmetatable({ byKey = {}, ended = {}, keep = (o and o.keep) or 100 }, Alerts) end
 
 function Alerts:update(now, active)
-  local seen, new, cleared, changed = {}, {}, {}, false
+  local seen, new, cleared, ended, changed = {}, {}, {}, {}, false
   for _, x in ipairs(active) do
     local key = tostring(x.node) .. "/" .. tostring(x.id)
     if not seen[key] then
@@ -47,8 +47,10 @@ function Alerts:update(now, active)
   end
   for key, a in pairs(self.byKey) do
     if not seen[key] then
-      table.insert(self.ended, 1, { key = key, node = a.node, id = a.id, level = a.worst or a.level, text = a.text,
-        since = a.since, ended = now })
+      local e = { key = key, node = a.node, id = a.id, level = a.worst or a.level, text = a.text, since = a.since,
+        ended = now }
+      table.insert(self.ended, 1, e)
+      ended[#ended + 1] = e
       if #self.ended > self.keep then table.remove(self.ended) end
       self.byKey[key] = nil
       cleared[#cleared + 1] = key
@@ -57,7 +59,8 @@ function Alerts:update(now, active)
   end
   table.sort(new)
   table.sort(cleared)
-  return { new = new, cleared = cleared, changed = changed }
+  table.sort(ended, function(x, y) return x.key < y.key end)
+  return { new = new, cleared = cleared, ended = ended, changed = changed }
 end
 
 function Alerts:list()

@@ -4,6 +4,8 @@
   local M = require("oc")
   M.serialization        serialize / unserialize, round-tripping like OpenOS (non-pretty mode)
   M.time                 what computer.uptime() returns; M.setTime(t)
+  M.epoch                real-world seconds at M.time 0 (filesystem.lastModified): 2026-11-20 06:00 UTC.
+                         M.noClock: lastModified returns 0, as if the disk couldn't tell
   M.onPull(n)            called on every event.pullMultiple; return an event table to deliver it, or nil
                          to let time pass: pullMultiple(timeout) with no event moves M.time by `timeout`
   M.modem                the modem component.modem returns (set it to a mocks/net.lua endpoint)
@@ -24,7 +26,7 @@
   as an assumption in docs/architecture.md. Modelled on PRISM's mock (tests/mocks/oc.lua there).
 ]]
 
-local M = { time = 0, pulls = 0, beeps = 0, gpuCalls = 0, web = {}, requests = {} }
+local M = { time = 0, pulls = 0, beeps = 0, gpuCalls = 0, web = {}, requests = {}, epoch = 1795154400 }
 
 ---------------------------------------------------------------- serialization
 -- Keys always as ["key"]= / [n]=, so sizes are a little larger than OpenOS's (which writes key= and
@@ -235,6 +237,12 @@ local filesystem = {
   exists = function(p) return sh('test -e "' .. p .. '"') end,
   makeDirectory = function(p) return sh('mkdir -p "' .. p .. '"') end,
   remove = function(p) return os.remove(p) end,
+  -- Real-world milliseconds when the file was last written (OpenComputers' lastModified, seen in game by LUMEN):
+  -- here the mock's epoch plus M.time, so the clock moves with the tests' time.
+  lastModified = function(p)
+    if M.noClock or not sh('test -e "' .. p .. '"') then return 0 end
+    return math.floor((M.epoch + M.time) * 1000)
+  end,
   rename = function(a, b) return os.rename(a, b) end,
 }
 

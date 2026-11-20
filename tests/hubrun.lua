@@ -6,12 +6,13 @@
   local a = R.agent{ node = "power-room", role = "lumen", setup = function(m) ... end, cycle = function(m, now) end }
     setup(m) once (declare and set metrics on m, a lens.metrics registry); cycle(m, now) before every push.
     It sends a describe and a snapshot every 5 s, and answers the hub's hello.
-  local ok, err, dir = R.run{ cfg = "return { ... }", dir = "name", agents = { a, ... },
+  local ok, err, dir = R.run{ cfg = "return { ... }", dir = "name", keep = bool, agents = { a, ... },
                               terminals = { [address] = glasses mock }, keyboard = true,
                               script = function(t) -> event | nil | "stop" }
-    Writes cfg to TMP/<dir>/lens-hub.cfg (a fresh directory; lens-board.cfg appears next to it) and runs
-    lens-hub on it. script is asked for an event on every pull once the queue is empty: an event table, nil to
-    let time pass, or "stop". Anything lens-hub writes to stderr counts as a failure.
+    Writes cfg to TMP/<dir>/lens-hub.cfg and runs lens-hub on it. The directory is fresh, or with keep = true
+    the one from before (a restart); lens-board.cfg and lens-log.cfg appear next to the config. script is
+    asked for an event on every pull once the queue is empty: an event table, nil to let time pass, or "stop".
+    Anything lens-hub writes to stderr counts as a failure.
   R.tap(text, player?, minY?, minX?) -> a touch event on the first place showing text (one column in)
   R.key(code, player) / R.keys(text, player) -> key_down event(s); R.paste(text, player) -> a clipboard event
                       (R.keys returns several values: keep it last in an argument list, or Lua keeps only one)
@@ -59,7 +60,8 @@ function R.run(o)
   if o.keyboard then M.components["kb000000"] = { type = "keyboard", methods = {} } end
   for addr, G in pairs(o.terminals or {}) do M.components[addr] = { type = "glasses", proxy = G.proxy, methods = {} } end
   local dir = H.TMP .. "/" .. (o.dir or "hub")
-  os.execute('rm -rf "' .. dir .. '" && mkdir -p "' .. dir .. '"')
+  if not o.keep then os.execute('rm -rf "' .. dir .. '"') end
+  os.execute('mkdir -p "' .. dir .. '"')
   local f = assert(io.open(dir .. "/lens-hub.cfg", "w"))
   f:write(o.cfg or "return {}")
   f:close()

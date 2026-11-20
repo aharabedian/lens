@@ -196,6 +196,8 @@ local function footer(f, m)
     f:text(2, f.h, Gui.fit(m.notice, f.w - 2), C.warn)
   elseif m.hudError then
     f:text(2, f.h, Gui.fit("HUD: " .. m.hudError, f.w - 2), C.warn)
+  elseif m.logError then
+    f:text(2, f.h, Gui.fit("lens-log.cfg: " .. m.logError, f.w - 2), C.warn)
   else
     f:text(2, f.h, Gui.fit("Tap an alert to acknowledge it.", f.w - 2), C.dim)
   end

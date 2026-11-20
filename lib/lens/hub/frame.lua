@@ -24,6 +24,9 @@
   frame.C                            the palette (lens.gui)
   frame.levelColor(level, default)   bad, warn, good and off as colors; anything else: default
   frame.ago(seconds) -> "45s", "12m", "2h05m"
+  frame.when(t, now, tz) -> text     a moment in real seconds (lens.hub.clock) seen at `now`: "3h12m ago" without
+                                     a time zone; with tz (hours from UTC): "06:40" that day, "Thu 17:42" within the
+                                     week before, "12 Nov" earlier
 ]]
 
 local Gui = require("lens.gui")
@@ -47,6 +50,32 @@ function frame.ago(s)
   if s < 60 then return s .. "s" end
   if s < 3600 then return (s // 60) .. "m" end
   return ("%dh%02dm"):format(s // 3600, (s % 3600) // 60)
+end
+
+local DAYS = { "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed" }      -- 1 January 1970 was a Thursday
+local MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }
+
+-- Day and month of a day number (days since 1970-01-01): Howard Hinnant's civil_from_days.
+local function dayMonth(z)
+  z = z + 719468
+  local era = z // 146097
+  local doe = z - era * 146097
+  local yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
+  local doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
+  local mp = (5 * doy + 2) // 153
+  return doy - (153 * mp + 2) // 5 + 1, mp < 10 and mp + 3 or mp - 9
+end
+
+function frame.when(t, now, tz)
+  if not tz then return frame.ago(now - t) .. " ago" end
+  local lt, ln = t + tz * 3600, now + tz * 3600
+  local day, today = math.floor(lt / 86400), math.floor(ln / 86400)
+  local s = math.floor(lt - day * 86400)
+  local hm = ("%02d:%02d"):format(s // 3600, (s % 3600) // 60)
+  if day == today then return hm end
+  if day < today and today - day < 7 then return DAYS[day % 7 + 1] .. " " .. hm end
+  local d, m = dayMonth(day)
+  return ("%d %s"):format(d, MONTHS[m])
 end
 
 local Frame = {}

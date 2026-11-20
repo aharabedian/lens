@@ -1,9 +1,11 @@
---[[ lens.hub.editors.log: the LOG page: alerts happening now, then the ones that have ended (the hub's
-  alerts:history, newest first: kept in memory, so a restart starts over). Read-only. Drawn by
-  lens.hub.pages.log. The editor interface: lens.hub.editors.hud.
+--[[ lens.hub.editors.log: the LOG page: alerts happening now, then the kept log (lens.hub.logbook, in
+  lens-log.cfg, so a restart keeps it), newest first. Read-only. Drawn by lens.hub.pages.log. The editor
+  interface: lens.hub.editors.hud.
 
   State: { kind = "log", player, page = 1.. }
   Actions: log(player) opens it; logDone, logPage(-1 | 1).
+  Model: { time (real seconds), tz (cfg.timezone), active (alerts:list(), since in real seconds), past
+           (logbook:list()), page }
 ]]
 
 local E = {}
@@ -15,7 +17,15 @@ function E.actions(app, a, mine)
 end
 
 function E.model(app, e, now)
-  return { now = now, active = app.hub.alerts:list(), past = app.hub.alerts:history(), page = e.page }
+  local time = app:real(now)
+  local active = {}
+  for _, a in ipairs(app.hub.alerts:list()) do
+    local copy = {}
+    for k, v in pairs(a) do copy[k] = v end
+    copy.since = time - (now - a.since)
+    active[#active + 1] = copy
+  end
+  return { time = time, tz = app.cfg.timezone, active = active, past = app.logbook:list(), page = e.page }
 end
 
 return E

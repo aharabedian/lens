@@ -42,6 +42,7 @@ shape in blocks, so text fills it with no empty borders. Characters are twice as
 | `staleAfter` | `3` | Missed snapshots before a node counts as stopped reporting (a `BAD` alert) |
 | `beep` | `true` | Beep when a new `BAD` alert appears |
 | `sample` | `10` | Seconds between sparkline samples |
+| `timezone` | `nil` | Hours from UTC (`-5`, `1`, `5.5`): the [log](#the-alert-log) shows clock times. `nil`: how long ago |
 | `editors` | `nil` | Player names who may use EDIT: `{ "Steve", "Alex" }`. `nil`: anyone |
 | `resolution` | `"fit"` | `"fit"`: match the screen's shape (see above). `"max"`: the GPU's largest. `{ width, height }`: your own, e.g. `{ 80, 25 }` for bigger text |
 | `nonCritical` | `{}` | Node names whose silence is only a warning and that don't count towards overall health |
@@ -78,9 +79,14 @@ These are the starting point: the dashboard's pages and panels are then changed 
 
 ## The alert log
 
-Tap **LOG** for what happened while you were away: alerts happening **now** (and for how long), then the ones
-that have **ended**, newest first, with when and how long they lasted (the worst level each reached). The hub
-keeps the last 100 that ended, in memory: a restart starts the log over.
+Tap **LOG** for what happened while you were away: alerts happening **now** (and for how long), then
+**earlier** ones, newest first: alerts that ended, with when they started and how long they lasted (the worst
+level each reached), and when `lens-hub` started and stopped.
+
+The log is kept in **`/home/lens-log.cfg`** (next to lens-hub.cfg; only the hub writes it, once a minute and when
+it stops), so a restart keeps it: the last 300 entries. Times are real, from the time a file was written (the
+hub writes `/home/.lens-clock` for that). Without `timezone` they read `3h12m ago`; with it, as clock times:
+`06:40` today, `Thu 17:42` this week, `12 Nov` before.
 
 ![The alert log](images/log.png)
 
