@@ -1,7 +1,7 @@
 --[[ lens.hub.pages.log: the LOG page (lens.hub.editors.log): a timeline of the last 12 or 24 hours (a band per
   node, colored by its worst alert, │ where it restarted), then alerts happening now, then the kept log
   (lens.hub.logbook), newest first: alerts that ended, with when they started and how long they lasted, and when
-  lens-hub started and stopped.
+  lens-hub started and stopped, and nodes that restarted.
 
   log.draw(f, e, actions)   e: { time, tz, active = alerts:list() with since in real seconds, past = logbook
                             entries (an alert's ackedBy: who acknowledged it), page, hours, timeline =
@@ -47,6 +47,11 @@ local function alertRow(f, y, a, e, past)
 end
 
 local function eventRow(f, y, ev, e)
+  if ev.kind == "restart" then
+    f:text(2, y, Gui.fit(" NODE", 6), C.accent)
+    line(f, y, tostring(ev.node) .. " restarted", frame.when(ev.at, e.time, e.tz), C.text)
+    return
+  end
   f:text(2, y, Gui.fit(" LENS", 6), C.accent)
   line(f, y, EVENTS[ev.kind] or ev.kind, frame.when(ev.at, e.time, e.tz), C.dim)
 end

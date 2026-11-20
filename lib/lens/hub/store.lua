@@ -7,8 +7,14 @@
       have. At most once per node per interval.
   s:node(name) -> node | nil
   s:nodes(now) -> node[]   sorted by name
-      node = { name, role, version, boot, interval, health, stale, lastSeen, alerts, moreAlerts, dseq, metrics }
+      node = { name, role, version, boot, interval, health, stale, lastSeen, alerts, moreAlerts, dseq, metrics,
+               restarts = { uptime... }, rememberedAt? }
       health is "stale" once no snapshot has arrived for staleAfter * interval seconds; stale is true then.
+      A remembered node not heard yet has no lastSeen, and is stale staleAfter * interval after it was remembered.
+  s:remember(name, role?, interval?, now)   a node heard before the hub started (lens.hub.board keeps them):
+      listed until it reports, stale once it should have
+  s:drain() -> { { kind = "restart", node, at }... }   what happened since the last drain: a node whose boot
+      changed restarted (at: uptime). Its restarts list keeps the times since the hub started (the last 10)
   s:lookup(name, now) -> series[]   the series of metric `name` on every node that isn't stale
       series = { name, value, labels, type, rate? }; labels include node = <node name>
       rate: for counters, per second since the previous snapshot of the same boot (nil on the first
@@ -31,7 +37,7 @@ local DEFAULT_INTERVAL = 10
 
 function store.new(opts)
   opts = opts or {}
-  return setmetatable({ staleAfter = opts.staleAfter or 3, byName = {} }, Store)
+  return setmetatable({ staleAfter = opts.staleAfter or 3, byName = {}, events = {} }, Store)
 end
 
 local function seriesKey(name, labels)
@@ -44,11 +50,16 @@ local function seriesKey(name, labels)
   return table.concat(parts, "\0")
 end
 
-local function nodeFor(self, msg)
+local function nodeFor(self, msg, now)
   local n = self.byName[msg.node]
   if not n then
-    n = { name = msg.node, series = {}, byMetric = {}, alerts = {}, health = "ok" }
+    n = { name = msg.node, series = {}, byMetric = {}, alerts = {}, health = "ok", restarts = {} }
     self.byName[msg.node] = n
+  end
+  if n.boot ~= nil and n.boot ~= msg.boot then
+    table.insert(n.restarts, now)
+    if #n.restarts > 10 then table.remove(n.restarts, 1) end
+    self.events[#self.events + 1] = { kind = "restart", node = n.name, at = now }
   end
   if n.boot ~= msg.boot then
     -- A restart: counters start over and old descriptors no longer apply.
@@ -99,7 +110,7 @@ end
 
 function Store:receive(msg, now)
   if msg.kind ~= "describe" and msg.kind ~= "snapshot" then return nil end
-  local n = nodeFor(self, msg)
+  local n = nodeFor(self, msg, now)
   if msg.kind == "describe" then
     describe(n, msg)
     return nil
@@ -108,7 +119,8 @@ function Store:receive(msg, now)
 end
 
 local function isStale(self, n, now)
-  return not n.lastSeen or now - n.lastSeen > self.staleAfter * (n.interval or DEFAULT_INTERVAL)
+  local since = n.lastSeen or n.rememberedAt
+  return not since or now - since > self.staleAfter * (n.interval or DEFAULT_INTERVAL)
 end
 
 function Store:node(name) return self.byName[name] end
@@ -120,7 +132,8 @@ function Store:nodes(now)
     out[#out + 1] = {
       name = n.name, role = n.role, version = n.version, boot = n.boot, interval = n.interval,
       health = n.stale and "stale" or n.health, stale = n.stale, lastSeen = n.lastSeen,
-      alerts = n.alerts, moreAlerts = n.moreAlerts, dseq = n.dseq, metrics = n.metrics,
+      alerts = n.alerts, moreAlerts = n.moreAlerts, dseq = n.dseq, metrics = n.metrics, restarts = n.restarts,
+      rememberedAt = n.rememberedAt,
     }
   end
   table.sort(out, function(a, b) return a.name < b.name end)
@@ -181,5 +194,17 @@ function Store:nodeMetrics(name)
 end
 
 function Store:forget(name) self.byName[name] = nil end
+
+function Store:remember(name, role, interval, now)
+  if self.byName[name] then return end
+  self.byName[name] = { name = name, role = role, interval = interval, series = {}, byMetric = {}, alerts = {},
+    health = "ok", restarts = {}, rememberedAt = now or 0 }
+end
+
+function Store:drain()
+  local out = self.events
+  self.events = {}
+  return out
+end
 
 return store

@@ -45,6 +45,11 @@ function node.draw(f, e, actions)
       t.cut > 0 and C.warn or C.dim)
     y = y + 1
   end
+  if (e.restarts or 0) > 0 then
+    f:text(2, y, Gui.fit(("restarts since the hub started: %d, the last %s"):format(e.restarts,
+      frame.when(e.lastRestart, e.time, e.tz)), width), C.warn)
+    y = y + 1
+  end
   y = y + 1
 
   f:heading(2, y, ("ALERTS (%d)"):format(#e.alerts), width)

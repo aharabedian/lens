@@ -12,7 +12,7 @@ that every module's header names it and that dependencies only point the ways li
 |---|---|---|
 | **Protocol** (agents vendor these) | `lens.metrics` | Registry of gauges, counters, alerts and health for one node; produces `describe` and `snapshot` bodies. Pure |
 | | `lens.codec` | Envelope, splitting messages into packets of at most 7 KB, decoding with token and proto checks, joining parts. Pure apart from OpenOS `serialization` |
-| **Hub core** (pure) | `lens.hub.store` | Per node: descriptors, the latest series, counter rates, health, staleness; the list of metrics there is to query. Asks for a `hello` when a snapshot's descriptors are missing |
+| **Hub core** (pure) | `lens.hub.store` | Per node: descriptors, the latest series, counter rates, health, staleness, restarts (a new `boot`); the list of metrics there is to query; nodes remembered from earlier runs. Asks for a `hello` when a snapshot's descriptors are missing |
 | | `lens.hub.query` | The selector language ([queries.md](queries.md)), compiled to a function of a lookup |
 | | `lens.hub.rules` | The hub's own alerts: queries that must stay true for `for` seconds |
 | | `lens.hub.alerts` | One list of every active alert: dedupe by `node/id`, since, acks, ordering; the last 100 that ended (LOG) |
@@ -49,7 +49,7 @@ the hub's `config` and nothing else of it; `metrics` and `codec` need nothing of
 | File | Written by | Holds |
 |---|---|---|
 | `/home/lens-hub.cfg` | `lens-setup` and you | Network, the views and HUD to start from, rules, `editors` |
-| `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's pages, each player's HUDs |
+| `/home/lens-board.cfg` | `lens-hub` only | What's changed on the screen: views, the dashboard's pages, each player's HUDs; the nodes the hub has heard |
 | `/home/lens-log.cfg` | `lens-hub` only | The alert log (LOG): the last 300 entries, saved once a minute and on stop |
 | `/home/.lens-clock` | `lens-hub` only | Nothing: written once an hour to read the real time back from its modification time |
 

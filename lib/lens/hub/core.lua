@@ -13,6 +13,8 @@
   hub:traffic(name) -> { distance?, whole, cut } | nil   per node since the hub started: snapshots that arrived
       whole, and ones cut short (a part missing when the next snapshot began); the last packet's distance
   hub:forget(name)                            a node that stopped is dropped (it comes back if it reports)
+  hub:remember(name, role?, interval?, now)   a node heard in an earlier run (store:remember)
+  hub:drain() -> events                       store:drain(): nodes that restarted
   hub:tick(now) -> alerts:update result       call every second or so: stale nodes, agent alerts, rules
   hub:query(text, now) -> value | nil, err    compiled once per text
   hub:select(text, now) -> series[] | nil, err   a bare selector's series (state dots), compiled once per text
@@ -23,7 +25,9 @@
   hub.alerts                                  lens.hub.alerts (list, ack, counts)
 
   Alerts the hub raises itself use node = its own name for rules, and the silent node's name for
-  id = "stale". An agent's moreAlerts becomes one warn with id = "more-alerts".
+  id = "stale" ("not heard since hub start" for a remembered node that hasn't reported). An agent's
+  moreAlerts becomes one warn with id = "more-alerts". A node that restarted RESTARTS times within an hour gets a
+  warn with id = "restarts".
 ]]
 
 local codec = require("lens.codec")
@@ -33,6 +37,8 @@ local rules = require("lens.hub.rules")
 local alerts = require("lens.hub.alerts")
 
 local core = {}
+
+core.RESTARTS = 3
 
 local Hub = {}
 Hub.__index = Hub
@@ -84,12 +90,19 @@ function Hub:lookup(now)
 end
 
 function Hub:tick(now)
+  self.startedAt = self.startedAt or now
   local active = {}
   for _, n in ipairs(self.store:nodes(now)) do
+    local recent = 0
+    for _, t in ipairs(n.restarts or {}) do if now - t <= 3600 then recent = recent + 1 end end
+    if recent >= core.RESTARTS then
+      active[#active + 1] = { node = n.name, id = "restarts", level = "warn",
+        text = ("%s: %d restarts in an hour"):format(n.name, recent) }
+    end
     if n.stale then
-      local silent = n.lastSeen and math.floor(now - n.lastSeen) or 0
+      local silent = math.floor(now - (n.lastSeen or n.rememberedAt or self.startedAt))
       active[#active + 1] = { node = n.name, id = "stale", level = self.nonCritical[n.name] and "warn" or "bad",
-        text = n.name .. " stopped reporting", age = silent }
+        text = n.name .. (n.lastSeen and " stopped reporting" or " not heard since hub start"), age = silent }
     else
       for _, a in ipairs(n.alerts or {}) do
         if type(a) == "table" and a.id ~= nil then
@@ -146,6 +159,9 @@ function Hub:traffic(name)
   local t = self.snapshots[name]
   return t and { distance = t.distance, whole = t.whole, cut = t.cut } or nil
 end
+
+function Hub:remember(name, role, interval, now) self.store:remember(name, role, interval, now) end
+function Hub:drain() return self.store:drain() end
 
 function Hub:forget(name)
   self.store:forget(name)

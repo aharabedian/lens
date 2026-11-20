@@ -19,6 +19,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Node page**: tap a node for its health, version, how often it reports, its distance, how many snapshots
   arrived whole or cut short, its alerts, its last 24 hours, its metrics and the views that read them. FORGET drops
   a node that stopped.
+- **Missing and restarted nodes**: the hub remembers every node it has heard, so after a restart one that
+  doesn't report shows as `STALE` ("not heard since hub start") instead of being absent. A node's restarts are on
+  LOG, its node page and the timeline, and 3 within an hour raise a warn.
 - **Who acknowledged an alert**: `✓ Aaron` on the dashboard, and on LOG after the alert ends.
 
 ## [0.5.1] - 2026-11-18

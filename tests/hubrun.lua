@@ -5,7 +5,8 @@
   local R = require("hubrun")(H)     H: the test's helper (its TMP directory and H.run)
   local a = R.agent{ node = "power-room", role = "lumen", setup = function(m) ... end, cycle = function(m, now) end,
                      distance = n, stopAt = t }   (distance: what the hub's modem_message says, default 0;
-                     stopAt: the time it goes silent, as if switched off)
+                     stopAt: the time it goes silent, as if switched off; restartAt = { t... }: it restarts
+                     then, with a new boot)
     setup(m) once (declare and set metrics on m, a lens.metrics registry); cycle(m, now) before every push.
     It sends a describe and a snapshot every 5 s, and answers the hub's hello.
   local ok, err, dir = R.run{ cfg = "return { ... }", dir = "name", keep = bool, agents = { a, ... },
@@ -36,6 +37,7 @@ function R.agent(o)
   local m = metrics.new{ role = o.role, clock = function() return M.time end }
   if o.setup then o.setup(m) end
   return { node = o.node, role = o.role, m = m, cycle = o.cycle, distance = o.distance, stopAt = o.stopAt,
+    restartAt = o.restartAt, boot = 3,
     enc = codec.encoder{ node = o.node, role = o.role, boot = 3, interval = 5 } }
 end
 
@@ -79,6 +81,12 @@ function R.run(o)
   end
   local function push(a, describe)
     if a.stopAt and M.time >= a.stopAt then return end
+    if a.restartAt and a.restartAt[1] and M.time >= a.restartAt[1] then
+      table.remove(a.restartAt, 1)
+      a.boot = a.boot + 1
+      a.enc = codec.encoder{ node = a.node, role = a.role, boot = a.boot, interval = 5 }
+      describe = true
+    end
     if a.cycle then a.cycle(a.m, M.time) end
     if describe then for _, p in ipairs(a.enc:describe(a.m:describe())) do a.ep.broadcast(PORT, p) end end
     for _, p in ipairs(a.enc:snapshot(a.m:snapshot())) do a.ep.broadcast(PORT, p) end

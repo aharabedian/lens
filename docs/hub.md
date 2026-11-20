@@ -12,7 +12,7 @@ Install, connecting agents and the first run: [setup.md](setup.md). Problems: [t
 | Part | Shows |
 |---|---|
 | Header | Overall health (the worst of the critical nodes), node count, alert counts, the hub's name, port and version, **LOG** ([below](#the-alert-log)), **DATA** ([below](#the-data-page)), **EDIT** ([editing on the screen](#editing-on-the-screen)), **HUD** (with a Glasses Terminal), QUIT |
-| NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported. **Tap one** for its [node page](#the-node-page) |
+| NODES | Each agent: health (`STALE` when it stopped reporting), role, when it last reported. **Tap one** for its [node page](#the-node-page). The hub remembers every node it has heard (in `lens-board.cfg`): after a restart, one that doesn't report in time is `STALE` with "not heard since hub start", instead of missing from the list |
 | ALERTS | Every active alert, `BAD` first, then oldest. **Tap one to acknowledge it**; ACK ALL acknowledges every alert. An acknowledged alert stays listed (✓ and who tapped it, dimmed) until it clears, and comes back unacknowledged if it gets worse |
 | Page tabs | With more than one page: tap one to show its panels (anyone may) |
 | PANELS | The shown page's panels: label, value, a bar, status and state dots ([views.md](views.md)), and a sparkline of its history (tier 3). **Tap one** for its [panel page](#the-panel-page) |
@@ -84,7 +84,9 @@ Tap **LOG** for what happened while you were away. At the top, a **timeline** of
 day): a band per node that had an alert, colored by its worst alert at each moment (dark when all was well), so
 you see when and for how long without reading every row. Below it, alerts happening **now** (and for how long), then
 **earlier** ones, newest first: alerts that ended, with when they started and how long they lasted (the worst
-level each reached) and who acknowledged them, and when `lens-hub` started and stopped.
+level each reached) and who acknowledged them; nodes that restarted (an agent's `boot` changed); and when
+`lens-hub` started and stopped. A node that restarts 3 times within an hour raises a `WARN` ("prism-ore: 3
+restarts in an hour"): something is crashing it.
 
 The log is kept in **`/home/lens-log.cfg`** (next to lens-hub.cfg; only the hub writes it, once a minute and when
 it stops), so a restart keeps it: the last 300 entries. Times are real, from the time a file was written (the
