@@ -199,6 +199,19 @@ function App:logEnded(ended, now)
   end
 end
 
+-- Nodes heard are remembered (lens-board.cfg); restarts go into the log.
+function App:noteNodes(now)
+  for _, n in ipairs(self.hub:nodes(now)) do
+    if n.lastSeen then self.board:rememberNode(n.name, n.role, n.interval) end
+  end
+  local events = self.hub:drain()
+  if #events == 0 then return end
+  local time = self:real(now)
+  for _, e in ipairs(events) do
+    self.logbook:add{ kind = e.kind, node = e.node, at = round(time - (now - e.at)) }
+  end
+end
+
 function App:saveLog()
   local ok, saved, err = pcall(self.logbook.save, self.logbook)
   self.logError = (not ok and tostring(saved)) or (not saved and tostring(err)) or nil
@@ -311,6 +324,7 @@ end
 
 function App:start(now)
   self.now, self.lastTap = now, now
+  for name, k in pairs(self.board:knownNodes()) do self.hub:remember(name, k.role, k.interval, now) end
   local modem = self.env.modem
   if modem then
     modem.open(self.cfg.port)
@@ -363,6 +377,7 @@ function App:tick(now)
   local changes = self.hub:tick(now)
   if self.cfg.beep and self.env.beep and self:anyBad(changes.new) then self.env.beep() end
   self:logEnded(changes.ended, now)
+  self:noteNodes(now)
   if now >= self.nextSave then
     self.nextSave = now + SAVE_LOG
     self:saveLog()
