@@ -79,7 +79,9 @@ These are the starting point: the dashboard's pages and panels are then changed 
 
 ## The alert log
 
-Tap **LOG** for what happened while you were away: alerts happening **now** (and for how long), then
+Tap **LOG** for what happened while you were away. At the top, a **timeline** of the last 12 hours (**24 H** for a
+day): a band per node that had an alert, colored by its worst alert at each moment (dark when all was well), so
+you see when and for how long without reading every row. Below it, alerts happening **now** (and for how long), then
 **earlier** ones, newest first: alerts that ended, with when they started and how long they lasted (the worst
 level each reached), and when `lens-hub` started and stopped.
 

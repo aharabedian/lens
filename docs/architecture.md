@@ -18,6 +18,7 @@ that every module's header names it and that dependencies only point the ways li
 | | `lens.hub.alerts` | One list of every active alert: dedupe by `node/id`, since, acks, ordering; the last 100 that ended (LOG) |
 | | `lens.hub.core` | The above together: `receive(data, from, now)` → replies, `tick(now)` → alert changes, `query`, `lookup`, `metrics`, `health` |
 | **Views** (pure) | `lens.hub.format` | A view's value as text, bar fraction and color level (`format`, `color`): the same on the dashboard and the HUD |
+| | `lens.hub.timeline` | The LOG page's timeline: a node's worst alert in each column of the last 12 or 24 hours, restarts as marks, and the hour labels |
 | | `lens.hub.explore` | Building a query by tapping: a metric, label filters, a function → query text |
 | | `lens.hub.viewdraft` | A view being edited: fields as text, status rules and dot states as rows, focus and cursor, back to a checked view |
 | | `lens.hub.textfield` | One line being typed, with a cursor (insert, ← → Home End, Backspace, Delete, pastes, a length limit): used by viewdraft and the editors' renames |
