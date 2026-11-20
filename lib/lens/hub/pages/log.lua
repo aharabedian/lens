@@ -4,9 +4,10 @@
   lens-hub started and stopped.
 
   log.draw(f, e, actions)   e: { time, tz, active = alerts:list() with since in real seconds, past = logbook
-                            entries, page, hours, timeline = lens.hub.timeline.bands, ticks, player, error,
-                            closesIn }. The band starts at column 15. Times read as frame.when. Rows that don't fit
-                            go on further pages (◀ ▶); the timeline stays on each.
+                            entries (an alert's ackedBy: who acknowledged it), page, hours, timeline =
+                            lens.hub.timeline.bands, ticks, player, error, closesIn }. The band starts at
+                            column 15. Times read as frame.when. Rows that don't fit go on further pages (◀ ▶);
+                            the timeline stays on each.
 ]]
 
 local Gui = require("lens.gui")
@@ -40,6 +41,7 @@ local function alertRow(f, y, a, e, past)
   else
     when = "for " .. frame.ago(e.time - a.since)
   end
+  if a.ackedBy then when = when .. " · ✓ " .. a.ackedBy end
   local label = a.text .. ((a.node and not a.text:find(a.node, 1, true)) and ("  · " .. a.node) or "")
   line(f, y, label, when, past and C.dim or C.text)
 end

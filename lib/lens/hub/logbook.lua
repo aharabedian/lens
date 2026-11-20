@@ -5,7 +5,7 @@
     path: the file (nil: kept in memory only); what's there is read back. keep: entries kept (KEEP), oldest dropped
   L:add(entry)        newest first. entry = { kind, at, ... }:
       "alert": an alert that ended: node, id, level (the worst it reached), text, since (when it started), at
-               (when it ended)
+               (when it ended), ackedBy (who acknowledged it, if anyone did)
       "start" | "stop": lens-hub started or stopped, at
   L:list() -> { entry... }   newest first (a new list; the entries are the log's own)
   L.count

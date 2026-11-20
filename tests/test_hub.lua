@@ -184,6 +184,20 @@ do
   check(not r.changed and a:list()[2].since == 70, "nothing changed: changed is false and since stays")
 
   check(a:ack("prism-ore/down:mac2") and not a:ack("nope"), "ack by key")
+  do
+    local w = alerts.new()
+    w:update(1, { { node = "n", id = "x", level = "warn", text = "t" }, { node = "n", id = "y", level = "warn", text = "u" } })
+    w:ack("n/x", "Aaron")
+    w:ackAll("Bob")
+    local acks = w:list()
+    check(acks[1].ackedBy == "Aaron" and acks[2].ackedBy == "Bob", "an ack keeps who tapped; ACK ALL doesn't take over earlier acks")
+    w:update(2, { { node = "n", id = "x", level = "bad", text = "t" }, { node = "n", id = "y", level = "warn", text = "u" } })
+    check(w:list()[1].ackedBy == nil and not w:list()[1].acked, "getting worse drops the ack and who made it")
+    local done = w:update(3, {})
+    local by = {}
+    for _, e in ipairs(done.ended) do by[e.id] = e.ackedBy or false end
+    check(by.x == false and by.y == "Bob", "an alert that ends keeps who acknowledged it")
+  end
   check(a:counts().unacked == 1, "acked alerts aren't counted as unacked")
   a:update(120, {
     { node = "prism-ore", id = "down:mac2", level = "warn", text = "mac2 down" },

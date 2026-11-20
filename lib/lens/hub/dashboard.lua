@@ -10,7 +10,7 @@
   model = {
     now, port, node, version, health = "ok" | "warn" | "bad", missingConfig = bool,
     nodes  = store:nodes(now),
-    alerts = alerts:list(), counts = alerts:counts(),
+    alerts = alerts:list(), counts = alerts:counts(),   (ackedBy: who acknowledged one)
     panels = { { label, text, frac = 0..1 | nil, level = "bad" | "warn" | "good" | nil, history = { number... } } },
     huds = bool,             Glasses Terminals attached: the header has a HUD button
     notice = text | nil,     shown in the footer (who has the editor, who may edit)

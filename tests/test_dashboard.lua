@@ -154,7 +154,7 @@ do
     end
     if s.alert and not s.acked then
       s.acked = true
-      s.ackedRow = M.find("✓ mac2: no power") ~= nil
+      s.ackedRow = M.find("✓ player  mac2: no power") ~= nil
       -- nothing changes for a few seconds: count GPU calls per tick
       s.calls = M.gpuCalls
       s.callsAt = t
@@ -177,7 +177,7 @@ do
     end
     if s.stale and not s.ackAll then
       s.ackAll = true
-      s.allAcked = M.find("✓ prism-ore stopped reporting") ~= nil
+      s.allAcked = M.find("✓ player  prism-ore stopped reporting") ~= nil
       s.ackAllGone = M.find(" ACK ALL ") == nil
       return nil
     end
@@ -196,7 +196,7 @@ do
   check(s.beeps == 1, "a new bad alert beeps once")
   check(s.badColor, "a value past badAbove is drawn red")
   check(s.downText, "the running panel follows machine states")
-  check(s.ackedRow, "tapping an alert acknowledges it")
+  check(s.ackedRow, "tapping an alert acknowledges it, and says who did")
   check(s.perTick < 12, ("a quiet tick redraws only what changed (%.1f GPU calls per second)"):format(s.perTick))
   check(s.staleRow and s.staleNode and s.header2:find(" BAD ", 1, true),
     "an agent that stops reporting shows STALE, with an alert")

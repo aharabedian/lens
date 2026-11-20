@@ -1,7 +1,7 @@
 --[[ lens.hub.pages.main: the dashboard itself: header, nodes, alerts, panels, footer.
 
   main.draw(f, m, actions)   f: lens.hub.frame; m: the app's model (lens.hub.dashboard has its shape);
-                             actions: ack(key), ackAll(), quit(), page(player, i), and the buttons that open
+                             actions: ack(key, player), ackAll(player), quit(), page(player, i), and the buttons that open
                              editors: log, data, edit, hud (each gets the tapping player); panel(player, label)
                              when a panel is tapped
 
@@ -105,12 +105,12 @@ local function alerts(f, m, actions, x, y, width, lastRow)
     else
       f:text(x, y, tag, C.bg, a.level == "bad" and C.bad or C.warn)
     end
-    local label = (a.acked and "✓ " or "") .. a.text
+    local label = (a.acked and ("✓ " .. (a.ackedBy and (a.ackedBy .. "  ") or "")) or "") .. a.text
     if a.node and not a.text:find(a.node, 1, true) then label = label .. "  · " .. a.node end
     f:text(x + 7, y, Gui.fit(label, width - 14), a.acked and C.dim or C.text)
     f:text(x + width - 6, y, Gui.rfit(frame.ago(m.now - (a.since or m.now)), 6), C.dim)
     local key = a.key
-    f:hit(x, y, x + width - 1, y, function() actions.ack(key) end)
+    f:hit(x, y, x + width - 1, y, function(player) actions.ack(key, player) end)
     y = y + 1
   end
   if shown < #list then f:text(x, y, ("+%d more"):format(#list - shown), C.dim) end
